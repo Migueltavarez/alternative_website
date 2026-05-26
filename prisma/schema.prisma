@@ -171,10 +171,25 @@ model PrintJob {
   notes           String?
   creditsDeducted Boolean   @default(false)
 
+  // Service type
+  serviceType      String    @default("print_3d")
+
   // Client print specifications
   color           String?
   filamentType    String?
   deliveryTime    String    @default("standard")
+
+  // 3D print extras
+  scale           String?
+  realSize        String?
+
+  // Laser cutting/engraving
+  laserCutColor   String?
+  laserEngravColor String?
+
+  // Resin
+  resinColor      String?
+  resinUse        String?
 
   // Maker feedback
   makerFeedback     String?   // JSON: { issues[], notes, suggestion }

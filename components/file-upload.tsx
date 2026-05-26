@@ -5,12 +5,15 @@ import { motion } from 'framer-motion';
 import { Upload, File, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const DEFAULT_3D_EXTENSIONS = ['.stl', '.obj', '.3mf', '.step', '.stp'];
+
 interface FileUploadProps {
   onUploadComplete: (fileName: string, fileUrl: string, fileSize?: number) => void;
   isUploading: boolean;
+  acceptedExtensions?: string[];
 }
 
-export function FileUpload({ onUploadComplete, isUploading }: FileUploadProps) {
+export function FileUpload({ onUploadComplete, isUploading, acceptedExtensions }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -18,7 +21,7 @@ export function FileUpload({ onUploadComplete, isUploading }: FileUploadProps) {
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const allowedExtensions = ['.stl', '.obj', '.3mf', '.gcode', '.step', '.stp', '.fbx', '.dae', '.blend'];
+  const allowedExtensions = acceptedExtensions ?? DEFAULT_3D_EXTENSIONS;
 
   const validateFile = (file: File): string | null => {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -154,7 +157,7 @@ export function FileUpload({ onUploadComplete, isUploading }: FileUploadProps) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".stl,.obj,.3mf,.gcode,.step,.stp,.fbx,.dae,.blend"
+            accept={allowedExtensions.join(',')}
             onChange={handleFileSelect}
             className="hidden"
           />

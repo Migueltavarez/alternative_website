@@ -8,7 +8,7 @@ import {
   Plus, Pencil, Trash2, X, Save, AlertTriangle, MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES, MODEL_ISSUES } from '@/lib/print-constants';
+import { JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES, MODEL_ISSUES, SERVICE_TYPES, RESIN_USES } from '@/lib/print-constants';
 
 interface PrinterMachine {
   id: string;
@@ -25,6 +25,7 @@ interface WorkerJob {
   id: string;
   fileName: string;
   fileUrl: string;
+  serviceType?: string;
   color?: string;
   filamentType?: string;
   deliveryTime?: string;
@@ -37,6 +38,15 @@ interface WorkerJob {
   user: { id: string; name?: string; email: string };
   assignedMachine?: { id: string; name: string } | null;
   makerFeedback?: string | null;
+  // 3D print extras
+  scale?: string;
+  realSize?: string;
+  // Laser
+  laserCutColor?: string;
+  laserEngravColor?: string;
+  // Resin
+  resinColor?: string;
+  resinUse?: string;
 }
 
 interface WorkerProfile {
@@ -569,9 +579,28 @@ export function WorkerDashboard() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {job.color && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">🎨 {job.color}</span>}
-                      {job.filamentType && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">🧵 {job.filamentType}</span>}
+                      {/* Service type badge */}
+                      {(() => {
+                        const svc = SERVICE_TYPES.find((s) => s.id === (job.serviceType ?? 'print_3d'));
+                        return svc ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium">
+                            {svc.label}
+                          </span>
+                        ) : null;
+                      })()}
+                      {/* Common */}
                       {job.deliveryTime && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">⏱ {getDeliveryLabel(job.deliveryTime)}</span>}
+                      {/* 3D print */}
+                      {job.color        && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">🎨 {job.color}</span>}
+                      {job.filamentType && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">🧵 {job.filamentType}</span>}
+                      {job.scale        && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">📐 {job.scale}</span>}
+                      {job.realSize     && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">📏 {job.realSize} m</span>}
+                      {/* Laser */}
+                      {job.laserCutColor    && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">✂️ Corte: {job.laserCutColor}</span>}
+                      {job.laserEngravColor && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">✏️ Grabado: {job.laserEngravColor}</span>}
+                      {/* Resin */}
+                      {job.resinColor && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">💧 {job.resinColor}</span>}
+                      {job.resinUse   && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">{RESIN_USES.find((u) => u.value === job.resinUse)?.label ?? job.resinUse}</span>}
                     </div>
 
                     <div className="flex flex-wrap gap-2 mt-4">

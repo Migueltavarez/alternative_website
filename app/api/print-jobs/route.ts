@@ -36,7 +36,16 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id;
     const body = await request.json();
-    const { fileName, fileUrl, fileSize, notes, color, filamentType, deliveryTime } = body;
+    const {
+      fileName, fileUrl, fileSize, notes, deliveryTime,
+      serviceType,
+      // 3D print
+      color, filamentType, scale, realSize,
+      // Laser
+      laserCutColor, laserEngravColor,
+      // Resin
+      resinColor, resinUse,
+    } = body;
 
     if (!fileName || !fileUrl) {
       return NextResponse.json(
@@ -52,11 +61,21 @@ export async function POST(request: NextRequest) {
         fileUrl,
         fileSize: fileSize || null,
         notes: notes || null,
-        color: color || null,
-        filamentType: filamentType || null,
         deliveryTime: deliveryTime || 'standard',
+        serviceType: serviceType || 'print_3d',
         status: 'pending',
         creditsCost: 0,
+        // 3D print
+        color: color || null,
+        filamentType: filamentType || null,
+        scale: scale || null,
+        realSize: realSize || null,
+        // Laser
+        laserCutColor: laserCutColor || null,
+        laserEngravColor: laserEngravColor || null,
+        // Resin
+        resinColor: resinColor || null,
+        resinUse: resinUse || null,
       },
     });
 

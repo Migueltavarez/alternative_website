@@ -61,6 +61,53 @@ export const JOB_STATUS_LABELS: Record<string, { label: string; color: string }>
   needs_revision:   { label: 'Requiere revisión', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
 };
 
+export const SERVICE_TYPES = [
+  {
+    id: 'print_3d',
+    label: 'Impresión 3D',
+    description: 'FDM con filamento (PLA, PETG, ABS...)',
+    acceptedExtensions: ['.stl', '.obj', '.3mf', '.step', '.stp'],
+    acceptStr: '.stl,.obj,.3mf,.step,.stp',
+  },
+  {
+    id: 'laser',
+    label: 'Grabado y Corte Láser',
+    description: 'Corte y grabado sobre madera, acrílico, cuero y más',
+    acceptedExtensions: ['.pdf'],
+    acceptStr: '.pdf',
+  },
+  {
+    id: 'resin',
+    label: 'Impresión en Resina',
+    description: 'Alta resolución con tecnología SLA/MSLA',
+    acceptedExtensions: ['.stl', '.obj', '.3mf'],
+    acceptStr: '.stl,.obj,.3mf',
+  },
+  {
+    id: 'plans',
+    label: 'Impresión de Planos',
+    description: 'Planos técnicos en papel (A0, A1, A2...)',
+    acceptedExtensions: ['.pdf'],
+    acceptStr: '.pdf',
+  },
+] as const;
+
+export const PRINT_SCALES = [
+  '1:1', '1:2', '1:5', '1:10', '1:20', '1:25', '1:50',
+  '1:75', '1:100', '1:200', '1:250', '1:500', '1:1000',
+  'Personalizada',
+] as const;
+
+export const RESIN_COLORS = [
+  'Transparente', 'Blanco', 'Negro', 'Gris', 'Verde', 'Azul',
+  'Rojo', 'Amarillo', 'Carne/Skin', 'Dental (Beige)',
+] as const;
+
+export const RESIN_USES = [
+  { value: 'decorative', label: 'Decorativo' },
+  { value: 'medical', label: 'Uso médico / protésico' },
+] as const;
+
 export const MODEL_ISSUES = [
   { id: 'non_manifold',    label: 'Geometría no manifold',         description: 'El modelo tiene bordes o vértices que no cierran correctamente' },
   { id: 'thin_walls',      label: 'Paredes muy delgadas',          description: 'Hay secciones menores al mínimo imprimible' },
