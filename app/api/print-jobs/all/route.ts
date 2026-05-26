@@ -19,6 +19,9 @@ export async function GET() {
         assignedWorker: {
           select: { id: true, name: true, email: true },
         },
+        assignedMachine: {
+          select: { id: true, name: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

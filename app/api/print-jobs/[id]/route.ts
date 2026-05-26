@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
-    const { creditsCost, status, notes, deductCredits } = body;
+    const { creditsCost, status, notes, deductCredits, assignWorker } = body;
 
     const printJob = await prisma.printJob.findUnique({
       where: { id },
@@ -33,6 +33,34 @@ export async function PATCH(
     if (creditsCost !== undefined) updateData.creditsCost = creditsCost;
     if (status !== undefined) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
+
+    // Manual worker assignment by admin
+    if (assignWorker !== undefined) {
+      if (assignWorker === null) {
+        // Unassign
+        updateData.assignedWorkerId = null;
+        updateData.assignedMachineId = null;
+        updateData.assignedAt = null;
+        updateData.acceptedAt = null;
+        updateData.startedAt = null;
+        updateData.status = 'pending';
+      } else {
+        const { workerId, machineId } = assignWorker;
+        const machine = await prisma.printerMachine.findUnique({
+          where: { id: machineId },
+          include: { workerProfile: { select: { userId: true } } },
+        });
+        if (!machine || machine.workerProfile.userId !== workerId) {
+          return NextResponse.json({ error: 'Máquina o worker inválido' }, { status: 400 });
+        }
+        updateData.assignedWorkerId = workerId;
+        updateData.assignedMachineId = machineId;
+        updateData.assignedAt = new Date();
+        updateData.acceptedAt = null;
+        updateData.startedAt = null;
+        updateData.status = 'assigned';
+      }
+    }
 
     const currentCredits = printJob.creditsCost || 0;
     const newCredits = creditsCost !== undefined ? creditsCost : currentCredits;

@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
-  CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box
+  CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/navbar';
@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [printJobs, setPrintJobs] = useState<any[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -210,6 +211,28 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('Error updating status:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAssignWorker = async (jobId: string) => {
+    const value = assignSelections[jobId] ?? '';
+    setActionLoading(jobId);
+    try {
+      const body = value === ''
+        ? { assignWorker: null }
+        : { assignWorker: { workerId: value.split(':')[0], machineId: value.split(':')[1] } };
+
+      await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      setAssignSelections((prev) => { const s = { ...prev }; delete s[jobId]; return s; });
+      fetchData();
+    } catch {
+      console.error('Error assigning worker');
     } finally {
       setActionLoading(null);
     }
@@ -650,53 +673,76 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {workers.map((w: any) => (
-                  <div key={w.id} className="glass rounded-xl p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-semibold">{w.user?.name || 'Sin nombre'}</p>
-                        <p className="text-xs text-muted-foreground">{w.user?.email}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{w.completedJobs} trabajos · {w.machines?.length ?? 0} máquinas</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${w.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-                        <button
-                          onClick={async () => {
-                            setActionLoading(w.id);
-                            try {
-                              await fetch('/api/workers/all', {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ workerId: w.id, isActive: !w.isActive }),
-                              });
-                              fetchData();
-                            } finally {
-                              setActionLoading(null);
-                            }
-                          }}
-                          disabled={actionLoading === w.id}
-                          className="text-xs px-2 py-1 rounded border border-border hover:bg-accent transition-colors"
-                        >
-                          {w.isActive ? 'Pausar' : 'Activar'}
-                        </button>
-                      </div>
-                    </div>
-                    {w.machines?.length > 0 && (
-                      <div className="space-y-2">
-                        {w.machines.map((m: any) => (
-                          <div key={m.id} className="p-2 rounded-lg bg-card border border-border text-xs">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`w-1.5 h-1.5 rounded-full ${m.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-                              <span className="font-medium">{m.name}</span>
-                              <span className="text-muted-foreground ml-auto">{m.completedJobs} jobs</span>
-                            </div>
-                            <p className="text-muted-foreground truncate">{m.supportedFilaments.join(', ')}</p>
+                {workers.map((w: any) => {
+                  const activeWorkerJobs = printJobs.filter(
+                    (j) => j.assignedWorkerId === w.userId &&
+                      ['assigned', 'accepted', 'printing'].includes(j.status)
+                  ).length;
+                  return (
+                    <div key={w.id} className="glass rounded-xl p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-semibold">{w.user?.name || 'Sin nombre'}</p>
+                          <p className="text-xs text-muted-foreground">{w.user?.email}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{w.completedJobs} completados</span>
+                            {activeWorkerJobs > 0 && (
+                              <span className="text-xs font-medium text-amber-400">{activeWorkerJobs} activo{activeWorkerJobs !== 1 ? 's' : ''}</span>
+                            )}
+                            <span className="text-xs text-muted-foreground">· {w.machines?.length ?? 0} máquinas</span>
                           </div>
-                        ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${w.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                          <button
+                            onClick={async () => {
+                              setActionLoading(w.id);
+                              try {
+                                await fetch('/api/workers/all', {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ workerId: w.id, isActive: !w.isActive }),
+                                });
+                                fetchData();
+                              } finally {
+                                setActionLoading(null);
+                              }
+                            }}
+                            disabled={actionLoading === w.id}
+                            className="text-xs px-2 py-1 rounded border border-border hover:bg-accent transition-colors"
+                          >
+                            {w.isActive ? 'Pausar' : 'Activar'}
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {w.machines?.length > 0 && (
+                        <div className="space-y-2">
+                          {w.machines.map((m: any) => {
+                            const activeMachineJobs = printJobs.filter(
+                              (j) => j.assignedMachineId === m.id &&
+                                ['assigned', 'accepted', 'printing'].includes(j.status)
+                            ).length;
+                            return (
+                              <div key={m.id} className="p-2 rounded-lg bg-card border border-border text-xs">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${m.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                                  <span className="font-medium">{m.name}</span>
+                                  <div className="ml-auto flex items-center gap-1.5">
+                                    {activeMachineJobs > 0 && (
+                                      <span className="font-medium text-amber-400">{activeMachineJobs} activo{activeMachineJobs !== 1 ? 's' : ''}</span>
+                                    )}
+                                    <span className="text-muted-foreground">{m.completedJobs} done</span>
+                                  </div>
+                                </div>
+                                <p className="text-muted-foreground truncate">{m.supportedFilaments.join(', ')}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -790,13 +836,62 @@ export default function AdminPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          {job.assignedWorker ? (
-                            <div>
-                              <div className="font-medium">{job.assignedWorker.name || 'Worker'}</div>
-                              <div className="text-xs text-muted-foreground">{job.assignedWorker.email}</div>
-                            </div>
+                          {job.status === 'completed' || job.status === 'cancelled' ? (
+                            job.assignedWorker ? (
+                              <div>
+                                <div className="font-medium">{job.assignedWorker.name || 'Worker'}</div>
+                                <div className="text-xs text-muted-foreground">{job.assignedWorker.email}</div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">Sin asignar</span>
+                            )
                           ) : (
-                            <span className="text-muted-foreground text-xs">Sin asignar</span>
+                            <div className="flex flex-col gap-1.5">
+                              {job.assignedWorker && !(jobId => assignSelections[jobId] !== undefined)(job.id) && (
+                                <div className="text-xs">
+                                  <span className="font-medium">{job.assignedWorker.name || job.assignedWorker.email}</span>
+                                  <span className="text-muted-foreground block">{job.assignedMachine?.name}</span>
+                                </div>
+                              )}
+                              <select
+                                value={assignSelections[job.id] ?? (
+                                  job.assignedWorkerId && job.assignedMachineId
+                                    ? `${job.assignedWorkerId}:${job.assignedMachineId}`
+                                    : ''
+                                )}
+                                onChange={(e) =>
+                                  setAssignSelections((prev) => ({ ...prev, [job.id]: e.target.value }))
+                                }
+                                disabled={actionLoading === job.id}
+                                className="bg-transparent border border-input rounded px-2 py-1 text-xs w-44"
+                              >
+                                <option value="">Sin asignar</option>
+                                {workers.filter((w: any) => w.isActive).map((w: any) =>
+                                  w.machines?.filter((m: any) => m.isActive).map((m: any) => (
+                                    <option key={`${w.userId}:${m.id}`} value={`${w.userId}:${m.id}`}>
+                                      {w.user?.name || w.user?.email} — {m.name}
+                                    </option>
+                                  ))
+                                )}
+                              </select>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAssignWorker(job.id)}
+                                disabled={
+                                  actionLoading === job.id ||
+                                  assignSelections[job.id] === undefined ||
+                                  assignSelections[job.id] === (
+                                    job.assignedWorkerId && job.assignedMachineId
+                                      ? `${job.assignedWorkerId}:${job.assignedMachineId}`
+                                      : ''
+                                  )
+                                }
+                                className="w-full text-xs h-7 gap-1"
+                              >
+                                <UserCheck className="w-3 h-3" />
+                                Asignar
+                              </Button>
+                            </div>
                           )}
                         </td>
                         <td className="px-6 py-4">
