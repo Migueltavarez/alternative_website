@@ -406,10 +406,12 @@ export default function DashboardPage() {
             />
           </motion.div>
 
-          <MyModels
-            printJobs={printJobs}
-            onRefresh={fetchPrintJobs}
-          />
+          <div className="mt-16">
+            <MyModels
+              printJobs={printJobs}
+              onRefresh={fetchPrintJobs}
+            />
+          </div>
         </div>
       </main>
 
