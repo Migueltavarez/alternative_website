@@ -23,20 +23,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Este trabajo no está asignado a ti' }, { status: 403 });
     }
 
-    if (job.status !== 'assigned') {
+    if (job.status !== 'assigned' && job.status !== 'correction_requested') {
       return NextResponse.json(
         { error: `No se puede aceptar un trabajo en estado "${job.status}"` },
         { status: 400 }
       );
     }
 
-    // Check 10-minute window
-    const TEN_MIN = 10 * 60 * 1000;
-    if (job.assignedAt && Date.now() - job.assignedAt.getTime() > TEN_MIN) {
-      return NextResponse.json(
-        { error: 'El tiempo para aceptar este trabajo ha expirado' },
-        { status: 410 }
-      );
+    // Check 10-minute window only for normal assignments
+    if (job.status === 'assigned') {
+      const TEN_MIN = 10 * 60 * 1000;
+      if (job.assignedAt && Date.now() - job.assignedAt.getTime() > TEN_MIN) {
+        return NextResponse.json(
+          { error: 'El tiempo para aceptar este trabajo ha expirado' },
+          { status: 410 }
+        );
+      }
     }
 
     const updated = await prisma.printJob.update({

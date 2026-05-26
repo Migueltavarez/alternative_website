@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, File, X, Clock, Printer, AlertTriangle,
-  ChevronDown, ChevronUp, Scissors, Layers, FileText,
+  ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
 import {
   FILAMENT_COLORS, FILAMENT_TYPES, DELIVERY_TIMES, JOB_STATUS_LABELS, MODEL_ISSUES,
-  SERVICE_TYPES, PRINT_SCALES, RESIN_COLORS, RESIN_USES,
+  SERVICE_TYPES, PRINT_SCALES, RESIN_COLORS, RESIN_USES, CORRECTION_COST_CREDITS,
 } from '@/lib/print-constants';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -71,6 +71,17 @@ function getDeliveryLabel(value?: string) {
 export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
   const [showForm, setShowForm]           = useState(false);
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
+
+  // Resubmit corrected file
+  const [resubmitJobId, setResubmitJobId]   = useState<string | null>(null);
+  const [resubmitFile, setResubmitFile]     = useState<{ fileName: string; fileUrl: string; fileSize?: number } | null>(null);
+  const [resubmitLoading, setResubmitLoading] = useState(false);
+  const [resubmitError, setResubmitError]   = useState('');
+
+  // Request paid correction
+  const [correctionJobId, setCorrectionJobId]   = useState<string | null>(null);
+  const [correctionLoading, setCorrectionLoading] = useState(false);
+  const [correctionError, setCorrectionError]   = useState('');
 
   // Form state
   const [serviceType, setServiceType]     = useState('');
@@ -184,6 +195,46 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
       setError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleResubmit = async (jobId: string) => {
+    if (!resubmitFile) return;
+    setResubmitLoading(true);
+    setResubmitError('');
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/resubmit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resubmitFile),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al reenviar');
+      setResubmitJobId(null);
+      setResubmitFile(null);
+      onRefresh();
+    } catch (err: any) {
+      setResubmitError(err.message);
+    } finally {
+      setResubmitLoading(false);
+    }
+  };
+
+  const handleRequestCorrection = async (jobId: string) => {
+    setCorrectionLoading(true);
+    setCorrectionError('');
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/request-correction`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al solicitar corrección');
+      setCorrectionJobId(null);
+      onRefresh();
+    } catch (err: any) {
+      setCorrectionError(err.message);
+    } finally {
+      setCorrectionLoading(false);
     }
   };
 
@@ -634,13 +685,147 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                             </div>
                           )}
                           <p className="text-xs text-muted-foreground">
-                            Corrige el modelo y vuelve a enviarlo para continuar con la impresión.
+                            Elige una opción abajo para continuar con tu pedido.
                           </p>
                         </div>
                       )}
                     </div>
                   );
                 })()}
+
+                {/* ── Revision actions ─────────────────────────────────── */}
+                {job.status === 'needs_revision' && (
+                  <div className="mt-3 space-y-3">
+                    {resubmitJobId !== job.id && correctionJobId !== job.id && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          className="text-sm"
+                          onClick={() => {
+                            setResubmitJobId(job.id);
+                            setResubmitFile(null);
+                            setResubmitError('');
+                            setCorrectionJobId(null);
+                          }}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Subir archivo corregido
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="text-sm text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10"
+                          onClick={() => {
+                            setCorrectionJobId(job.id);
+                            setCorrectionError('');
+                            setResubmitJobId(null);
+                            setResubmitFile(null);
+                          }}
+                        >
+                          <Wrench className="w-4 h-4 mr-2" />
+                          Solicitar corrección — {CORRECTION_COST_CREDITS} créditos
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Resubmit form */}
+                    {resubmitJobId === job.id && (
+                      <div className="p-4 rounded-xl border border-border bg-card/50 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold flex items-center gap-2">
+                            <RefreshCw className="w-4 h-4 text-primary" />
+                            Subir archivo corregido
+                          </p>
+                          <button
+                            onClick={() => { setResubmitJobId(null); setResubmitFile(null); setResubmitError(''); }}
+                            className="p-1 hover:bg-accent rounded-lg"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {!resubmitFile ? (
+                          <FileUpload
+                            onUploadComplete={(name, url, size) =>
+                              setResubmitFile({ fileName: name, fileUrl: url, fileSize: size })
+                            }
+                            isUploading={false}
+                            acceptedExtensions={(() => {
+                              const svc = SERVICE_TYPES.find((s) => s.id === (job.serviceType ?? 'print_3d'));
+                              return svc ? [...svc.acceptedExtensions] : undefined;
+                            })()}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                            <File className="w-4 h-4 text-green-500 shrink-0" />
+                            <span className="text-sm text-green-500 flex-1 truncate">{resubmitFile.fileName}</span>
+                            <button onClick={() => setResubmitFile(null)} className="p-1 hover:bg-accent rounded-lg">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                        {resubmitError && (
+                          <p className="text-xs text-red-400 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{resubmitError}
+                          </p>
+                        )}
+                        {resubmitFile && (
+                          <Button
+                            className="w-full"
+                            onClick={() => handleResubmit(job.id)}
+                            disabled={resubmitLoading}
+                            isLoading={resubmitLoading}
+                          >
+                            {!resubmitLoading && <Upload className="w-4 h-4 mr-2" />}
+                            Confirmar y reenviar a impresión
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Correction confirmation */}
+                    {correctionJobId === job.id && (
+                      <div className="p-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-cyan-400 flex items-center gap-2">
+                            <Wrench className="w-4 h-4" />
+                            Solicitar corrección del modelo
+                          </p>
+                          <button
+                            onClick={() => { setCorrectionJobId(null); setCorrectionError(''); }}
+                            className="p-1 hover:bg-accent rounded-lg"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Un maker corregirá los problemas de tu modelo 3D. Se descontarán{' '}
+                          <strong className="text-foreground">{CORRECTION_COST_CREDITS} créditos</strong> de tu cuenta de forma inmediata.
+                        </p>
+                        {correctionError && (
+                          <p className="text-xs text-red-400 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{correctionError}
+                          </p>
+                        )}
+                        <div className="flex gap-2">
+                          <Button
+                            className="flex-1"
+                            onClick={() => handleRequestCorrection(job.id)}
+                            disabled={correctionLoading}
+                            isLoading={correctionLoading}
+                          >
+                            {!correctionLoading && <Wrench className="w-4 h-4 mr-2" />}
+                            Confirmar — {CORRECTION_COST_CREDITS} créditos
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => { setCorrectionJobId(null); setCorrectionError(''); }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.div>
             );
           })}

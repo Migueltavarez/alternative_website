@@ -348,7 +348,7 @@ export function WorkerDashboard() {
   const getDeliveryLabel = (value?: string) =>
     DELIVERY_TIMES.find((d) => d.value === value)?.label ?? value ?? 'Estándar';
 
-  const activeJobs = jobs.filter((j) => ['assigned', 'accepted', 'printing', 'needs_revision'].includes(j.status));
+  const activeJobs = jobs.filter((j) => ['assigned', 'accepted', 'printing', 'needs_revision', 'correction_requested'].includes(j.status));
   const completedJobs = jobs.filter((j) => j.status === 'completed');
 
   if (loading) {
@@ -609,6 +609,11 @@ export function WorkerDashboard() {
                           <CheckCircle className="w-4 h-4 mr-2" />Aceptar trabajo
                         </Button>
                       )}
+                      {job.status === 'correction_requested' && (
+                        <Button className="flex-1 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10" variant="outline" onClick={() => handleJobAction(job.id, 'accept')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-accept`}>
+                          <CheckCircle className="w-4 h-4 mr-2" />Aceptar corrección
+                        </Button>
+                      )}
                       {job.status === 'accepted' && (
                         <Button className="flex-1" onClick={() => handleJobAction(job.id, 'start')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-start`}>
                           <Play className="w-4 h-4 mr-2" />Iniciar impresión
@@ -619,7 +624,7 @@ export function WorkerDashboard() {
                           <CheckCircle className="w-4 h-4 mr-2" />Marcar como completado
                         </Button>
                       )}
-                      {['assigned', 'accepted', 'printing'].includes(job.status) && (
+                      {['assigned', 'accepted', 'printing'].includes(job.status) && job.status !== 'correction_requested' && (
                         <Button
                           variant="outline"
                           onClick={() => {

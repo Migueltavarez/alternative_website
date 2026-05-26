@@ -58,8 +58,11 @@ export const JOB_STATUS_LABELS: Record<string, { label: string; color: string }>
   printing:         { label: 'Imprimiendo',       color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   completed:        { label: 'Completado',        color: 'bg-green-500/20 text-green-400 border-green-500/30' },
   cancelled:        { label: 'Cancelado',         color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  needs_revision:   { label: 'Requiere revisión', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  needs_revision:        { label: 'Requiere revisión',    color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  correction_requested:  { label: 'Corrección solicitada', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
 };
+
+export const CORRECTION_COST_CREDITS = 50;
 
 export const SERVICE_TYPES = [
   {
