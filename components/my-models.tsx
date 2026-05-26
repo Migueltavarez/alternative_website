@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, File, X, Clock, Printer, CheckCircle, Circle } from 'lucide-react';
+import { Upload, File, X, Clock, Printer, CheckCircle, Circle, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
-import { FILAMENT_COLORS, FILAMENT_TYPES, DELIVERY_TIMES, JOB_STATUS_LABELS } from '@/lib/print-constants';
+import { FILAMENT_COLORS, FILAMENT_TYPES, DELIVERY_TIMES, JOB_STATUS_LABELS, MODEL_ISSUES } from '@/lib/print-constants';
 
 interface PrintJob {
   id: string;
@@ -19,6 +19,7 @@ interface PrintJob {
   deliveryTime?: string;
   createdAt: string;
   assignedAt?: string;
+  makerFeedback?: string | null;
 }
 
 interface MyModelsProps {
@@ -28,6 +29,7 @@ interface MyModelsProps {
 
 export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
   const [showForm, setShowForm] = useState(false);
+  const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{
     fileName: string;
@@ -292,6 +294,60 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                     </span>
                   </div>
                 </div>
+
+                {job.status === 'needs_revision' && job.makerFeedback && (() => {
+                  let fb: { issues: string[]; notes: string; suggestion: string; submittedAt: string } | null = null;
+                  try { fb = JSON.parse(job.makerFeedback); } catch { /* ignore */ }
+                  if (!fb) return null;
+                  const isOpen = expandedFeedback === job.id;
+                  return (
+                    <div className="mt-3 rounded-xl border border-orange-500/30 bg-orange-500/10 overflow-hidden">
+                      <button
+                        onClick={() => setExpandedFeedback(isOpen ? null : job.id)}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+                      >
+                        <span className="flex items-center gap-2 text-sm font-semibold text-orange-400">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          El maker reportó problemas en tu modelo
+                        </span>
+                        {isOpen ? <ChevronUp className="w-4 h-4 text-orange-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-orange-400 shrink-0" />}
+                      </button>
+                      {isOpen && (
+                        <div className="px-4 pb-4 space-y-3 text-sm border-t border-orange-500/20">
+                          <div className="pt-3 space-y-1.5">
+                            {fb.issues.map((issueId) => {
+                              const issue = MODEL_ISSUES.find((m) => m.id === issueId);
+                              return issue ? (
+                                <div key={issueId} className="flex items-start gap-2">
+                                  <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
+                                  <div>
+                                    <span className="font-medium">{issue.label}</span>
+                                    <p className="text-xs text-muted-foreground">{issue.description}</p>
+                                  </div>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                          {fb.notes && (
+                            <div>
+                              <span className="text-xs font-medium text-muted-foreground">Notas del maker:</span>
+                              <p className="mt-0.5">{fb.notes}</p>
+                            </div>
+                          )}
+                          {fb.suggestion && (
+                            <div className="p-3 rounded-lg bg-background/60 border border-border">
+                              <span className="text-xs font-medium text-muted-foreground">Sugerencia:</span>
+                              <p className="mt-0.5">{fb.suggestion}</p>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Corrige el modelo y vuelve a enviarlo para continuar con la impresión.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </motion.div>
             );
           })}

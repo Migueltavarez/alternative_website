@@ -23,7 +23,7 @@ export async function GET() {
     const jobs = await prisma.printJob.findMany({
       where: {
         assignedWorkerId: userId,
-        status: { in: ['assigned', 'accepted', 'printing', 'completed'] },
+        status: { in: ['assigned', 'accepted', 'printing', 'completed', 'needs_revision'] },
       },
       include: {
         user: { select: { id: true, name: true, email: true } },

@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Printer, CheckCircle, Play, Clock, AlertCircle,
   File, User, ChevronDown, ChevronUp, RefreshCw,
-  Plus, Pencil, Trash2, X, Save
+  Plus, Pencil, Trash2, X, Save, AlertTriangle, MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES } from '@/lib/print-constants';
+import { JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES, MODEL_ISSUES } from '@/lib/print-constants';
 
 interface PrinterMachine {
   id: string;
@@ -36,6 +36,7 @@ interface WorkerJob {
   createdAt: string;
   user: { id: string; name?: string; email: string };
   assignedMachine?: { id: string; name: string } | null;
+  makerFeedback?: string | null;
 }
 
 interface WorkerProfile {
@@ -157,6 +158,13 @@ export function WorkerDashboard() {
   const [editingMachineId, setEditingMachineId] = useState<string | null>(null);
   const [machineFormSaving, setMachineFormSaving] = useState(false);
 
+  // Feedback state
+  const [feedbackJobId, setFeedbackJobId] = useState<string | null>(null);
+  const [feedbackIssues, setFeedbackIssues] = useState<string[]>([]);
+  const [feedbackNotes, setFeedbackNotes] = useState('');
+  const [feedbackSuggestion, setFeedbackSuggestion] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
@@ -198,6 +206,33 @@ export function WorkerDashboard() {
       showNotification('error', err.message);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleSubmitFeedback = async (jobId: string) => {
+    if (!feedbackIssues.length) {
+      showNotification('error', 'Selecciona al menos un problema');
+      return;
+    }
+    setFeedbackLoading(true);
+    try {
+      const res = await fetch(`/api/workers/jobs/${jobId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issues: feedbackIssues, notes: feedbackNotes, suggestion: feedbackSuggestion }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al enviar');
+      showNotification('success', 'Retroalimentación enviada al cliente');
+      setFeedbackJobId(null);
+      setFeedbackIssues([]);
+      setFeedbackNotes('');
+      setFeedbackSuggestion('');
+      await fetchData();
+    } catch (err: any) {
+      showNotification('error', err.message);
+    } finally {
+      setFeedbackLoading(false);
     }
   };
 
@@ -303,7 +338,7 @@ export function WorkerDashboard() {
   const getDeliveryLabel = (value?: string) =>
     DELIVERY_TIMES.find((d) => d.value === value)?.label ?? value ?? 'Estándar';
 
-  const activeJobs = jobs.filter((j) => ['assigned', 'accepted', 'printing'].includes(j.status));
+  const activeJobs = jobs.filter((j) => ['assigned', 'accepted', 'printing', 'needs_revision'].includes(j.status));
   const completedJobs = jobs.filter((j) => j.status === 'completed');
 
   if (loading) {
@@ -539,7 +574,7 @@ export function WorkerDashboard() {
                       {job.deliveryTime && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">⏱ {getDeliveryLabel(job.deliveryTime)}</span>}
                     </div>
 
-                    <div className="flex gap-2 mt-4">
+                    <div className="flex flex-wrap gap-2 mt-4">
                       {job.status === 'assigned' && (
                         <Button className="flex-1" onClick={() => handleJobAction(job.id, 'accept')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-accept`}>
                           <CheckCircle className="w-4 h-4 mr-2" />Aceptar trabajo
@@ -555,10 +590,97 @@ export function WorkerDashboard() {
                           <CheckCircle className="w-4 h-4 mr-2" />Marcar como completado
                         </Button>
                       )}
+                      {['assigned', 'accepted', 'printing'].includes(job.status) && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (feedbackJobId === job.id) {
+                              setFeedbackJobId(null);
+                            } else {
+                              setFeedbackJobId(job.id);
+                              setFeedbackIssues([]);
+                              setFeedbackNotes('');
+                              setFeedbackSuggestion('');
+                            }
+                          }}
+                          className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                        >
+                          <AlertTriangle className="w-4 h-4 mr-2" />Reportar problema
+                        </Button>
+                      )}
+                      {job.status === 'needs_revision' && (
+                        <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
+                          <MessageSquare className="w-3.5 h-3.5" />Retroalimentación enviada
+                        </span>
+                      )}
                       <a href={job.fileUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors text-sm flex items-center gap-2">
                         <File className="w-4 h-4" />Descargar
                       </a>
                     </div>
+
+                    <AnimatePresence>
+                      {feedbackJobId === job.id && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="pt-4 mt-3 border-t border-amber-500/20 space-y-3">
+                            <p className="text-sm font-semibold flex items-center gap-2 text-amber-400">
+                              <AlertTriangle className="w-4 h-4" />
+                              Problemas en el modelo
+                            </p>
+                            <div className="space-y-2">
+                              {MODEL_ISSUES.map((issue) => (
+                                <label key={issue.id} className="flex items-start gap-2.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={feedbackIssues.includes(issue.id)}
+                                    onChange={(e) => {
+                                      setFeedbackIssues(e.target.checked
+                                        ? [...feedbackIssues, issue.id]
+                                        : feedbackIssues.filter((i) => i !== issue.id)
+                                      );
+                                    }}
+                                    className="mt-0.5 accent-primary"
+                                  />
+                                  <div>
+                                    <span className="text-sm font-medium">{issue.label}</span>
+                                    <p className="text-xs text-muted-foreground">{issue.description}</p>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                            <textarea
+                              value={feedbackNotes}
+                              onChange={(e) => setFeedbackNotes(e.target.value)}
+                              placeholder="Notas adicionales sobre los problemas..."
+                              rows={2}
+                              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={feedbackSuggestion}
+                              onChange={(e) => setFeedbackSuggestion(e.target.value)}
+                              placeholder="Sugerencia para el cliente (ej: usar Meshmixer para reparar...)"
+                              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                className="flex-1"
+                                onClick={() => handleSubmitFeedback(job.id)}
+                                disabled={feedbackLoading}
+                                isLoading={feedbackLoading}
+                              >
+                                <MessageSquare className="w-4 h-4 mr-2" />Enviar retroalimentación
+                              </Button>
+                              <Button variant="outline" onClick={() => setFeedbackJobId(null)}>Cancelar</Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   <AnimatePresence>

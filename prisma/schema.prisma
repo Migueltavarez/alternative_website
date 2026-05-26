@@ -19,6 +19,8 @@ model User {
   discountBalance   Float     @default(0)
   stripeCustomerId  String?   @unique
   credits           Int       @default(0)
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -173,6 +175,9 @@ model PrintJob {
   color           String?
   filamentType    String?
   deliveryTime    String    @default("standard")
+
+  // Maker feedback
+  makerFeedback     String?   // JSON: { issues[], notes, suggestion }
 
   // Worker assignment
   assignedWorkerId  String?
