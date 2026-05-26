@@ -1,0 +1,873 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  Users, CreditCard, TrendingUp, Gift, MessageSquare,
+  Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
+  CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Navbar } from '@/components/navbar';
+import { formatCurrency, formatDate, getStatusColor, getPlanBadgeColor } from '@/lib/utils';
+import { PLANS } from '@/lib/stripe';
+
+export default function AdminPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [printJobs, setPrintJobs] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated') {
+      const user = session?.user as any;
+      if (user?.role !== 'ADMIN') {
+        router.push('/dashboard');
+      } else {
+        fetchData();
+      }
+    }
+  }, [status, session, router]);
+
+  const fetchData = async () => {
+    try {
+      const [statsRes, usersRes, subsRes, printJobsRes, workersRes] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/users'),
+        fetch('/api/subscriptions'),
+        fetch('/api/print-jobs/all'),
+        fetch('/api/workers/all'),
+      ]);
+
+      const [statsData, usersData, subsData, printJobsData, workersData] = await Promise.all([
+        statsRes.json(),
+        usersRes.json(),
+        subsRes.json(),
+        printJobsRes.json(),
+        workersRes.json(),
+      ]);
+
+      setStats(statsData);
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setSubscriptions(Array.isArray(subsData) ? subsData : []);
+      setPrintJobs(Array.isArray(printJobsData) ? printJobsData : []);
+      setWorkers(Array.isArray(workersData) ? workersData : []);
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    setActionLoading(userId);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role: newRole }),
+      });
+
+      if (res.ok) {
+        setUsers(users.map(u => 
+          u.id === userId ? { ...u, role: newRole } : u
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating role:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelSubscription = async (userId: string) => {
+    if (!confirm('¿Estás seguro de cancelar esta suscripción?')) return;
+    
+    setActionLoading(userId);
+    try {
+      const res = await fetch(`/api/subscriptions?userId=${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePauseSubscription = async (userId: string) => {
+    if (!confirm('¿Pausar esta suscripción?')) return;
+    
+    setActionLoading(userId);
+    try {
+      const res = await fetch('/api/subscriptions/manage', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'pause' }),
+      });
+
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error pausing subscription:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestoreSubscription = async (userId: string) => {
+    if (!confirm('¿Restaurar esta suscripción?')) return;
+    
+    setActionLoading(userId);
+    try {
+      const res = await fetch('/api/subscriptions/manage', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'restore' }),
+      });
+
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error restoring subscription:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUpdateCredits = async (jobId: string, newCredits: number) => {
+    setActionLoading(jobId);
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creditsCost: newCredits }),
+      });
+
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error updating credits:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeductCredits = async (jobId: string) => {
+    const job = printJobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    if (!confirm(`¿Descontar ${job.creditsCost} créditos de ${job.user?.name || 'este usuario'}?`)) return;
+    
+    setActionLoading(jobId);
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deductCredits: true }),
+      });
+
+      if (res.ok) {
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al descontar créditos');
+      }
+    } catch (error) {
+      console.error('Error deducting credits:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUpdateStatus = async (jobId: string, newStatus: string) => {
+    setActionLoading(jobId);
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeletePrintJob = async (jobId: string) => {
+    if (!confirm('¿Eliminar este trabajo de impresión?')) return;
+    
+    setActionLoading(jobId);
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error deleting print job:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleOpenInBambuStudio = (fileUrl: string, fileName: string) => {
+    let publicUrl: string;
+    
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+      publicUrl = fileUrl;
+    } else if (fileUrl.startsWith('/uploads/')) {
+      const fileNameOnly = fileUrl.split('/').pop() || '';
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      publicUrl = `${appUrl}/api/print-file/${fileNameOnly}`;
+    } else {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      publicUrl = `${appUrl}/api/print-file/${fileUrl}`;
+    }
+    
+    const encodedUrl = encodeURIComponent(publicUrl);
+    
+    let bambuProtocol: string;
+    
+    if (typeof navigator !== 'undefined' && navigator.platform?.toLowerCase().includes('mac')) {
+      bambuProtocol = `bambustudioopen://${encodedUrl}`;
+    } else {
+      bambuProtocol = `bambustudio://open?file=${encodedUrl}`;
+    }
+    
+    window.location.href = bambuProtocol;
+  };
+
+  if (status === 'loading' || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      
+      <div className="pt-24 pb-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 mb-8"
+          >
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
+              <Shield className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Panel de Administración</h1>
+              <p className="text-muted-foreground">Gestiona usuarios, suscripciones y más</p>
+            </div>
+          </motion.div>
+
+          <div className="grid md:grid-cols-4 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="glass rounded-2xl p-6"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-500" />
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Total usuarios</div>
+                  <div className="text-2xl font-bold">{stats?.users || 0}</div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="glass rounded-2xl p-6"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  <CreditCard className="w-6 h-6 text-green-500" />
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Suscripciones activas</div>
+                  <div className="text-2xl font-bold">{stats?.subscriptions || 0}</div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="glass rounded-2xl p-6"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-amber-500" />
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">MRR</div>
+                  <div className="text-2xl font-bold">{formatCurrency(stats?.mrr || 0)}</div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="glass rounded-2xl p-6"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <Gift className="w-6 h-6 text-purple-500" />
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Referidos</div>
+                  <div className="text-2xl font-bold">{stats?.totalReferrals || 0}</div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Distribución por plan</h2>
+              <Button variant="outline" size="sm" onClick={fetchData}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Actualizar
+              </Button>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              {['BASIC', 'PRO', 'PREMIUM'].map((plan) => (
+                <div key={plan} className="glass rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-semibold">{PLANS[plan as keyof typeof PLANS]?.name}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(plan)}`}>
+                      {plan}
+                    </span>
+                  </div>
+                  <div className="text-3xl font-bold">{stats?.byPlan?.[plan] || 0}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {formatCurrency((stats?.byPlan?.[plan] || 0) * (PLANS[plan as keyof typeof PLANS]?.price || 0))}/mes
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <CalendarClock className="w-6 h-6 text-blue-500" />
+              <h2 className="text-2xl font-bold">Próximos Cobros del Mes</h2>
+            </div>
+            <div className="glass rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-accent/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Monto</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Próximo Cobro</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {subscriptions
+                      .filter((sub: any) => sub.status === 'active' && new Date(sub.currentPeriodEnd) > new Date())
+                      .sort((a: any, b: any) => new Date(a.currentPeriodEnd).getTime() - new Date(b.currentPeriodEnd).getTime())
+                      .slice(0, 10)
+                      .map((sub: any) => (
+                        <tr key={sub.id}>
+                          <td className="px-6 py-4">
+                            <div className="font-medium">{sub.user?.name || 'Usuario'}</div>
+                            <div className="text-sm text-muted-foreground">{sub.user?.email}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(sub.plan)}`}>
+                              {sub.plan}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-semibold text-green-500">
+                            {formatCurrency(PLANS[sub.plan as keyof typeof PLANS]?.price || 0)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium">
+                              {formatDate(sub.currentPeriodEnd)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {Math.ceil((new Date(sub.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {sub.cancelAtPeriodEnd ? (
+                              <span className="flex items-center gap-1 text-yellow-500 text-sm">
+                                <AlertCircle className="w-4 h-4" />
+                                Cancelará
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-green-500 text-sm">
+                                <CreditCard className="w-4 h-4" />
+                                Activo
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+                {subscriptions.filter((sub: any) => sub.status === 'active').length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No hay suscripciones activas
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mb-8"
+          >
+            <h2 className="text-2xl font-bold mb-6">Usuarios</h2>
+            <div className="glass rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-accent/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Rol</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Balance</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {users.map((user) => (
+                      <tr key={user.id}>
+                        <td className="px-6 py-4">
+                          <div className="font-medium">{user.name || 'Sin nombre'}</div>
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                            disabled={actionLoading === user.id}
+                            className="bg-transparent border border-input rounded px-2 py-1 text-sm"
+                          >
+                            <option value="USER">USER</option>
+                            <option value="WORKER">WORKER</option>
+                            <option value="ADMIN">ADMIN</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4">
+                          {user.subscription ? (
+                            <div className="flex flex-col gap-1">
+                              <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(user.subscription.plan)}`}>
+                                {user.subscription.plan}
+                              </span>
+                              <span className={getStatusColor(user.subscription.status)}>
+                                {user.subscription.status}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Sin plan</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`text-sm font-semibold ${Number(user.discountBalance || 0) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
+                            {formatCurrency(Number(user.discountBalance || 0))}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                          {formatDate(user.createdAt)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            {user.subscription && (
+                              <>
+                                {user.subscription.status === 'active' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handlePauseSubscription(user.id)}
+                                    disabled={actionLoading === user.id}
+                                    className="text-yellow-500 hover:text-yellow-600 hover:bg-yellow-500/10"
+                                  >
+                                    <Pause className="w-4 h-4" />
+                                    <span className="ml-1 text-xs">Pausar</span>
+                                  </Button>
+                                )}
+                                {(user.subscription.status === 'past_due' || user.subscription.status === 'canceled') && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRestoreSubscription(user.id)}
+                                    disabled={actionLoading === user.id}
+                                    className="text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                                  >
+                                    <Play className="w-4 h-4" />
+                                    <span className="ml-1 text-xs">Restaurar</span>
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCancelSubscription(user.id)}
+                                  disabled={actionLoading === user.id}
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {users.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No hay usuarios registrados
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <h2 className="text-2xl font-bold mb-6">Todas las Suscripciones</h2>
+            <div className="glass rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-accent/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Renovación</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {subscriptions.map((sub) => (
+                      <tr key={sub.id}>
+                        <td className="px-6 py-4">
+                          <div className="font-medium">{sub.user?.name || 'Usuario'}</div>
+                          <div className="text-sm text-muted-foreground">{sub.user?.email}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(sub.plan)}`}>
+                            {sub.plan}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={getStatusColor(sub.status)}>
+                            {sub.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {formatDate(sub.currentPeriodEnd)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Workers section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.85 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Printer className="w-6 h-6 text-primary" />
+                Makers Registrados
+                <span className="text-base font-normal text-muted-foreground">({workers.length})</span>
+              </h2>
+            </div>
+            {workers.length === 0 ? (
+              <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
+                No hay makers registrados aún
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {workers.map((w: any) => (
+                  <div key={w.id} className="glass rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-semibold">{w.user?.name || 'Sin nombre'}</p>
+                        <p className="text-xs text-muted-foreground">{w.user?.email}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{w.completedJobs} trabajos · {w.machines?.length ?? 0} máquinas</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${w.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                        <button
+                          onClick={async () => {
+                            setActionLoading(w.id);
+                            try {
+                              await fetch('/api/workers/all', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ workerId: w.id, isActive: !w.isActive }),
+                              });
+                              fetchData();
+                            } finally {
+                              setActionLoading(null);
+                            }
+                          }}
+                          disabled={actionLoading === w.id}
+                          className="text-xs px-2 py-1 rounded border border-border hover:bg-accent transition-colors"
+                        >
+                          {w.isActive ? 'Pausar' : 'Activar'}
+                        </button>
+                      </div>
+                    </div>
+                    {w.machines?.length > 0 && (
+                      <div className="space-y-2">
+                        {w.machines.map((m: any) => (
+                          <div key={m.id} className="p-2 rounded-lg bg-card border border-border text-xs">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`w-1.5 h-1.5 rounded-full ${m.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                              <span className="font-medium">{m.name}</span>
+                              <span className="text-muted-foreground ml-auto">{m.completedJobs} jobs</span>
+                            </div>
+                            <p className="text-muted-foreground truncate">{m.supportedFilaments.join(', ')}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9 }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Cola de Impresión</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/queue/process', { method: 'POST' });
+                    const data = await res.json();
+                    alert(`Cola procesada. ${data.assigned ?? 0} trabajos asignados.`);
+                    fetchData();
+                  } catch {
+                    alert('Error al procesar la cola');
+                  }
+                }}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Procesar Cola
+              </Button>
+            </div>
+            <div className="glass rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-accent/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Cliente</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Archivo / Specs</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Worker</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Créditos</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {printJobs.map((job) => (
+                      <tr key={job.id}>
+                        <td className="px-6 py-4">
+                          <div className="font-medium">{job.user?.name || 'Usuario'}</div>
+                          <div className="text-sm text-muted-foreground">{job.user?.email}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Créditos disponibles: {job.user?.credits || 0}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">{job.fileName}</span>
+                            <button
+                              onClick={() => handleOpenInBambuStudio(job.fileUrl, job.fileName)}
+                              className="p-1.5 rounded-lg hover:bg-accent text-green-400 hover:text-green-300 transition-colors"
+                              title="Abrir en Bambu Studio"
+                            >
+                              <Box className="w-4 h-4" />
+                            </button>
+                            <a
+                              href={job.fileUrl}
+                              download={job.fileName}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg hover:bg-accent text-blue-400 hover:text-blue-300 transition-colors"
+                              title="Descargar archivo"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {job.color && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
+                                🎨 {job.color}
+                              </span>
+                            )}
+                            {job.filamentType && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
+                                🧵 {job.filamentType}
+                              </span>
+                            )}
+                          </div>
+                          {job.notes && (
+                            <p className="text-xs text-muted-foreground mt-1 truncate max-w-xs">
+                              {job.notes}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {job.assignedWorker ? (
+                            <div>
+                              <div className="font-medium">{job.assignedWorker.name || 'Worker'}</div>
+                              <div className="text-xs text-muted-foreground">{job.assignedWorker.email}</div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Sin asignar</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              defaultValue={job.creditsCost}
+                              onBlur={(e) => {
+                                const newValue = parseInt(e.target.value) || 0;
+                                if (newValue !== job.creditsCost) {
+                                  handleUpdateCredits(job.id, newValue);
+                                }
+                              }}
+                              className="w-20 px-2 py-1 rounded bg-card border border-border text-sm text-center"
+                              disabled={actionLoading === job.id}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeductCredits(job.id)}
+                              disabled={actionLoading === job.id || !job.creditsCost || job.creditsCost === 0 || job.creditsDeducted || job.status !== 'completed'}
+                              className={job.creditsDeducted ? "opacity-50" : "text-red-500 hover:text-red-600 hover:bg-red-500/10 border-red-500/50"}
+                            >
+                              {job.creditsDeducted ? "Descontado" : job.status !== 'completed' ? "Completar" : "Descontar"}
+                            </Button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <select
+                            value={job.status}
+                            onChange={(e) => handleUpdateStatus(job.id, e.target.value)}
+                            disabled={actionLoading === job.id}
+                            className="bg-transparent border border-input rounded px-2 py-1 text-sm"
+                          >
+                            <option value="pending">En Cola</option>
+                            <option value="assigned">Asignado</option>
+                            <option value="accepted">Aceptado</option>
+                            <option value="printing">Imprimiendo</option>
+                            <option value="completed">Completado</option>
+                            <option value="cancelled">Cancelado</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                          {formatDate(job.createdAt)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeletePrintJob(job.id)}
+                            disabled={actionLoading === job.id}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {printJobs.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No hay trabajos de impresión en cola
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}
