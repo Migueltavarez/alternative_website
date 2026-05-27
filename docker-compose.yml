@@ -12,19 +12,21 @@ services:
       - traefik_net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.alt3d.rule=Host(`TU_DOMINIO`)"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.alt3d.rule=Host(`alt3dstudio.com`) || Host(`www.alt3dstudio.com`)"
       - "traefik.http.routers.alt3d.entrypoints=websecure"
       - "traefik.http.routers.alt3d.tls.certresolver=letsencrypt"
       - "traefik.http.services.alt3d.loadbalancer.server.port=3000"
-      # Redirect HTTP -> HTTPS
-      - "traefik.http.routers.alt3d-http.rule=Host(`TU_DOMINIO`)"
+      - "traefik.http.routers.alt3d-http.rule=Host(`alt3dstudio.com`) || Host(`www.alt3dstudio.com`)"
       - "traefik.http.routers.alt3d-http.entrypoints=web"
-      - "traefik.http.routers.alt3d-http.middlewares=https-redirect"
+      - "traefik.http.routers.alt3d-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
 
 volumes:
   uploads:
   db:
 
 networks:
-  traefik_net:
+  proxy:
     external: true
