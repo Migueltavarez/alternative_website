@@ -8,15 +8,17 @@ import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Sun, Moon, User, LogOut, LayoutDashboard, Shield,
-  ChevronDown, MessageSquare, Printer
+  ChevronDown, MessageSquare, Printer, ShoppingBag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCart } from './store/cart-context';
 
 const navigation = [
   { name: 'Inicio', href: '/' },
   { name: 'Precios', href: '/#pricing' },
   { name: 'Servicios', href: '/#services' },
   { name: 'Makers', href: '/#makers' },
+  { name: 'Tienda', href: '/store' },
   { name: 'Contacto', href: '/#contact' },
 ];
 
@@ -27,6 +29,7 @@ export function Navbar() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
+  const { cartCount, setCartOpen } = useCart();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -74,6 +77,20 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Cart button */}
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative p-2 rounded-lg hover:bg-accent transition-colors"
+              aria-label="Carrito"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white rounded-full">
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="relative p-2 rounded-lg hover:bg-accent transition-colors"
