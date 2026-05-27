@@ -48,11 +48,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <ShoppingCart className="w-10 h-10 text-muted-foreground" />
           </div>
         )}
-        {!product.availableForSale && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="text-white text-sm font-medium">Agotado</span>
-          </div>
-        )}
+
         {hasDiscount && (
           <div className="absolute top-2 left-2 px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
             Oferta
@@ -77,7 +73,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <button
           onClick={handleAddToCart}
-          disabled={!product.availableForSale || adding || loading}
+          disabled={adding || loading}
           className="mt-1 w-full py-1.5 text-xs font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-1.5"
         >
           {adding ? (
@@ -85,7 +81,7 @@ export function ProductCard({ product }: ProductCardProps) {
           ) : (
             <ShoppingCart className="w-3.5 h-3.5" />
           )}
-          {product.availableForSale ? 'Agregar' : 'Agotado'}
+          Agregar
         </button>
       </div>
     </Link>

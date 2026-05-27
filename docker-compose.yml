@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env.production
+    volumes:
+      - uploads:/app/public/uploads
+      - db:/data
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alt3d.rule=Host(`TU_DOMINIO`)"
+      - "traefik.http.routers.alt3d.entrypoints=websecure"
+      - "traefik.http.routers.alt3d.tls.certresolver=letsencrypt"
+      - "traefik.http.services.alt3d.loadbalancer.server.port=3000"
+      # Redirect HTTP -> HTTPS
+      - "traefik.http.routers.alt3d-http.rule=Host(`TU_DOMINIO`)"
+      - "traefik.http.routers.alt3d-http.entrypoints=web"
+      - "traefik.http.routers.alt3d-http.middlewares=https-redirect"
+
+volumes:
+  uploads:
+  db:
+
+networks:
+  traefik_net:
+    external: true

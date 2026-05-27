@@ -123,14 +123,6 @@ export function ProductDetail({ product }: { product: ShopifyProduct }) {
                   </span>
                 )}
               </div>
-              {!selectedVariant?.availableForSale && (
-                <p className="text-sm text-red-400 mt-1">Agotado</p>
-              )}
-              {selectedVariant?.quantityAvailable !== undefined && selectedVariant.quantityAvailable > 0 && selectedVariant.quantityAvailable <= 5 && (
-                <p className="text-sm text-yellow-400 mt-1">
-                  Solo quedan {selectedVariant.quantityAvailable} unidades
-                </p>
-              )}
             </div>
 
             {/* Options */}
@@ -189,7 +181,7 @@ export function ProductDetail({ product }: { product: ShopifyProduct }) {
             {/* Add to cart */}
             <button
               onClick={handleAddToCart}
-              disabled={!selectedVariant?.availableForSale || adding}
+              disabled={adding}
               className="w-full py-3 flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 text-sm"
             >
               {adding ? (
@@ -197,7 +189,7 @@ export function ProductDetail({ product }: { product: ShopifyProduct }) {
               ) : (
                 <ShoppingCart className="w-4 h-4" />
               )}
-              {selectedVariant?.availableForSale ? 'Agregar al carrito' : 'Agotado'}
+              Agregar al carrito
             </button>
 
             {/* Description */}
