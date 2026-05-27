@@ -48,3 +48,6 @@ coverage
 
 # Claude Code
 .claude
+
+# User uploads
+public/uploads/
