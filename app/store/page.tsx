@@ -2,7 +2,10 @@ import { getCollections } from '@/lib/shopify';
 import { ProductCard } from '@/components/store/product-card';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Store, ChevronRight } from 'lucide-react';
+import { Store, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Navbar } from '@/components/navbar';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Tienda — Alternative 3D Studio',
@@ -13,8 +16,16 @@ export default async function StorePage() {
   const collections = await getCollections();
 
   return (
-    <div className="min-h-screen pt-24 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="pt-28 pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back link */}
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Volver al inicio
+        </Link>
+
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-2">
@@ -86,6 +97,7 @@ export default async function StorePage() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

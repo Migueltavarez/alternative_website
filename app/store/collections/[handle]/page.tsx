@@ -3,6 +3,9 @@ import { ProductCard } from '@/components/store/product-card';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Store } from 'lucide-react';
+import { Navbar } from '@/components/navbar';
+
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: { handle: string };
@@ -22,7 +25,9 @@ export default async function CollectionPage({ params }: Props) {
   if (!collection) notFound();
 
   return (
-    <div className="min-h-screen pt-24 pb-16">
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="pt-28 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
@@ -56,6 +61,7 @@ export default async function CollectionPage({ params }: Props) {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

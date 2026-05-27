@@ -9,7 +9,7 @@ services:
       - uploads:/app/public/uploads
       - db:/data
     networks:
-      - traefik_net
+      - proxy
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"

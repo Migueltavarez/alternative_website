@@ -44,7 +44,7 @@ export function ProductDetail({ product }: { product: ShopifyProduct }) {
     parseFloat(selectedVariant.compareAtPrice.amount) > parseFloat(selectedVariant.price.amount);
 
   return (
-    <div className="min-h-screen pt-24 pb-16">
+    <div className="pt-28 pb-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
