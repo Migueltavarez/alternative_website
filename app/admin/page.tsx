@@ -7,8 +7,10 @@ import { motion } from 'framer-motion';
 import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
-  CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck
+  CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
+  DollarSign, ExternalLink, CheckCircle2,
 } from 'lucide-react';
+import { PRICE_STATUS_LABELS } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/navbar';
 import { formatCurrency, formatDate, getStatusColor, getPlanBadgeColor } from '@/lib/utils';
@@ -25,6 +27,7 @@ export default function AdminPage() {
   const [workers, setWorkers] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -255,6 +258,54 @@ export default function AdminPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleSetPrice = async (jobId: string) => {
+    const price = priceInputs[jobId];
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+      alert('Ingresa un precio válido');
+      return;
+    }
+    setActionLoading(jobId);
+    try {
+      await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ setPrice: price }),
+      });
+      setPriceInputs((prev) => { const s = { ...prev }; delete s[jobId]; return s; });
+      fetchData();
+    } catch { console.error('Error setting price'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleValidatePrice = async (jobId: string) => {
+    setActionLoading(jobId);
+    const newPrice = priceInputs[jobId];
+    try {
+      await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ validatePrice: { price: newPrice || undefined } }),
+      });
+      setPriceInputs((prev) => { const s = { ...prev }; delete s[jobId]; return s; });
+      fetchData();
+    } catch { console.error('Error validating price'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleConfirmPayment = async (jobId: string) => {
+    if (!confirm('¿Confirmar el pago de este trabajo?')) return;
+    setActionLoading(jobId);
+    try {
+      await fetch(`/api/print-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmPayment: true }),
+      });
+      fetchData();
+    } catch { console.error('Error confirming payment'); }
+    finally { setActionLoading(null); }
   };
 
   const handleOpenInBambuStudio = (fileUrl: string, fileName: string) => {
@@ -781,6 +832,7 @@ export default function AdminPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Archivo / Specs</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Worker</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Créditos</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Precio / Pago</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acciones</th>
@@ -919,6 +971,161 @@ export default function AdminPage() {
                               {job.creditsDeducted ? "Descontado" : job.status !== 'completed' ? "Completar" : "Descontar"}
                             </Button>
                           </div>
+                        </td>
+                        {/* ── Precio / Pago ── */}
+                        <td className="px-6 py-4 min-w-[200px]">
+                          {(() => {
+                            const ps = job.priceStatus ?? 'unpaid';
+                            const priceInfo = PRICE_STATUS_LABELS[ps];
+                            const formattedPrice = job.price != null
+                              ? new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', minimumFractionDigits: 2 }).format(job.price)
+                              : null;
+
+                            if (ps === 'unpaid') {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-muted-foreground">DOP</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={priceInputs[job.id] ?? ''}
+                                    onChange={(e) => setPriceInputs((prev) => ({ ...prev, [job.id]: e.target.value }))}
+                                    className="w-24 px-2 py-1 rounded bg-card border border-border text-sm"
+                                    disabled={actionLoading === job.id}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSetPrice(job.id)}
+                                    disabled={actionLoading === job.id || !priceInputs[job.id]}
+                                    className="h-7 text-xs px-2"
+                                  >
+                                    <DollarSign className="w-3 h-3 mr-1" />
+                                    Cotizar
+                                  </Button>
+                                </div>
+                              );
+                            }
+
+                            if (ps === 'quoted') {
+                              return (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-semibold">{formattedPrice}</p>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Esperando cliente</span>
+                                </div>
+                              );
+                            }
+
+                            if (ps === 'accepted') {
+                              return (
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-semibold">{formattedPrice}</p>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Aceptado</span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleValidatePrice(job.id)}
+                                    disabled={actionLoading === job.id}
+                                    className="h-7 text-xs w-full"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Validar
+                                  </Button>
+                                </div>
+                              );
+                            }
+
+                            if (ps === 'appealed') {
+                              return (
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-semibold">{formattedPrice}</p>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Apelado</span>
+                                  {job.appealNote && (
+                                    <p className="text-xs text-muted-foreground italic truncate max-w-[180px]" title={job.appealNote}>{job.appealNote}</p>
+                                  )}
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-muted-foreground">DOP</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      placeholder={String(job.price ?? '')}
+                                      value={priceInputs[job.id] ?? ''}
+                                      onChange={(e) => setPriceInputs((prev) => ({ ...prev, [job.id]: e.target.value }))}
+                                      className="w-20 px-2 py-1 rounded bg-card border border-border text-xs"
+                                      disabled={actionLoading === job.id}
+                                    />
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleValidatePrice(job.id)}
+                                    disabled={actionLoading === job.id}
+                                    className="h-7 text-xs w-full"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Validar
+                                  </Button>
+                                </div>
+                              );
+                            }
+
+                            if (ps === 'validated') {
+                              return (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-semibold">{formattedPrice}</p>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Listo para pago</span>
+                                </div>
+                              );
+                            }
+
+                            if (ps === 'payment_uploaded') {
+                              return (
+                                <div className="space-y-1.5">
+                                  <p className="text-sm font-semibold">{formattedPrice}</p>
+                                  {job.paymentMethod && <p className="text-xs text-muted-foreground">{job.paymentMethod}</p>}
+                                  {job.paymentProofUrl && (
+                                    <a
+                                      href={job.paymentProofUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs text-blue-400 hover:underline"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      Ver comprobante
+                                    </a>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleConfirmPayment(job.id)}
+                                    disabled={actionLoading === job.id}
+                                    className="h-7 text-xs w-full bg-green-600 hover:bg-green-700"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Confirmar pago
+                                  </Button>
+                                </div>
+                              );
+                            }
+
+                            if (ps === 'confirmed') {
+                              return (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-bold text-green-400">{formattedPrice}</p>
+                                  <span className="text-xs text-green-400 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Pagado
+                                  </span>
+                                  {job.paidAt && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(job.paidAt).toLocaleDateString('es-ES')}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            return <span className="text-xs text-muted-foreground">—</span>;
+                          })()}
                         </td>
                         <td className="px-6 py-4">
                           <select

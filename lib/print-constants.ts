@@ -122,3 +122,20 @@ export const MODEL_ISSUES = [
   { id: 'intersections',   label: 'Geometría con intersecciones',  description: 'Partes del modelo se cruzan entre sí' },
   { id: 'other',           label: 'Otro problema',                 description: 'Descríbelo en las notas' },
 ] as const;
+
+export const PRICE_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  unpaid:           { label: 'Sin cotizar',          color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
+  quoted:           { label: 'Precio enviado',        color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  accepted:         { label: 'Precio aceptado',       color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  appealed:         { label: 'Precio apelado',        color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  validated:        { label: 'Listo para pagar',      color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+  payment_uploaded: { label: 'Comprobante enviado',   color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  confirmed:        { label: 'Pago confirmado',       color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+};
+
+export const BANK_ACCOUNTS = [
+  { id: 'popular',     name: 'Banco Popular Dominicano', type: 'Cuenta de Ahorro', number: '845305069',   holder: 'Miguel Tavarez' },
+  { id: 'banreservas', name: 'Banco BanReservas',        type: 'Cuenta de Ahorro', number: '9602115241',  holder: 'Miguel Tavarez' },
+  { id: 'bhd',         name: 'Banco BHD León',           type: 'Cuenta de Ahorro', number: '28045670024', holder: 'Miguel Tavarez' },
+  { id: 'qik',         name: 'Banco Qik',                type: 'Cuenta de Ahorro', number: '1004202038',  holder: 'Miguel Tavarez' },
+] as const;

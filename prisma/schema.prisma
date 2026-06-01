@@ -195,6 +195,15 @@ model PrintJob {
   // Maker feedback
   makerFeedback     String?   // JSON: { issues[], notes, suggestion }
 
+  // Pricing & Payment
+  price             Float?
+  priceStatus       String    @default("unpaid")
+  appealNote        String?
+  paymentProofUrl   String?
+  paymentMethod     String?
+  paymentNotes      String?
+  paidAt            DateTime?
+
   // Worker assignment
   assignedWorkerId  String?
   assignedWorker    User?           @relation("WorkerJobs", fields: [assignedWorkerId], references: [id])

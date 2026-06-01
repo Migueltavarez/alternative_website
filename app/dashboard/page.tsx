@@ -21,7 +21,26 @@ interface PrintJob {
   fileUrl: string;
   creditsCost: number;
   status: string;
+  notes?: string;
+  serviceType?: string;
+  color?: string;
+  filamentType?: string;
+  deliveryTime?: string;
+  scale?: string;
+  realSize?: string;
+  laserCutColor?: string;
+  laserEngravColor?: string;
+  resinColor?: string;
+  resinUse?: string;
+  makerFeedback?: string | null;
+  price?: number | null;
+  priceStatus?: string;
+  appealNote?: string | null;
+  paymentProofUrl?: string | null;
+  paymentMethod?: string | null;
+  paidAt?: string | null;
   createdAt: string;
+  assignedAt?: string;
 }
 
 interface WorkerProfileSummary {

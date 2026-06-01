@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     const allowedTypes = [
       '.stl', '.obj', '.3mf', '.gcode', '.step', '.stp',
       '.fbx', '.dae', '.blend', '.max', '.3ds', '.pdf',
+      '.jpg', '.jpeg', '.png', '.webp',
     ];
     
     const fileExt = path.extname(file.name).toLowerCase();

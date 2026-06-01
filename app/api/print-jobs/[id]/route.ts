@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
-    const { creditsCost, status, notes, deductCredits, assignWorker } = body;
+    const { creditsCost, status, notes, deductCredits, assignWorker, setPrice, validatePrice, confirmPayment, paymentNotes } = body;
 
     const printJob = await prisma.printJob.findUnique({
       where: { id },
@@ -60,6 +60,27 @@ export async function PATCH(
         updateData.startedAt = null;
         updateData.status = 'assigned';
       }
+    }
+
+    // Admin: set price quote
+    if (setPrice !== undefined) {
+      updateData.price = parseFloat(setPrice);
+      updateData.priceStatus = 'quoted';
+    }
+
+    // Admin: validate price (after accept or appeal)
+    if (validatePrice !== undefined) {
+      updateData.priceStatus = 'validated';
+      if (validatePrice.price !== undefined && validatePrice.price !== '') {
+        updateData.price = parseFloat(validatePrice.price);
+      }
+    }
+
+    // Admin: confirm payment
+    if (confirmPayment) {
+      updateData.priceStatus = 'confirmed';
+      updateData.paidAt = new Date();
+      if (paymentNotes) updateData.paymentNotes = paymentNotes;
     }
 
     const currentCredits = printJob.creditsCost || 0;

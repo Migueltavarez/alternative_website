@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, File, X, Clock, Printer, AlertTriangle,
   ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
+  DollarSign, CheckCircle2, MessageSquare, History, ExternalLink, Copy, Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
 import {
   FILAMENT_COLORS, FILAMENT_TYPES, DELIVERY_TIMES, JOB_STATUS_LABELS, MODEL_ISSUES,
   SERVICE_TYPES, PRINT_SCALES, RESIN_COLORS, RESIN_USES, CORRECTION_COST_CREDITS,
+  PRICE_STATUS_LABELS, BANK_ACCOUNTS,
 } from '@/lib/print-constants';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -35,6 +37,12 @@ interface PrintJob {
   createdAt: string;
   assignedAt?: string;
   makerFeedback?: string | null;
+  price?: number | null;
+  priceStatus?: string;
+  appealNote?: string | null;
+  paymentProofUrl?: string | null;
+  paymentMethod?: string | null;
+  paidAt?: string | null;
 }
 
 interface MyModelsProps {
@@ -66,6 +74,10 @@ function getDeliveryLabel(value?: string) {
   return DELIVERY_TIMES.find((d) => d.value === value)?.label ?? value ?? 'Estándar';
 }
 
+function formatDOP(amount: number) {
+  return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', minimumFractionDigits: 2 }).format(amount);
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
@@ -82,6 +94,20 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
   const [correctionJobId, setCorrectionJobId]   = useState<string | null>(null);
   const [correctionLoading, setCorrectionLoading] = useState(false);
   const [correctionError, setCorrectionError]   = useState('');
+
+  // Price decision (accept / appeal)
+  const [appealOpenJobId, setAppealOpenJobId] = useState<string | null>(null);
+  const [appealNote, setAppealNote]           = useState('');
+  const [priceDecisionLoading, setPriceDecisionLoading] = useState(false);
+  const [priceDecisionError, setPriceDecisionError]     = useState('');
+
+  // Payment proof upload
+  const [paymentJobId, setPaymentJobId]   = useState<string | null>(null);
+  const [paymentProofFile, setPaymentProofFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError]   = useState('');
+  const [copiedBank, setCopiedBank]       = useState<string | null>(null);
 
   // Form state
   const [serviceType, setServiceType]     = useState('');
@@ -172,15 +198,12 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
           notes: notes || undefined,
           deliveryTime,
           serviceType,
-          // 3D print
           color: serviceType === 'print_3d' ? color : undefined,
           filamentType: serviceType === 'print_3d' ? filamentType : undefined,
           scale: serviceType === 'print_3d' ? finalScale : undefined,
           realSize: serviceType === 'print_3d' ? realSize.trim() : undefined,
-          // Laser
           laserCutColor: serviceType === 'laser' ? laserCutColor.trim() : undefined,
           laserEngravColor: serviceType === 'laser' && laserEngravColor.trim() ? laserEngravColor.trim() : undefined,
-          // Resin
           resinColor: serviceType === 'resin' ? resinColor : undefined,
           resinUse: serviceType === 'resin' ? resinUse : undefined,
         }),
@@ -237,6 +260,64 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
       setCorrectionLoading(false);
     }
   };
+
+  const handlePriceDecision = async (jobId: string, action: 'accept' | 'appeal') => {
+    if (action === 'appeal' && !appealNote.trim()) {
+      setPriceDecisionError('Debes indicar el motivo de la apelación');
+      return;
+    }
+    setPriceDecisionLoading(true);
+    setPriceDecisionError('');
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/price-decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, appealNote: appealNote.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al procesar decisión');
+      setAppealOpenJobId(null);
+      setAppealNote('');
+      onRefresh();
+    } catch (err: any) {
+      setPriceDecisionError(err.message);
+    } finally {
+      setPriceDecisionLoading(false);
+    }
+  };
+
+  const handleSubmitPaymentProof = async (jobId: string) => {
+    if (!paymentProofFile) return;
+    if (!paymentMethod) { setPaymentError('Selecciona el banco con el que realizaste el pago'); return; }
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/payment-proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentProofUrl: paymentProofFile.fileUrl, paymentMethod }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al enviar comprobante');
+      setPaymentJobId(null);
+      setPaymentProofFile(null);
+      setPaymentMethod('');
+      onRefresh();
+    } catch (err: any) {
+      setPaymentError(err.message);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBank(key);
+    setTimeout(() => setCopiedBank(null), 2000);
+  };
+
+  // Jobs with confirmed payment for history section
+  const confirmedJobs = printJobs.filter((j) => j.priceStatus === 'confirmed');
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
@@ -302,7 +383,7 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                   </div>
                 </div>
 
-                {/* Step 2 — File upload (shown after service selected) */}
+                {/* Step 2 — File upload */}
                 <AnimatePresence>
                   {serviceType && (
                     <motion.div
@@ -342,8 +423,6 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                           </div>
                         )}
                       </div>
-
-                      {/* Step 3 — Service-specific fields */}
 
                       {/* ── 3D Print ── */}
                       {serviceType === 'print_3d' && (
@@ -512,7 +591,7 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                         </div>
                       )}
 
-                      {/* ── Plans — no extra fields ── */}
+                      {/* ── Plans ── */}
                       {serviceType === 'plans' && (
                         <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
                           <p className="text-xs text-blue-400 font-medium mb-1">Impresión de planos</p>
@@ -522,7 +601,7 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                         </div>
                       )}
 
-                      {/* Step 4 — Common fields */}
+                      {/* Common fields */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium mb-1">
@@ -585,6 +664,8 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
             const svcId = job.serviceType ?? 'print_3d';
             const svcColor = SERVICE_COLORS[svcId] ?? '';
             const isOpen = expandedFeedback === job.id;
+            const ps = job.priceStatus ?? 'unpaid';
+            const priceInfo = PRICE_STATUS_LABELS[ps];
 
             return (
               <motion.div
@@ -615,27 +696,280 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                       </div>
                     </div>
                   </div>
-                  <div className="shrink-0">
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
                     <span className={`px-2 py-1 rounded-full text-xs border ${statusInfo.color}`}>
                       {statusInfo.label}
                     </span>
+                    {ps !== 'unpaid' && priceInfo && (
+                      <span className={`px-2 py-1 rounded-full text-xs border ${priceInfo.color}`}>
+                        {priceInfo.label}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Spec tags */}
                 <div className="flex flex-wrap gap-1.5 mt-3">
-                  {/* 3D print */}
                   {job.color        && <Spec label={`🎨 ${job.color}`} />}
                   {job.filamentType && <Spec label={`🧵 ${job.filamentType}`} />}
                   {job.scale        && <Spec label={`📐 ${job.scale}`} />}
                   {job.realSize     && <Spec label={`📏 ${job.realSize} m`} />}
-                  {/* Laser */}
                   {job.laserCutColor   && <Spec label={`✂️ Corte: ${job.laserCutColor}`} />}
                   {job.laserEngravColor && <Spec label={`✏️ Grabado: ${job.laserEngravColor}`} />}
-                  {/* Resin */}
                   {job.resinColor && <Spec label={`💧 ${job.resinColor}`} />}
                   {job.resinUse   && <Spec label={RESIN_USES.find((u) => u.value === job.resinUse)?.label ?? job.resinUse} />}
                 </div>
+
+                {/* ── Price / Payment section ───────────────────────── */}
+                {ps === 'quoted' && job.price != null && (
+                  <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-amber-400">
+                        <DollarSign className="w-4 h-4" />
+                        Cotización recibida
+                      </span>
+                      <span className="text-xl font-bold">{formatDOP(job.price)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Acepta el precio para proceder con el pago, o apela si crees que no es correcto.
+                    </p>
+
+                    {priceDecisionError && appealOpenJobId === job.id && (
+                      <p className="text-xs text-red-400 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{priceDecisionError}
+                      </p>
+                    )}
+
+                    {/* Appeal textarea */}
+                    {appealOpenJobId === job.id && (
+                      <div className="space-y-2">
+                        <textarea
+                          value={appealNote}
+                          onChange={(e) => setAppealNote(e.target.value)}
+                          placeholder="Explica por qué estás apelando el precio..."
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            className="flex-1 text-sm"
+                            onClick={() => handlePriceDecision(job.id, 'appeal')}
+                            disabled={priceDecisionLoading}
+                            isLoading={priceDecisionLoading}
+                          >
+                            {!priceDecisionLoading && <MessageSquare className="w-4 h-4 mr-2" />}
+                            Enviar apelación
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="text-sm"
+                            onClick={() => { setAppealOpenJobId(null); setAppealNote(''); setPriceDecisionError(''); }}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {appealOpenJobId !== job.id && (
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1 text-sm"
+                          onClick={() => handlePriceDecision(job.id, 'accept')}
+                          disabled={priceDecisionLoading}
+                          isLoading={priceDecisionLoading}
+                        >
+                          {!priceDecisionLoading && <CheckCircle2 className="w-4 h-4 mr-2" />}
+                          Aceptar precio
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="text-sm text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
+                          onClick={() => { setAppealOpenJobId(job.id); setAppealNote(''); setPriceDecisionError(''); }}
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Apelar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(ps === 'accepted' || ps === 'appealed') && job.price != null && (
+                  <div className={`mt-3 rounded-xl border p-4 ${
+                    ps === 'appealed'
+                      ? 'border-orange-500/30 bg-orange-500/5'
+                      : 'border-cyan-500/30 bg-cyan-500/5'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-semibold flex items-center gap-2 ${ps === 'appealed' ? 'text-orange-400' : 'text-cyan-400'}`}>
+                        <DollarSign className="w-4 h-4" />
+                        {ps === 'accepted' ? 'Precio aceptado' : 'Apelación enviada'}
+                      </span>
+                      <span className="text-lg font-bold">{formatDOP(job.price)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {ps === 'accepted'
+                        ? 'Esperando validación del administrador para proceder con el pago.'
+                        : 'El administrador revisará tu apelación. Te notificaremos cuando esté resuelta.'}
+                    </p>
+                    {ps === 'appealed' && job.appealNote && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">Tu nota: {job.appealNote}</p>
+                    )}
+                  </div>
+                )}
+
+                {ps === 'validated' && job.price != null && (
+                  <div className="mt-3 rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-violet-400 flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        Listo para pagar
+                      </span>
+                      <span className="text-xl font-bold">{formatDOP(job.price)}</span>
+                    </div>
+
+                    {/* Bank accounts */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Realiza la transferencia a cualquiera de estas cuentas:</p>
+                      {BANK_ACCOUNTS.map((bank) => (
+                        <div key={bank.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-card border border-border">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{bank.name}</p>
+                            <p className="text-xs text-muted-foreground">{bank.type} · {bank.holder}</p>
+                            <p className="text-sm font-mono mt-0.5">{bank.number}</p>
+                          </div>
+                          <button
+                            onClick={() => copyToClipboard(bank.number, bank.id)}
+                            className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0"
+                            title="Copiar número"
+                          >
+                            {copiedBank === bank.id
+                              ? <Check className="w-4 h-4 text-green-400" />
+                              : <Copy className="w-4 h-4 text-muted-foreground" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Upload proof */}
+                    {paymentJobId !== job.id ? (
+                      <Button
+                        className="w-full text-sm"
+                        onClick={() => { setPaymentJobId(job.id); setPaymentProofFile(null); setPaymentMethod(''); setPaymentError(''); }}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Subir comprobante de pago
+                      </Button>
+                    ) : (
+                      <div className="space-y-3 p-4 rounded-xl bg-card border border-border">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold">Subir comprobante</p>
+                          <button
+                            onClick={() => { setPaymentJobId(null); setPaymentProofFile(null); setPaymentMethod(''); setPaymentError(''); }}
+                            className="p-1 hover:bg-accent rounded-lg"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium mb-1">Banco utilizado</label>
+                          <select
+                            value={paymentMethod}
+                            onChange={(e) => setPaymentMethod(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                          >
+                            <option value="">Selecciona el banco</option>
+                            {BANK_ACCOUNTS.map((b) => (
+                              <option key={b.id} value={b.name}>{b.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {!paymentProofFile ? (
+                          <FileUpload
+                            onUploadComplete={(name, url) => setPaymentProofFile({ fileName: name, fileUrl: url })}
+                            isUploading={false}
+                            acceptedExtensions={['.jpg', '.jpeg', '.png', '.webp']}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                            <File className="w-4 h-4 text-green-500 shrink-0" />
+                            <span className="text-sm text-green-500 flex-1 truncate">{paymentProofFile.fileName}</span>
+                            <button onClick={() => setPaymentProofFile(null)} className="p-1 hover:bg-accent rounded-lg">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+
+                        {paymentError && (
+                          <p className="text-xs text-red-400 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{paymentError}
+                          </p>
+                        )}
+
+                        {paymentProofFile && (
+                          <Button
+                            className="w-full"
+                            onClick={() => handleSubmitPaymentProof(job.id)}
+                            disabled={paymentLoading}
+                            isLoading={paymentLoading}
+                          >
+                            {!paymentLoading && <Upload className="w-4 h-4 mr-2" />}
+                            Enviar comprobante
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {ps === 'payment_uploaded' && job.price != null && (
+                  <div className="mt-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-blue-400 flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        Comprobante enviado
+                      </span>
+                      <span className="text-lg font-bold">{formatDOP(job.price)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      El administrador está verificando tu pago. Te notificaremos cuando sea confirmado.
+                    </p>
+                    {job.paymentMethod && (
+                      <p className="text-xs text-muted-foreground">Banco: {job.paymentMethod}</p>
+                    )}
+                    {job.paymentProofUrl && (
+                      <a
+                        href={job.paymentProofUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-2 text-xs text-blue-400 hover:underline"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Ver comprobante
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {ps === 'confirmed' && job.price != null && (
+                  <div className="mt-3 rounded-xl border border-green-500/30 bg-green-500/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-green-400 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Pago confirmado
+                      </span>
+                      <span className="text-lg font-bold text-green-400">{formatDOP(job.price)}</span>
+                    </div>
+                    {job.paidAt && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Confirmado el {new Date(job.paidAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Maker feedback alert (needs_revision) */}
                 {job.status === 'needs_revision' && job.makerFeedback && (() => {
@@ -830,6 +1164,73 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
             );
           })}
         </div>
+      )}
+
+      {/* ── Payment History ───────────────────────────────────────────── */}
+      {confirmedJobs.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-12"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <History className="w-5 h-5 text-muted-foreground" />
+            <h3 className="text-xl font-bold">Historial de Pagos</h3>
+          </div>
+          <div className="glass rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-left px-4 py-3 font-medium">Archivo</th>
+                    <th className="text-left px-4 py-3 font-medium">Servicio</th>
+                    <th className="text-left px-4 py-3 font-medium">Banco</th>
+                    <th className="text-right px-4 py-3 font-medium">Monto</th>
+                    <th className="text-left px-4 py-3 font-medium">Fecha</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {confirmedJobs.map((job) => (
+                    <tr key={job.id} className="border-b border-border/50 last:border-0 hover:bg-accent/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-medium truncate max-w-[200px]">{job.fileName}</p>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {getServiceLabel(job.serviceType)}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {job.paymentMethod ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-green-400">
+                        {job.price != null ? formatDOP(job.price) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                        {job.paidAt
+                          ? new Date(job.paidAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {job.paymentProofUrl && (
+                          <a
+                            href={job.paymentProofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:underline"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Ver
+                          </a>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
       )}
     </motion.div>
   );
