@@ -17,6 +17,11 @@ const contentTypes: Record<string, string> = {
   '.blend': 'application/x-blender',
   '.amf': 'application/sla',
   '.g': 'text/x-gcode',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.pdf': 'application/pdf',
 };
 
 export async function GET(
@@ -26,7 +31,7 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || (session.user as any).role !== 'ADMIN') {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

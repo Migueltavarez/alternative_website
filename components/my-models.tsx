@@ -942,7 +942,7 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                     )}
                     {job.paymentProofUrl && (
                       <a
-                        href={job.paymentProofUrl}
+                        href={job.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 mt-2 text-xs text-blue-400 hover:underline"
@@ -1214,7 +1214,7 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                       <td className="px-4 py-3">
                         {job.paymentProofUrl && (
                           <a
-                            href={job.paymentProofUrl}
+                            href={job.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 text-xs text-blue-400 hover:underline"
