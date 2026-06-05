@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { checkoutSchema } from '@/lib/validations';
-import { PLANS, createOrder } from '@/lib/paypal';
+import { PLANS } from '@/lib/stripe';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
@@ -15,50 +14,48 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id;
     const body = await request.json();
-    const { planId } = checkoutSchema.parse(body);
+    const { planId } = body;
 
     const plan = PLANS[planId as keyof typeof PLANS];
     if (!plan) {
       return NextResponse.json({ error: 'Plan inválido' }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setDate(periodEnd.getDate() + 30);
+
+    const sub = await prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        plan: planId,
+        status: 'pending_payment',
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        paymentProofUrl: null,
+        paymentMethod: null,
+      },
+      update: {
+        plan: planId,
+        status: 'pending_payment',
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        paymentProofUrl: null,
+        paymentMethod: null,
+        cancelAtPeriodEnd: false,
+      },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
-    }
-
-    const order = await createOrder(planId, userId, user.referralCode);
-
-    const approvalUrl = order.links?.find((link: any) => link.rel === 'approve')?.href;
-
-    if (!approvalUrl) {
-      return NextResponse.json(
-        { error: 'No se pudo crear la orden de PayPal' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ url: approvalUrl, orderId: order.id });
+    return NextResponse.json({
+      subscriptionId: sub.id,
+      planId,
+      planName: plan.name,
+      priceDOP: plan.priceDOP,
+      credits: plan.credits,
+    });
   } catch (error: any) {
-    console.error('Checkout error:', error);
-    
-    if (error.name === 'ZodError') {
-      return NextResponse.json(
-        { error: 'Validación fallida' },
-        { status: 400 }
-      );
-    }
-
-    if (error.message?.includes('PayPal')) {
-      return NextResponse.json(
-        { error: 'Error de PayPal. Verifica la configuración.' },
-        { status: 500 }
-      );
-    }
-
+    console.error('Subscription checkout error:', error);
     return NextResponse.json(
       { error: error.message || 'Error interno del servidor' },
       { status: 500 }

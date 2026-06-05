@@ -8,7 +8,7 @@ import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
   CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
-  DollarSign, ExternalLink, CheckCircle2,
+  DollarSign, ExternalLink, CheckCircle2, Coins,
 } from 'lucide-react';
 import { PRICE_STATUS_LABELS } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
+  const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -44,20 +45,22 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [statsRes, usersRes, subsRes, printJobsRes, workersRes] = await Promise.all([
+      const [statsRes, usersRes, subsRes, printJobsRes, workersRes, creditPurchasesRes] = await Promise.all([
         fetch('/api/stats'),
         fetch('/api/users'),
         fetch('/api/subscriptions'),
         fetch('/api/print-jobs/all'),
         fetch('/api/workers/all'),
+        fetch('/api/credits/purchases'),
       ]);
 
-      const [statsData, usersData, subsData, printJobsData, workersData] = await Promise.all([
+      const [statsData, usersData, subsData, printJobsData, workersData, creditPurchasesData] = await Promise.all([
         statsRes.json(),
         usersRes.json(),
         subsRes.json(),
         printJobsRes.json(),
         workersRes.json(),
+        creditPurchasesRes.json(),
       ]);
 
       setStats(statsData);
@@ -65,6 +68,7 @@ export default function AdminPage() {
       setSubscriptions(Array.isArray(subsData) ? subsData : []);
       setPrintJobs(Array.isArray(printJobsData) ? printJobsData : []);
       setWorkers(Array.isArray(workersData) ? workersData : []);
+      setCreditPurchases(Array.isArray(creditPurchasesData) ? creditPurchasesData : []);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -308,6 +312,36 @@ export default function AdminPage() {
     finally { setActionLoading(null); }
   };
 
+  const handleConfirmCreditPurchase = async (purchaseId: string) => {
+    if (!confirm('¿Confirmar esta compra de créditos y agregarlos al usuario?')) return;
+    setActionLoading(purchaseId);
+    try {
+      const res = await fetch(`/api/credits/${purchaseId}/confirm`, { method: 'PATCH' });
+      if (res.ok) {
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al confirmar');
+      }
+    } catch { console.error('Error confirming credit purchase'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleConfirmSubscription = async (subscriptionId: string) => {
+    if (!confirm('¿Confirmar esta suscripción y activarla?')) return;
+    setActionLoading(subscriptionId);
+    try {
+      const res = await fetch(`/api/subscriptions/${subscriptionId}/confirm`, { method: 'PATCH' });
+      if (res.ok) {
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al confirmar');
+      }
+    } catch { console.error('Error confirming subscription'); }
+    finally { setActionLoading(null); }
+  };
+
   const handleOpenInBambuStudio = (fileUrl: string, fileName: string) => {
     let publicUrl: string;
     
@@ -542,6 +576,168 @@ export default function AdminPage() {
               </div>
             </div>
           </motion.div>
+
+          {/* Pending credit purchases */}
+          {creditPurchases.filter((p: any) => p.status === 'proof_uploaded').length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.62 }}
+              className="mb-8"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <Coins className="w-6 h-6 text-amber-400" />
+                <h2 className="text-2xl font-bold">Compras de Créditos Pendientes</h2>
+                <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20 text-amber-400 font-semibold">
+                  {creditPurchases.filter((p: any) => p.status === 'proof_uploaded').length}
+                </span>
+              </div>
+              <div className="glass rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-accent/50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Créditos</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Monto</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Banco</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Comprobante</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {creditPurchases
+                        .filter((p: any) => p.status === 'proof_uploaded')
+                        .map((p: any) => (
+                          <tr key={p.id}>
+                            <td className="px-6 py-4">
+                              <div className="font-medium">{p.user?.name || 'Usuario'}</div>
+                              <div className="text-sm text-muted-foreground">{p.user?.email}</div>
+                            </td>
+                            <td className="px-6 py-4 font-semibold text-amber-400">{p.credits}</td>
+                            <td className="px-6 py-4 text-sm">${p.amount?.toFixed(2)}</td>
+                            <td className="px-6 py-4 text-sm">{p.paymentMethod || '—'}</td>
+                            <td className="px-6 py-4">
+                              {p.paymentProofUrl ? (
+                                <a
+                                  href={p.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-sm text-blue-400 hover:underline"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Ver
+                                </a>
+                              ) : '—'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">
+                              {new Date(p.createdAt).toLocaleDateString('es-DO')}
+                            </td>
+                            <td className="px-6 py-4">
+                              <Button
+                                size="sm"
+                                onClick={() => handleConfirmCreditPurchase(p.id)}
+                                disabled={actionLoading === p.id}
+                                isLoading={actionLoading === p.id}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-1" />
+                                Confirmar
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Pending subscription payments */}
+          {subscriptions.filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment').length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.64 }}
+              className="mb-8"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <CreditCard className="w-6 h-6 text-blue-400" />
+                <h2 className="text-2xl font-bold">Suscripciones Pendientes</h2>
+                <span className="px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-400 font-semibold">
+                  {subscriptions.filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment').length}
+                </span>
+              </div>
+              <div className="glass rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-accent/50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Banco</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Comprobante</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {subscriptions
+                        .filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment')
+                        .map((s: any) => (
+                          <tr key={s.id}>
+                            <td className="px-6 py-4">
+                              <div className="font-medium">{s.user?.name || 'Usuario'}</div>
+                              <div className="text-sm text-muted-foreground">{s.user?.email}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(s.plan)}`}>
+                                {s.plan}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-xs text-yellow-400 font-medium">
+                                {s.status === 'proof_uploaded' ? 'Comprobante enviado' : 'Esperando pago'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm">{s.paymentMethod || '—'}</td>
+                            <td className="px-6 py-4">
+                              {s.paymentProofUrl ? (
+                                <a
+                                  href={s.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-sm text-blue-400 hover:underline"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Ver
+                                </a>
+                              ) : '—'}
+                            </td>
+                            <td className="px-6 py-4">
+                              {s.status === 'proof_uploaded' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleConfirmSubscription(s.id)}
+                                  disabled={actionLoading === s.id}
+                                  isLoading={actionLoading === s.id}
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                >
+                                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                                  Activar
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -880,7 +1076,32 @@ export default function AdminPage() {
                                 🧵 {job.filamentType}
                               </span>
                             )}
+                            {job.designMaterial && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
+                                🔧 {job.designMaterial}
+                              </span>
+                            )}
+                            {job.designIsVehicle && job.designVehicleMake && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
+                                🚗 {job.designVehicleMake} {job.designVehicleModel} {job.designVehicleYear}
+                              </span>
+                            )}
                           </div>
+                          {job.designDescription && (
+                            <p className="text-xs text-pink-400 mt-1 truncate max-w-xs" title={job.designDescription}>
+                              {job.designDescription}
+                            </p>
+                          )}
+                          {job.designReferenceUrls && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {job.designReferenceUrls.split('\n').filter(Boolean).slice(0,2).map((url: string, i: number) => (
+                                <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-blue-400 hover:underline truncate max-w-xs">
+                                  <ExternalLink className="w-3 h-3 shrink-0" />{url.trim()}
+                                </a>
+                              ))}
+                            </div>
+                          )}
                           {job.notes && (
                             <p className="text-xs text-muted-foreground mt-1 truncate max-w-xs">
                               {job.notes}

@@ -111,6 +111,8 @@ model Subscription {
   currentPeriodEnd     DateTime
   cancelAtPeriodEnd    Boolean  @default(false)
   paypalOrderId        String?
+  paymentProofUrl      String?
+  paymentMethod        String?
 
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -147,16 +149,18 @@ model Contact {
 }
 
 model CreditPurchase {
-  id            String   @id @default(cuid())
-  userId        String
-  credits       Int
-  amount        Float
-  paymentId     String?
-  status        String   @default("pending")
+  id               String   @id @default(cuid())
+  userId           String
+  credits          Int
+  amount           Float
+  paymentId        String?
+  status           String   @default("pending")
+  paymentProofUrl  String?
+  paymentMethod    String?
 
-  createdAt     DateTime @default(now())
+  createdAt        DateTime @default(now())
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PrintJob {
@@ -191,6 +195,17 @@ model PrintJob {
   // Resin
   resinColor      String?
   resinUse        String?
+
+  // Design service
+  designDescription   String?
+  designMeasures      String?
+  designReferenceUrls String?
+  designMaterial      String?
+  designUse           String?   // decorative | mechanical
+  designIsVehicle     Boolean?  @default(false)
+  designVehicleMake   String?
+  designVehicleModel  String?
+  designVehicleYear   String?
 
   // Maker feedback
   makerFeedback     String?   // JSON: { issues[], notes, suggestion }

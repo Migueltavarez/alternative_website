@@ -93,6 +93,23 @@ export const SERVICE_TYPES = [
     acceptedExtensions: ['.pdf'],
     acceptStr: '.pdf',
   },
+  {
+    id: 'design',
+    label: 'Diseño 3D',
+    description: 'Modelado y diseño de piezas desde cero',
+    acceptedExtensions: ['.jpg', '.jpeg', '.png', '.pdf', '.webp'],
+    acceptStr: '.jpg,.jpeg,.png,.pdf,.webp',
+  },
+] as const;
+
+export const DESIGN_MATERIALS = [
+  'PLA', 'PLA+', 'PETG', 'ABS', 'TPU (Flexible)', 'Resina',
+  'Nylon', 'Madera', 'Acrílico', 'Metal', 'Otro',
+] as const;
+
+export const DESIGN_USES = [
+  { value: 'decorative', label: 'Decorativo' },
+  { value: 'mechanical', label: 'Mecánico / Funcional' },
 ] as const;
 
 export const PRINT_SCALES = [

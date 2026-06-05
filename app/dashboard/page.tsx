@@ -12,8 +12,10 @@ import {
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { CreditPackages } from '@/components/credit-packages';
+import { PricingCards } from '@/components/pricing-cards';
 import { MyModels } from '@/components/my-models';
 import { Button } from '@/components/ui/button';
+import { BankTransferModal } from '@/components/bank-transfer-modal';
 
 interface PrintJob {
   id: string;
@@ -32,6 +34,13 @@ interface PrintJob {
   laserEngravColor?: string;
   resinColor?: string;
   resinUse?: string;
+  designDescription?: string;
+  designMaterial?: string;
+  designUse?: string;
+  designIsVehicle?: boolean;
+  designVehicleMake?: string;
+  designVehicleModel?: string;
+  designVehicleYear?: string;
   makerFeedback?: string | null;
   price?: number | null;
   priceStatus?: string;
@@ -79,6 +88,13 @@ export default function DashboardPage() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [printJobs, setPrintJobs] = useState<PrintJob[]>([]);
   const [workerProfile, setWorkerProfile] = useState<WorkerProfileSummary | null>(null);
+  const [transferModal, setTransferModal] = useState<{
+    type: 'credits' | 'subscription';
+    purchaseId: string;
+    itemName: string;
+    priceDOP: number;
+  } | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -138,9 +154,9 @@ export default function DashboardPage() {
       const res = await fetch('/api/credits/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           packageId,
-          useDiscount: showDiscount && (userData?.discountBalance || 0) > 0 
+          useDiscount: showDiscount && (userData?.discountBalance || 0) > 0,
         }),
       });
 
@@ -150,12 +166,46 @@ export default function DashboardPage() {
         throw new Error(data.error || 'Error al procesar la compra');
       }
 
-      window.location.href = data.url;
+      setTransferModal({
+        type: 'credits',
+        purchaseId: data.purchaseId,
+        itemName: `${data.packageName} (${data.credits} créditos)`,
+        priceDOP: data.priceDOP,
+      });
     } catch (error: any) {
       setNotification({ type: 'error', message: error.message });
       setTimeout(() => setNotification(null), 5000);
     } finally {
       setPurchaseLoading(false);
+    }
+  };
+
+  const handleSubscribePlan = async (planId: string) => {
+    setSubscriptionLoading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al procesar la suscripción');
+      }
+
+      setTransferModal({
+        type: 'subscription',
+        purchaseId: data.subscriptionId,
+        itemName: `Plan ${data.planName} (${data.credits} créditos/mes)`,
+        priceDOP: data.priceDOP,
+      });
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message });
+      setTimeout(() => setNotification(null), 5000);
+    } finally {
+      setSubscriptionLoading(false);
     }
   };
 
@@ -393,14 +443,44 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-semibold">Suscripción {userData.subscription.plan}</p>
                     <p className="text-sm text-muted-foreground">
-                      Estado: <span className={userData.subscription.status === 'active' ? 'text-green-400' : 'text-yellow-400'}>
-                        {userData.subscription.status === 'active' ? 'Activa' : userData.subscription.status}
+                      Estado:{' '}
+                      <span className={
+                        userData.subscription.status === 'active' ? 'text-green-400' :
+                        userData.subscription.status === 'proof_uploaded' ? 'text-blue-400' :
+                        'text-yellow-400'
+                      }>
+                        {userData.subscription.status === 'active' ? 'Activa' :
+                         userData.subscription.status === 'proof_uploaded' ? 'Comprobante enviado — en revisión' :
+                         userData.subscription.status === 'pending_payment' ? 'Pendiente de pago' :
+                         userData.subscription.status}
                       </span>
                     </p>
                   </div>
                 </div>
-                <Button variant="outline" onClick={() => setShowSubscriptionModal(true)}>Gestionar</Button>
+                {userData.subscription.status === 'active' && (
+                  <Button variant="outline" onClick={() => setShowSubscriptionModal(true)}>Gestionar</Button>
+                )}
               </div>
+            </motion.div>
+          )}
+
+          {(!userData?.subscription || userData.subscription.status === 'canceled') && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="mb-12"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold">Suscripciones mensuales</h2>
+                <p className="text-muted-foreground mt-1">
+                  Obtén créditos renovables cada mes con un plan mensual
+                </p>
+              </div>
+              <PricingCards
+                onSelectPlan={handleSubscribePlan}
+                isLoading={subscriptionLoading}
+              />
             </motion.div>
           )}
 
@@ -433,6 +513,25 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {transferModal && (
+        <BankTransferModal
+          open={!!transferModal}
+          onClose={() => setTransferModal(null)}
+          type={transferModal.type}
+          purchaseId={transferModal.purchaseId}
+          itemName={transferModal.itemName}
+          priceDOP={transferModal.priceDOP}
+          onSuccess={() => {
+            setNotification({
+              type: 'success',
+              message: 'Comprobante enviado. Lo revisaremos y confirmaremos tu pago pronto.',
+            });
+            setTimeout(() => setNotification(null), 6000);
+            fetchUserData();
+          }}
+        />
+      )}
 
       <AnimatePresence>
         {showSubscriptionModal && userData?.subscription && (

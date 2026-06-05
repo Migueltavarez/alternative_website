@@ -45,11 +45,24 @@ export async function POST(request: NextRequest) {
       laserCutColor, laserEngravColor,
       // Resin
       resinColor, resinUse,
+      // Design
+      designDescription, designMeasures, designReferenceUrls,
+      designMaterial, designUse, designIsVehicle,
+      designVehicleMake, designVehicleModel, designVehicleYear,
     } = body;
 
-    if (!fileName || !fileUrl) {
+    const isDesign = serviceType === 'design';
+
+    if (!fileName || (!fileUrl && !isDesign)) {
       return NextResponse.json(
         { error: 'fileName y fileUrl son requeridos' },
+        { status: 400 }
+      );
+    }
+
+    if (isDesign && !designDescription) {
+      return NextResponse.json(
+        { error: 'La descripción del diseño es requerida' },
         { status: 400 }
       );
     }
@@ -57,8 +70,8 @@ export async function POST(request: NextRequest) {
     const printJob = await prisma.printJob.create({
       data: {
         userId,
-        fileName,
-        fileUrl,
+        fileName: fileName || 'diseño',
+        fileUrl: fileUrl || '',
         fileSize: fileSize || null,
         notes: notes || null,
         deliveryTime: deliveryTime || 'standard',
@@ -76,6 +89,16 @@ export async function POST(request: NextRequest) {
         // Resin
         resinColor: resinColor || null,
         resinUse: resinUse || null,
+        // Design
+        designDescription: designDescription || null,
+        designMeasures: designMeasures || null,
+        designReferenceUrls: designReferenceUrls || null,
+        designMaterial: designMaterial || null,
+        designUse: designUse || null,
+        designIsVehicle: designIsVehicle || false,
+        designVehicleMake: designVehicleMake || null,
+        designVehicleModel: designVehicleModel || null,
+        designVehicleYear: designVehicleYear || null,
       },
     });
 

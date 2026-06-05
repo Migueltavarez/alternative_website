@@ -6,13 +6,14 @@ import {
   Upload, File, X, Clock, Printer, AlertTriangle,
   ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
   DollarSign, CheckCircle2, MessageSquare, History, ExternalLink, Copy, Check,
+  PenTool, Car,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
 import {
   FILAMENT_COLORS, FILAMENT_TYPES, DELIVERY_TIMES, JOB_STATUS_LABELS, MODEL_ISSUES,
   SERVICE_TYPES, PRINT_SCALES, RESIN_COLORS, RESIN_USES, CORRECTION_COST_CREDITS,
-  PRICE_STATUS_LABELS, BANK_ACCOUNTS,
+  PRICE_STATUS_LABELS, BANK_ACCOUNTS, DESIGN_MATERIALS, DESIGN_USES,
 } from '@/lib/print-constants';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -34,6 +35,16 @@ interface PrintJob {
   laserEngravColor?: string;
   resinColor?: string;
   resinUse?: string;
+  // Design
+  designDescription?: string;
+  designMeasures?: string;
+  designReferenceUrls?: string;
+  designMaterial?: string;
+  designUse?: string;
+  designIsVehicle?: boolean;
+  designVehicleMake?: string;
+  designVehicleModel?: string;
+  designVehicleYear?: string;
   createdAt: string;
   assignedAt?: string;
   makerFeedback?: string | null;
@@ -57,6 +68,7 @@ const SERVICE_ICONS: Record<string, React.ReactNode> = {
   laser:    <Scissors className="w-6 h-6" />,
   resin:    <Layers className="w-6 h-6" />,
   plans:    <FileText className="w-6 h-6" />,
+  design:   <PenTool className="w-6 h-6" />,
 };
 
 const SERVICE_COLORS: Record<string, string> = {
@@ -64,6 +76,7 @@ const SERVICE_COLORS: Record<string, string> = {
   laser:    'text-orange-400 bg-orange-500/10 border-orange-500/20',
   resin:    'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
   plans:    'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  design:   'text-pink-400 bg-pink-500/10 border-pink-500/20',
 };
 
 function getServiceLabel(id?: string) {
@@ -127,6 +140,17 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
   // Resin
   const [resinColor, setResinColor]       = useState('');
   const [resinUse, setResinUse]           = useState('');
+  // Design
+  const [designDescription, setDesignDescription]     = useState('');
+  const [designMeasures, setDesignMeasures]           = useState('');
+  const [designReferenceUrls, setDesignReferenceUrls] = useState('');
+  const [designMaterial, setDesignMaterial]           = useState('');
+  const [designUse, setDesignUse]                     = useState('');
+  const [designIsVehicle, setDesignIsVehicle]         = useState(false);
+  const [designVehicleMake, setDesignVehicleMake]     = useState('');
+  const [designVehicleModel, setDesignVehicleModel]   = useState('');
+  const [designVehicleYear, setDesignVehicleYear]     = useState('');
+  const [designColor, setDesignColor]                 = useState('');
 
   const [error, setError]     = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -142,6 +166,10 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
     setColor(''); setFilamentType(''); setScale(''); setCustomScale(''); setRealSize('');
     setLaserCutColor(''); setLaserEngravColor('');
     setResinColor(''); setResinUse('');
+    setDesignDescription(''); setDesignMeasures(''); setDesignReferenceUrls('');
+    setDesignMaterial(''); setDesignUse(''); setDesignIsVehicle(false);
+    setDesignVehicleMake(''); setDesignVehicleModel(''); setDesignVehicleYear('');
+    setDesignColor('');
     setError('');
   };
 
@@ -158,7 +186,7 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
 
   const validate = (): string | null => {
     if (!serviceType) return 'Selecciona un tipo de servicio';
-    if (!uploadedFile) return 'Sube un archivo primero';
+    if (serviceType !== 'design' && !uploadedFile) return 'Sube un archivo primero';
 
     if (serviceType === 'print_3d') {
       if (!color)        return 'Selecciona el color del filamento';
@@ -173,6 +201,16 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
     if (serviceType === 'resin') {
       if (!resinColor) return 'Selecciona el color de la resina';
       if (!resinUse)   return 'Indica el uso del modelo';
+    }
+    if (serviceType === 'design') {
+      if (!designDescription.trim()) return 'Describe qué quieres diseñar';
+      if (!designMaterial)           return 'Selecciona el material a usar';
+      if (!designUse)                return 'Indica el uso de la pieza';
+      if (designIsVehicle) {
+        if (!designVehicleMake.trim())  return 'Indica la marca del vehículo';
+        if (!designVehicleModel.trim()) return 'Indica el modelo del vehículo';
+        if (!designVehicleYear.trim())  return 'Indica el año del vehículo';
+      }
     }
     return null;
   };
@@ -192,13 +230,13 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileName: uploadedFile!.fileName,
-          fileUrl: uploadedFile!.fileUrl,
-          fileSize: uploadedFile!.fileSize,
+          fileName: uploadedFile?.fileName ?? 'diseño',
+          fileUrl: uploadedFile?.fileUrl ?? '',
+          fileSize: uploadedFile?.fileSize,
           notes: notes || undefined,
           deliveryTime,
           serviceType,
-          color: serviceType === 'print_3d' ? color : undefined,
+          color: serviceType === 'print_3d' ? color : (serviceType === 'design' && designColor ? designColor : undefined),
           filamentType: serviceType === 'print_3d' ? filamentType : undefined,
           scale: serviceType === 'print_3d' ? finalScale : undefined,
           realSize: serviceType === 'print_3d' ? realSize.trim() : undefined,
@@ -206,6 +244,16 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
           laserEngravColor: serviceType === 'laser' && laserEngravColor.trim() ? laserEngravColor.trim() : undefined,
           resinColor: serviceType === 'resin' ? resinColor : undefined,
           resinUse: serviceType === 'resin' ? resinUse : undefined,
+          // Design
+          designDescription: serviceType === 'design' ? designDescription.trim() : undefined,
+          designMeasures: serviceType === 'design' && designMeasures.trim() ? designMeasures.trim() : undefined,
+          designReferenceUrls: serviceType === 'design' && designReferenceUrls.trim() ? designReferenceUrls.trim() : undefined,
+          designMaterial: serviceType === 'design' ? designMaterial : undefined,
+          designUse: serviceType === 'design' ? designUse : undefined,
+          designIsVehicle: serviceType === 'design' ? designIsVehicle : undefined,
+          designVehicleMake: serviceType === 'design' && designIsVehicle ? designVehicleMake.trim() : undefined,
+          designVehicleModel: serviceType === 'design' && designIsVehicle ? designVehicleModel.trim() : undefined,
+          designVehicleYear: serviceType === 'design' && designIsVehicle ? designVehicleYear.trim() : undefined,
         }),
       });
 
@@ -394,11 +442,12 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                     >
                       <div>
                         <label className="block text-sm font-medium mb-2">
-                          Archivo{' '}
+                          {serviceType === 'design' ? 'Imagen o archivo de referencia' : 'Archivo'}{' '}
                           <span className="text-muted-foreground font-normal">
                             ({selectedService?.acceptedExtensions.join(', ')})
                           </span>{' '}
-                          <span className="text-red-400">*</span>
+                          {serviceType !== 'design' && <span className="text-red-400">*</span>}
+                          {serviceType === 'design' && <span className="text-muted-foreground font-normal">(opcional)</span>}
                         </label>
                         {!uploadedFile ? (
                           <FileUpload
@@ -601,6 +650,173 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                         </div>
                       )}
 
+                      {/* ── Design ── */}
+                      {serviceType === 'design' && (
+                        <div className="space-y-4">
+                          {/* Description */}
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              ¿Qué se va a diseñar? <span className="text-red-400">*</span>
+                            </label>
+                            <textarea
+                              value={designDescription}
+                              onChange={(e) => setDesignDescription(e.target.value)}
+                              placeholder="Describe detalladamente la pieza o modelo que necesitas diseñar..."
+                              rows={3}
+                              className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
+                            />
+                          </div>
+
+                          {/* Measures + Material */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Medidas <span className="text-muted-foreground font-normal">(opcional)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={designMeasures}
+                                onChange={(e) => setDesignMeasures(e.target.value)}
+                                placeholder="Ej: 10cm × 5cm × 3cm"
+                                className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Material a usar <span className="text-red-400">*</span>
+                              </label>
+                              <select
+                                value={designMaterial}
+                                onChange={(e) => setDesignMaterial(e.target.value)}
+                                className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              >
+                                <option value="">Selecciona un material</option>
+                                {DESIGN_MATERIALS.map((m) => (
+                                  <option key={m} value={m}>{m}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Use + Color */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Uso de la pieza <span className="text-red-400">*</span>
+                              </label>
+                              <div className="flex gap-3 mt-1">
+                                {DESIGN_USES.map((u) => (
+                                  <label
+                                    key={u.value}
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm ${
+                                      designUse === u.value
+                                        ? 'border-primary bg-primary/10 font-medium'
+                                        : 'border-border hover:border-primary/40'
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="designUse"
+                                      value={u.value}
+                                      checked={designUse === u.value}
+                                      onChange={() => setDesignUse(u.value)}
+                                      className="sr-only"
+                                    />
+                                    {u.label}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Color <span className="text-muted-foreground font-normal">(opcional)</span>
+                              </label>
+                              <select
+                                value={designColor}
+                                onChange={(e) => setDesignColor(e.target.value)}
+                                className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                              >
+                                <option value="">Selecciona un color</option>
+                                {FILAMENT_COLORS.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Vehicle toggle */}
+                          <div>
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              designIsVehicle ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={designIsVehicle}
+                                onChange={(e) => setDesignIsVehicle(e.target.checked)}
+                                className="w-4 h-4 rounded border-border text-primary"
+                              />
+                              <Car className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">Es para un vehículo</span>
+                            </label>
+
+                            {designIsVehicle && (
+                              <div className="grid grid-cols-3 gap-3 mt-3">
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Marca <span className="text-red-400">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={designVehicleMake}
+                                    onChange={(e) => setDesignVehicleMake(e.target.value)}
+                                    placeholder="Toyota"
+                                    className="w-full px-3 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Modelo <span className="text-red-400">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={designVehicleModel}
+                                    onChange={(e) => setDesignVehicleModel(e.target.value)}
+                                    placeholder="Corolla"
+                                    className="w-full px-3 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Año <span className="text-red-400">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={designVehicleYear}
+                                    onChange={(e) => setDesignVehicleYear(e.target.value)}
+                                    placeholder="2019"
+                                    className="w-full px-3 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Reference links */}
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Links de referencia <span className="text-muted-foreground font-normal">(opcional)</span>
+                            </label>
+                            <textarea
+                              value={designReferenceUrls}
+                              onChange={(e) => setDesignReferenceUrls(e.target.value)}
+                              placeholder="Pega aquí los links de referencia, uno por línea&#10;https://ejemplo.com/imagen1&#10;https://ejemplo.com/imagen2"
+                              rows={3}
+                              className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {/* Common fields */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -635,9 +851,14 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                         </p>
                       )}
 
-                      <Button type="submit" disabled={!uploadedFile || isUploading || submitting} className="w-full" isLoading={submitting}>
+                      <Button
+                        type="submit"
+                        disabled={(serviceType !== 'design' && !uploadedFile) || isUploading || submitting}
+                        className="w-full"
+                        isLoading={submitting}
+                      >
                         {!submitting && <Upload className="w-4 h-4 mr-2" />}
-                        Enviar a la Cola de Impresión
+                        {serviceType === 'design' ? 'Enviar Solicitud de Diseño' : 'Enviar a la Cola de Impresión'}
                       </Button>
                     </motion.div>
                   )}
@@ -718,7 +939,34 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                   {job.laserEngravColor && <Spec label={`✏️ Grabado: ${job.laserEngravColor}`} />}
                   {job.resinColor && <Spec label={`💧 ${job.resinColor}`} />}
                   {job.resinUse   && <Spec label={RESIN_USES.find((u) => u.value === job.resinUse)?.label ?? job.resinUse} />}
+                  {/* Design specs */}
+                  {job.designMaterial && <Spec label={`🔧 ${job.designMaterial}`} />}
+                  {job.designUse && <Spec label={DESIGN_USES.find((u) => u.value === job.designUse)?.label ?? job.designUse} />}
+                  {job.designIsVehicle && job.designVehicleMake && (
+                    <Spec label={`🚗 ${job.designVehicleMake} ${job.designVehicleModel ?? ''} ${job.designVehicleYear ?? ''}`.trim()} />
+                  )}
+                  {job.designMeasures && <Spec label={`📐 ${job.designMeasures}`} />}
                 </div>
+
+                {/* Design description */}
+                {job.serviceType === 'design' && job.designDescription && (
+                  <div className="mt-2 p-3 rounded-lg bg-pink-500/5 border border-pink-500/20">
+                    <p className="text-xs font-medium text-pink-400 mb-1">Descripción del diseño</p>
+                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">{job.designDescription}</p>
+                    {job.designReferenceUrls && (
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Links de referencia:</p>
+                        {job.designReferenceUrls.split('\n').filter(Boolean).map((url, i) => (
+                          <a key={i} href={url.trim()} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:underline truncate">
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                            {url.trim()}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* ── Price / Payment section ───────────────────────── */}
                 {ps === 'quoted' && job.price != null && (
