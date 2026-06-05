@@ -90,10 +90,20 @@ export async function getAllUsers() {
 }
 
 export async function updateUserRole(userId: string, role: 'USER' | 'WORKER' | 'ADMIN') {
-  return prisma.user.update({
-    where: { id: userId },
-    data: { role },
-  });
+  const [user] = await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { role },
+    }),
+    ...(role === 'USER'
+      ? [prisma.workerProfile.updateMany({
+          where: { userId },
+          data: { isActive: false },
+        })]
+      : []),
+  ]);
+
+  return user;
 }
 
 export async function applyDiscountBalance(userId: string, amount: number) {
