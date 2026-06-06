@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, CreditCard, TrendingUp, Gift,
   Loader2, CheckCircle, XCircle, AlertCircle, X, Copy, Check,
-  Printer, ChevronRight, Activity
+  Printer, ChevronRight, Activity, History, DollarSign, CreditCard as CreditCardIcon,
 } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
@@ -50,12 +50,39 @@ interface PrintJob {
   paidAt?: string | null;
   createdAt: string;
   assignedAt?: string;
+  cameraUrl?: string | null;
 }
 
 interface WorkerProfileSummary {
   isActive: boolean;
   completedJobs: number;
   machines: { id: string; name: string; isActive: boolean }[];
+}
+
+interface PaymentHistory {
+  printPayments: {
+    id: string;
+    fileName: string;
+    serviceType?: string;
+    price?: number | null;
+    paymentMethod?: string | null;
+    paidAt?: string | null;
+    createdAt: string;
+  }[];
+  creditPurchases: {
+    id: string;
+    credits: number;
+    amount: number;
+    paymentMethod?: string | null;
+    createdAt: string;
+  }[];
+  subscription: {
+    plan: string;
+    status: string;
+    paymentMethod?: string | null;
+    currentPeriodStart?: string;
+    currentPeriodEnd?: string;
+  } | null;
 }
 
 interface SubscriptionDetails {
@@ -95,6 +122,7 @@ export default function DashboardPage() {
     priceDOP: number;
   } | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -104,6 +132,7 @@ export default function DashboardPage() {
     if (status === 'authenticated') {
       fetchUserData();
       fetchPrintJobs();
+      fetchPaymentHistory();
     }
   }, [status]);
 
@@ -145,6 +174,18 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error fetching print jobs:', error);
+    }
+  };
+
+  const fetchPaymentHistory = async () => {
+    try {
+      const res = await fetch('/api/payment-history');
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentHistory(data);
+      }
+    } catch (error) {
+      console.error('Error fetching payment history:', error);
     }
   };
 
@@ -511,6 +552,103 @@ export default function DashboardPage() {
               onRefresh={fetchPrintJobs}
             />
           </div>
+
+          {/* ── Payment History ─────────────────────────────────── */}
+          {paymentHistory && (
+            (paymentHistory.printPayments.length > 0 ||
+             paymentHistory.creditPurchases.length > 0 ||
+             paymentHistory.subscription) && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="mt-16"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <History className="w-5 h-5 text-primary" />
+                  <h2 className="text-2xl font-bold">Historial de Pagos</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Subscription */}
+                  {paymentHistory.subscription && paymentHistory.subscription.status === 'active' && (
+                    <div className="glass rounded-xl p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                          <CreditCard className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Suscripción {paymentHistory.subscription.plan}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {paymentHistory.subscription.paymentMethod || 'Transferencia bancaria'}
+                            {paymentHistory.subscription.currentPeriodEnd && (
+                              <> · Vence {new Date(paymentHistory.subscription.currentPeriodEnd).toLocaleDateString('es-ES')}</>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 shrink-0">Activa</span>
+                    </div>
+                  )}
+
+                  {/* Credit purchases */}
+                  {paymentHistory.creditPurchases.map((cp) => (
+                    <div key={cp.id} className="glass rounded-xl p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                          <Coins className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{cp.credits} créditos</p>
+                          <p className="text-xs text-muted-foreground">
+                            {cp.paymentMethod || 'Transferencia bancaria'}
+                            {' · '}{new Date(cp.createdAt).toLocaleDateString('es-ES')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-semibold">{new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(cp.amount)}</p>
+                        <span className="text-xs text-green-400">Completado</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Print job payments */}
+                  {paymentHistory.printPayments.map((pp) => (
+                    <div key={pp.id} className="glass rounded-xl p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
+                          <DollarSign className="w-5 h-5 text-violet-400" />
+                        </div>
+                        <div>
+                          <p className="font-medium truncate max-w-xs">{pp.fileName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {pp.paymentMethod || 'Transferencia bancaria'}
+                            {' · '}{pp.paidAt ? new Date(pp.paidAt).toLocaleDateString('es-ES') : new Date(pp.createdAt).toLocaleDateString('es-ES')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {pp.price != null && (
+                          <p className="font-semibold">{new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(pp.price)}</p>
+                        )}
+                        <span className="text-xs text-green-400">Pagado</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {paymentHistory.printPayments.length === 0 &&
+                   paymentHistory.creditPurchases.length === 0 &&
+                   (!paymentHistory.subscription || paymentHistory.subscription.status !== 'active') && (
+                    <div className="glass rounded-xl p-8 text-center">
+                      <History className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">No hay pagos confirmados todavía</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )
+          )}
         </div>
       </main>
 

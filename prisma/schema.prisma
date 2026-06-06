@@ -207,6 +207,9 @@ model PrintJob {
   designVehicleModel  String?
   designVehicleYear   String?
 
+  // Live camera feed
+  cameraUrl         String?
+
   // Maker feedback
   makerFeedback     String?   // JSON: { issues[], notes, suggestion }
 

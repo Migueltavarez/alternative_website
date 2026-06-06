@@ -13,6 +13,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const userId = (session.user as any).id;
     const jobId = params.id;
 
+    let cameraUrl: string | undefined;
+    try {
+      const body = await request.json();
+      cameraUrl = body.cameraUrl || undefined;
+    } catch { /* body is optional */ }
+
     const job = await prisma.printJob.findUnique({ where: { id: jobId } });
 
     if (!job) {
@@ -32,7 +38,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const updated = await prisma.printJob.update({
       where: { id: jobId },
-      data: { status: 'printing', startedAt: new Date() },
+      data: { status: 'printing', startedAt: new Date(), ...(cameraUrl ? { cameraUrl } : {}) },
     });
 
     return NextResponse.json(updated);

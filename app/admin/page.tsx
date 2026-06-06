@@ -1055,10 +1055,8 @@ export default function AdminPage() {
                               <Box className="w-4 h-4" />
                             </button>
                             <a
-                              href={job.fileUrl}
+                              href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'}
                               download={job.fileName}
-                              target="_blank"
-                              rel="noopener noreferrer"
                               className="p-1.5 rounded-lg hover:bg-accent text-blue-400 hover:text-blue-300 transition-colors"
                               title="Descargar archivo"
                             >
@@ -1362,6 +1360,16 @@ export default function AdminPage() {
                             <option value="completed">Completado</option>
                             <option value="cancelled">Cancelado</option>
                           </select>
+                          {job.cameraUrl && (
+                            <a
+                              href={job.cameraUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-green-400 hover:underline mt-1"
+                            >
+                              <Play className="w-3 h-3" />Cámara en vivo
+                            </a>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
                           {formatDate(job.createdAt)}

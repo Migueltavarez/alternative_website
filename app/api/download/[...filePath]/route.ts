@@ -48,11 +48,14 @@ export async function GET(
 
     const fileBuffer = await readFile(fileFullPath);
 
+    const inlineExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+    const disposition = inlineExtensions.includes(ext) ? 'inline' : 'attachment';
+
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': contentType,
         'Content-Length': fileBuffer.length.toString(),
-        'Content-Disposition': `inline; filename="${fileName}"`,
+        'Content-Disposition': `${disposition}; filename="${fileName}"`,
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',

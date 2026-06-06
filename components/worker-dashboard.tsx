@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Printer, CheckCircle, Play, Clock, AlertCircle,
   File, User, ChevronDown, ChevronUp, RefreshCw,
-  Plus, Pencil, Trash2, X, Save, AlertTriangle, MessageSquare
+  Plus, Pencil, Trash2, X, Save, AlertTriangle, MessageSquare,
+  Video, ExternalLink, Camera
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES, MODEL_ISSUES, SERVICE_TYPES, RESIN_USES } from '@/lib/print-constants';
@@ -35,6 +36,7 @@ interface WorkerJob {
   acceptedAt?: string;
   startedAt?: string;
   createdAt: string;
+  cameraUrl?: string | null;
   user: { id: string; name?: string; email: string };
   assignedMachine?: { id: string; name: string } | null;
   makerFeedback?: string | null;
@@ -47,6 +49,10 @@ interface WorkerJob {
   // Resin
   resinColor?: string;
   resinUse?: string;
+  // Design
+  designDescription?: string;
+  designMaterial?: string;
+  designUse?: string;
 }
 
 interface WorkerProfile {
@@ -175,6 +181,9 @@ export function WorkerDashboard() {
   const [feedbackSuggestion, setFeedbackSuggestion] = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
 
+  // Camera modal state
+  const [cameraModal, setCameraModal] = useState<{ jobId: string; cameraUrl: string } | null>(null);
+
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
@@ -198,19 +207,25 @@ export function WorkerDashboard() {
 
   useEffect(() => {
     fetchData();
-    const pollInterval = setInterval(fetchData, 60_000);
+    const pollInterval = setInterval(fetchData, 30_000);
     const tickInterval = setInterval(() => setTick((t) => t + 1), 1_000);
     return () => { clearInterval(pollInterval); clearInterval(tickInterval); };
   }, [fetchData]);
 
-  const handleJobAction = async (jobId: string, action: 'accept' | 'start' | 'complete') => {
+  const handleJobAction = async (jobId: string, action: 'accept' | 'start' | 'complete', cameraUrl?: string) => {
     setActionLoading(`${jobId}-${action}`);
     try {
-      const res = await fetch(`/api/workers/jobs/${jobId}/${action}`, { method: 'POST' });
+      const body = action === 'start' ? JSON.stringify({ cameraUrl: cameraUrl || undefined }) : undefined;
+      const res = await fetch(`/api/workers/jobs/${jobId}/${action}`, {
+        method: 'POST',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al procesar');
       const msg = { accept: '¡Trabajo aceptado! Prepara los materiales.', start: 'Impresión iniciada.', complete: 'Trabajo completado.' }[action];
       showNotification('success', msg);
+      setCameraModal(null);
       await fetchData();
     } catch (err: any) {
       showNotification('error', err.message);
@@ -370,6 +385,56 @@ export function WorkerDashboard() {
           >
             {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
             {notification.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Camera URL modal */}
+      <AnimatePresence>
+        {cameraModal && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setCameraModal(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-primary" />
+                  Iniciar impresión
+                </h3>
+                <button onClick={() => setCameraModal(null)} className="p-1.5 hover:bg-accent rounded-lg transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Opcional: ingresa la URL de tu cámara IP para que el cliente pueda ver la impresión en vivo.
+              </p>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">URL de cámara (opcional)</label>
+              <input
+                type="url"
+                value={cameraModal.cameraUrl}
+                onChange={(e) => setCameraModal({ ...cameraModal, cameraUrl: e.target.value })}
+                placeholder="ej: http://192.168.1.100:8080/stream"
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm mb-4"
+              />
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1"
+                  onClick={() => handleJobAction(cameraModal.jobId, 'start', cameraModal.cameraUrl || undefined)}
+                  isLoading={actionLoading === `${cameraModal.jobId}-start`}
+                  disabled={!!actionLoading}
+                >
+                  <Play className="w-4 h-4 mr-2" />Iniciar impresión
+                </Button>
+                <Button variant="outline" onClick={() => setCameraModal(null)} disabled={!!actionLoading}>
+                  Cancelar
+                </Button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -601,7 +666,24 @@ export function WorkerDashboard() {
                       {/* Resin */}
                       {job.resinColor && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">💧 {job.resinColor}</span>}
                       {job.resinUse   && <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border">{RESIN_USES.find((u) => u.value === job.resinUse)?.label ?? job.resinUse}</span>}
+                      {/* Design */}
+                      {job.designMaterial && <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300">🔧 {job.designMaterial}</span>}
+                      {job.designUse && <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300">{job.designUse === 'decorative' ? '🌸 Decorativo' : '⚙️ Mecánico'}</span>}
                     </div>
+
+                    {/* Design description */}
+                    {job.serviceType === 'design' && job.designDescription && (
+                      <div className="mt-2 p-3 rounded-lg bg-pink-500/5 border border-pink-500/20 text-xs text-muted-foreground">
+                        <span className="font-medium text-pink-400">Descripción: </span>{job.designDescription}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {job.notes && (
+                      <div className="mt-2 p-3 rounded-lg bg-card border border-border text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Notas del cliente: </span>{job.notes}
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-2 mt-4">
                       {job.status === 'assigned' && (
@@ -615,14 +697,26 @@ export function WorkerDashboard() {
                         </Button>
                       )}
                       {job.status === 'accepted' && (
-                        <Button className="flex-1" onClick={() => handleJobAction(job.id, 'start')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-start`}>
+                        <Button className="flex-1" onClick={() => setCameraModal({ jobId: job.id, cameraUrl: '' })} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-start`}>
                           <Play className="w-4 h-4 mr-2" />Iniciar impresión
                         </Button>
                       )}
                       {job.status === 'printing' && (
-                        <Button className="flex-1" variant="outline" onClick={() => handleJobAction(job.id, 'complete')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-complete`}>
-                          <CheckCircle className="w-4 h-4 mr-2" />Marcar como completado
-                        </Button>
+                        <>
+                          <Button className="flex-1" variant="outline" onClick={() => handleJobAction(job.id, 'complete')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-complete`}>
+                            <CheckCircle className="w-4 h-4 mr-2" />Marcar como completado
+                          </Button>
+                          {job.cameraUrl && (
+                            <a
+                              href={job.cameraUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-2 rounded-lg border border-green-500/30 hover:bg-green-500/10 text-green-400 transition-colors text-sm flex items-center gap-2"
+                            >
+                              <Video className="w-4 h-4" />Cámara
+                            </a>
+                          )}
+                        </>
                       )}
                       {['assigned', 'accepted', 'printing'].includes(job.status) && job.status !== 'correction_requested' && (
                         <Button
@@ -647,9 +741,15 @@ export function WorkerDashboard() {
                           <MessageSquare className="w-3.5 h-3.5" />Retroalimentación enviada
                         </span>
                       )}
-                      <a href={job.fileUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors text-sm flex items-center gap-2">
-                        <File className="w-4 h-4" />Descargar
-                      </a>
+                      {job.fileUrl && (
+                        <a
+                          href={`/api/download${job.fileUrl}`}
+                          download={job.fileName}
+                          className="px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors text-sm flex items-center gap-2"
+                        >
+                          <File className="w-4 h-4" />Descargar
+                        </a>
+                      )}
                     </div>
 
                     <AnimatePresence>

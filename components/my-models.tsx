@@ -6,7 +6,7 @@ import {
   Upload, File, X, Clock, Printer, AlertTriangle,
   ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
   DollarSign, CheckCircle2, MessageSquare, History, ExternalLink, Copy, Check,
-  PenTool, Car,
+  PenTool, Car, Video,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
@@ -47,6 +47,7 @@ interface PrintJob {
   designVehicleYear?: string;
   createdAt: string;
   assignedAt?: string;
+  cameraUrl?: string | null;
   makerFeedback?: string | null;
   price?: number | null;
   priceStatus?: string;
@@ -947,6 +948,33 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                   )}
                   {job.designMeasures && <Spec label={`📐 ${job.designMeasures}`} />}
                 </div>
+
+                {/* Live camera feed (printing) */}
+                {job.status === 'printing' && job.cameraUrl && (
+                  <div className="mt-3 rounded-xl border border-green-500/30 bg-green-500/5 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
+                        <Video className="w-4 h-4 animate-pulse" />
+                        Impresión en vivo
+                      </span>
+                      <a
+                        href={job.cameraUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-green-500/40 text-green-400 hover:bg-green-500/10 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Ver cámara
+                      </a>
+                    </div>
+                    <iframe
+                      src={job.cameraUrl}
+                      className="w-full mt-3 rounded-lg aspect-video bg-black"
+                      allow="camera"
+                      title="Cámara en vivo"
+                    />
+                  </div>
+                )}
 
                 {/* Design description */}
                 {job.serviceType === 'design' && job.designDescription && (
