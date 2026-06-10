@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (!profile) return NextResponse.json({ error: 'No tienes perfil de maker' }, { status: 404 });
 
     const body = await request.json();
-    const { name, description, supportedColors, supportedFilaments, supportedNozzles } = body;
+    const { name, description, supportedColors, supportedFilaments, supportedNozzles, octoprintUrl, octoprintApiKey } = body;
 
     if (!name) return NextResponse.json({ error: 'El nombre de la máquina es requerido' }, { status: 400 });
     if (!supportedColors?.length) return NextResponse.json({ error: 'Selecciona al menos un color' }, { status: 400 });
@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
         supportedColors: JSON.stringify(supportedColors),
         supportedFilaments: JSON.stringify(supportedFilaments),
         supportedNozzles: JSON.stringify(supportedNozzles),
+        octoprintUrl: octoprintUrl || null,
+        octoprintApiKey: octoprintApiKey || null,
       },
     });
 

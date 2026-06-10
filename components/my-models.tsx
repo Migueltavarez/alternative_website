@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, File, X, Clock, Printer, AlertTriangle,
   ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
   DollarSign, CheckCircle2, MessageSquare, History, ExternalLink, Copy, Check,
-  PenTool, Car, Video,
+  PenTool, Car, Video, Thermometer, Activity, Timer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
@@ -94,9 +94,78 @@ function formatDOP(amount: number) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+interface OctoPrintStatus {
+  streamUrl: string | null;
+  snapshotUrl: string | null;
+  webcamEnabled: boolean;
+  state: string | null;
+  temps: {
+    bedActual: number | null;
+    bedTarget: number | null;
+    nozzleActual: number | null;
+    nozzleTarget: number | null;
+  };
+  progress: {
+    completion: number | null;
+    printTime: number | null;
+    printTimeLeft: number | null;
+    fileName: string | null;
+  };
+}
+
+function formatSeconds(s: number | null): string {
+  if (s == null || s <= 0) return '—';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
   const [showForm, setShowForm]           = useState(false);
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
+
+  // OctoPrint live data (polled every 10s for printing jobs)
+  const [octoprintData, setOctoprintData] = useState<Record<string, OctoPrintStatus | null>>({});
+  const octoprintIntervals = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+
+  useEffect(() => {
+    const printingJobs = printJobs.filter((j) => j.status === 'printing');
+
+    // Start polling for new printing jobs
+    printingJobs.forEach((job) => {
+      if (octoprintIntervals.current[job.id]) return;
+      const poll = async () => {
+        try {
+          const res = await fetch(`/api/octoprint/${job.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            setOctoprintData((prev) => ({ ...prev, [job.id]: data }));
+          } else {
+            setOctoprintData((prev) => ({ ...prev, [job.id]: null }));
+          }
+        } catch {
+          setOctoprintData((prev) => ({ ...prev, [job.id]: null }));
+        }
+      };
+      poll();
+      octoprintIntervals.current[job.id] = setInterval(poll, 10_000);
+    });
+
+    // Clear intervals for jobs no longer printing
+    const printingIds = new Set(printingJobs.map((j) => j.id));
+    Object.keys(octoprintIntervals.current).forEach((id) => {
+      if (!printingIds.has(id)) {
+        clearInterval(octoprintIntervals.current[id]);
+        delete octoprintIntervals.current[id];
+      }
+    });
+
+    return () => {
+      Object.values(octoprintIntervals.current).forEach(clearInterval);
+      octoprintIntervals.current = {};
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printJobs.map((j) => `${j.id}:${j.status}`).join(',')]);
 
   // Resubmit corrected file
   const [resubmitJobId, setResubmitJobId]   = useState<string | null>(null);
@@ -949,32 +1018,126 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                   {job.designMeasures && <Spec label={`📐 ${job.designMeasures}`} />}
                 </div>
 
-                {/* Live camera feed (printing) */}
-                {job.status === 'printing' && job.cameraUrl && (
-                  <div className="mt-3 rounded-xl border border-green-500/30 bg-green-500/5 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
-                        <Video className="w-4 h-4 animate-pulse" />
-                        Impresión en vivo
-                      </span>
-                      <a
-                        href={job.cameraUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-green-500/40 text-green-400 hover:bg-green-500/10 transition-colors"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Ver cámara
-                      </a>
+                {/* ── Live print panel (OctoPrint) ─────────────────── */}
+                {job.status === 'printing' && (() => {
+                  const op = octoprintData[job.id];
+                  // No data yet (polling started but hasn't returned) — show loading
+                  if (op === undefined) {
+                    return (
+                      <div className="mt-3 rounded-xl border border-green-500/30 bg-green-500/5 p-3 flex items-center gap-2 text-sm text-green-400">
+                        <Activity className="w-4 h-4 animate-pulse" />
+                        Conectando con OctoPrint...
+                      </div>
+                    );
+                  }
+                  // op === null means no OctoPrint or unreachable — fall back to raw cameraUrl
+                  if (op === null) {
+                    if (!job.cameraUrl) return null;
+                    return (
+                      <div className="mt-3 rounded-xl border border-green-500/30 bg-green-500/5 p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
+                            <Video className="w-4 h-4 animate-pulse" />Impresión en vivo
+                          </span>
+                          <a href={job.cameraUrl} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-green-500/40 text-green-400 hover:bg-green-500/10 transition-colors">
+                            <ExternalLink className="w-3 h-3" />Abrir
+                          </a>
+                        </div>
+                        <img src={job.cameraUrl} alt="Cámara" className="w-full mt-3 rounded-lg aspect-video object-cover bg-black" />
+                      </div>
+                    );
+                  }
+                  // Full OctoPrint panel
+                  return (
+                    <div className="mt-3 rounded-xl border border-green-500/30 bg-green-500/5 p-3 space-y-3">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-sm font-semibold text-green-400">
+                          <Activity className="w-4 h-4 animate-pulse" />
+                          OctoPrint en vivo
+                          {op.state && <span className="text-xs font-normal text-muted-foreground">· {op.state}</span>}
+                        </span>
+                      </div>
+
+                      {/* Camera stream */}
+                      {op.streamUrl && (
+                        <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
+                          <img
+                            src={op.streamUrl}
+                            alt="Cámara"
+                            className="w-full h-full object-cover"
+                          />
+                          <a
+                            href={op.streamUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/50 hover:bg-black/70 text-white transition-colors"
+                            title="Abrir en nueva pestaña"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Stats row */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {/* Nozzle temp */}
+                        {op.temps.nozzleActual != null && (
+                          <div className="rounded-lg bg-card border border-border px-3 py-2 text-center">
+                            <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                              <Thermometer className="w-3 h-3" />Nozzle
+                            </p>
+                            <p className="text-sm font-bold text-orange-400">
+                              {op.temps.nozzleActual.toFixed(0)}°
+                              <span className="text-xs font-normal text-muted-foreground">/{op.temps.nozzleTarget?.toFixed(0)}°</span>
+                            </p>
+                          </div>
+                        )}
+                        {/* Bed temp */}
+                        {op.temps.bedActual != null && (
+                          <div className="rounded-lg bg-card border border-border px-3 py-2 text-center">
+                            <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                              <Thermometer className="w-3 h-3" />Cama
+                            </p>
+                            <p className="text-sm font-bold text-blue-400">
+                              {op.temps.bedActual.toFixed(0)}°
+                              <span className="text-xs font-normal text-muted-foreground">/{op.temps.bedTarget?.toFixed(0)}°</span>
+                            </p>
+                          </div>
+                        )}
+                        {/* Progress */}
+                        {op.progress.completion != null && (
+                          <div className="rounded-lg bg-card border border-border px-3 py-2 text-center">
+                            <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                              <Activity className="w-3 h-3" />Progreso
+                            </p>
+                            <p className="text-sm font-bold text-green-400">{op.progress.completion.toFixed(1)}%</p>
+                          </div>
+                        )}
+                        {/* ETA */}
+                        {op.progress.printTimeLeft != null && (
+                          <div className="rounded-lg bg-card border border-border px-3 py-2 text-center">
+                            <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+                              <Timer className="w-3 h-3" />Restante
+                            </p>
+                            <p className="text-sm font-bold">{formatSeconds(op.progress.printTimeLeft)}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Progress bar */}
+                      {op.progress.completion != null && (
+                        <div className="w-full bg-card rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-1000"
+                            style={{ width: `${op.progress.completion}%` }}
+                          />
+                        </div>
+                      )}
                     </div>
-                    <iframe
-                      src={job.cameraUrl}
-                      className="w-full mt-3 rounded-lg aspect-video bg-black"
-                      allow="camera"
-                      title="Cámara en vivo"
-                    />
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Design description */}
                 {job.serviceType === 'design' && job.designDescription && (

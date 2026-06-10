@@ -27,7 +27,7 @@ export async function GET() {
       },
       include: {
         user: { select: { id: true, name: true, email: true } },
-        assignedMachine: { select: { id: true, name: true } },
+        assignedMachine: { select: { id: true, name: true, octoprintUrl: true } },
       },
       orderBy: { assignedAt: 'desc' },
     });

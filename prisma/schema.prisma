@@ -60,6 +60,8 @@ model PrinterMachine {
   supportedNozzles   String        // JSON array
   isActive           Boolean       @default(true)
   completedJobs      Int           @default(0)
+  octoprintUrl       String?
+  octoprintApiKey    String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   printJobs          PrintJob[]    @relation("MachineJobs")

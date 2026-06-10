@@ -6,7 +6,7 @@ import {
   Printer, CheckCircle, Play, Clock, AlertCircle,
   File, User, ChevronDown, ChevronUp, RefreshCw,
   Plus, Pencil, Trash2, X, Save, AlertTriangle, MessageSquare,
-  Video, ExternalLink, Camera
+  Video, ExternalLink, Camera, Eye, EyeOff, Link, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES, MODEL_ISSUES, SERVICE_TYPES, RESIN_USES } from '@/lib/print-constants';
@@ -20,6 +20,8 @@ interface PrinterMachine {
   supportedNozzles: string[];
   isActive: boolean;
   completedJobs: number;
+  octoprintUrl?: string | null;
+  octoprintApiKey?: string | null;
 }
 
 interface WorkerJob {
@@ -38,7 +40,7 @@ interface WorkerJob {
   createdAt: string;
   cameraUrl?: string | null;
   user: { id: string; name?: string; email: string };
-  assignedMachine?: { id: string; name: string } | null;
+  assignedMachine?: { id: string; name: string; octoprintUrl?: string | null } | null;
   makerFeedback?: string | null;
   // 3D print extras
   scale?: string;
@@ -113,6 +115,10 @@ function MachineForm({
   const [colors, setColors] = useState<string[]>(initial?.supportedColors ?? []);
   const [filaments, setFilaments] = useState<string[]>(initial?.supportedFilaments ?? []);
   const [nozzles, setNozzles] = useState<string[]>(initial?.supportedNozzles ?? []);
+  const [octoprintUrl, setOctoprintUrl] = useState(initial?.octoprintUrl ?? '');
+  const [octoprintApiKey, setOctoprintApiKey] = useState(initial?.octoprintApiKey ?? '');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [showOctoprintGuide, setShowOctoprintGuide] = useState(false);
   const [error, setError] = useState('');
 
   const submit = () => {
@@ -120,8 +126,18 @@ function MachineForm({
     if (!colors.length) { setError('Selecciona al menos un color'); return; }
     if (!filaments.length) { setError('Selecciona al menos un filamento'); return; }
     if (!nozzles.length) { setError('Selecciona al menos un nozzle'); return; }
+    if (octoprintUrl && !octoprintApiKey) { setError('Ingresa el API Key de OctoPrint'); return; }
     setError('');
-    onSave({ name: name.trim(), description: description || undefined, supportedColors: colors, supportedFilaments: filaments, supportedNozzles: nozzles, isActive: initial?.isActive ?? true });
+    onSave({
+      name: name.trim(),
+      description: description || undefined,
+      supportedColors: colors,
+      supportedFilaments: filaments,
+      supportedNozzles: nozzles,
+      isActive: initial?.isActive ?? true,
+      octoprintUrl: octoprintUrl.trim() || null,
+      octoprintApiKey: octoprintApiKey.trim() || null,
+    });
   };
 
   return (
@@ -147,6 +163,77 @@ function MachineForm({
       <MultiSelect label="Colores disponibles *" options={FILAMENT_COLORS} selected={colors} onChange={setColors} />
       <MultiSelect label="Tipos de filamento *" options={FILAMENT_TYPES} selected={filaments} onChange={setFilaments} />
       <MultiSelect label="Tamaños de nozzle *" options={NOZZLE_SIZES} selected={nozzles} onChange={setNozzles} />
+
+      {/* ── OctoPrint / Cloudflare Tunnel ── */}
+      <div className="pt-2 border-t border-border space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-green-400 flex items-center gap-1.5">
+            <Video className="w-3.5 h-3.5" />
+            Cámara en vivo — OctoPrint
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowOctoprintGuide(!showOctoprintGuide)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+          >
+            <Info className="w-3 h-3" />¿Cómo configurar?
+          </button>
+        </div>
+
+        {showOctoprintGuide && (
+          <div className="rounded-lg bg-green-500/5 border border-green-500/20 p-3 text-xs text-muted-foreground space-y-2">
+            <p className="font-medium text-green-400">Pasos para exponer OctoPrint con Cloudflare Tunnel:</p>
+            <ol className="space-y-1 list-decimal list-inside">
+              <li>Descarga <span className="font-mono text-foreground">cloudflared</span> en la PC donde corre OctoPrint</li>
+              <li>Ejecuta en terminal:
+                <div className="mt-1 px-2 py-1 rounded bg-black/30 font-mono text-[11px] text-green-300">
+                  cloudflared tunnel --url http://localhost:5000
+                </div>
+              </li>
+              <li>Copia la URL <span className="font-mono">https://xxxx.trycloudflare.com</span> que aparece</li>
+              <li>Pégala en el campo de abajo y agrega tu API Key de OctoPrint</li>
+            </ol>
+            <p className="text-[11px]">El API Key está en OctoPrint → Configuración → API → Key global</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">URL de OctoPrint (Cloudflare Tunnel)</label>
+          <div className="flex items-center gap-2">
+            <Link className="w-4 h-4 text-muted-foreground shrink-0" />
+            <input
+              type="url"
+              value={octoprintUrl}
+              onChange={(e) => setOctoprintUrl(e.target.value)}
+              placeholder="https://xxxx.trycloudflare.com"
+              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            />
+          </div>
+        </div>
+
+        {octoprintUrl && (
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">API Key de OctoPrint *</label>
+            <div className="relative">
+              <input
+                type={showApiKey ? 'text' : 'password'}
+                value={octoprintApiKey}
+                onChange={(e) => setOctoprintApiKey(e.target.value)}
+                placeholder="Ej: ABCDEF123456..."
+                className="w-full px-3 py-2 pr-10 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowApiKey(!showApiKey)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-accent rounded transition-colors"
+              >
+                {showApiKey ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {error && <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
       <div className="flex gap-2 pt-1">
         <Button onClick={submit} disabled={saving} isLoading={saving} className="flex-1">
@@ -410,17 +497,36 @@ export function WorkerDashboard() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Opcional: ingresa la URL de tu cámara IP para que el cliente pueda ver la impresión en vivo.
-              </p>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">URL de cámara (opcional)</label>
-              <input
-                type="url"
-                value={cameraModal.cameraUrl}
-                onChange={(e) => setCameraModal({ ...cameraModal, cameraUrl: e.target.value })}
-                placeholder="ej: http://192.168.1.100:8080/stream"
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm mb-4"
-              />
+              {(() => {
+                const job = jobs.find((j) => j.id === cameraModal.jobId);
+                const hasOctoprint = !!job?.assignedMachine?.octoprintUrl;
+                return hasOctoprint ? (
+                  <div className="mb-4 flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 p-3">
+                    <Video className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-green-400">OctoPrint detectado</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        La cámara y los datos en tiempo real se transmitirán automáticamente al cliente a través de OctoPrint.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Opcional: ingresa la URL de tu cámara para que el cliente pueda ver la impresión en vivo.
+                      Para acceso remoto usa <span className="font-mono text-xs text-green-400">cloudflared tunnel</span>.
+                    </p>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">URL de cámara (opcional)</label>
+                    <input
+                      type="url"
+                      value={cameraModal.cameraUrl}
+                      onChange={(e) => setCameraModal({ ...cameraModal, cameraUrl: e.target.value })}
+                      placeholder="ej: https://xxxx.trycloudflare.com/webcam/?action=stream"
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm mb-4"
+                    />
+                  </>
+                );
+              })()}
               <div className="flex gap-3">
                 <Button
                   className="flex-1"
@@ -706,7 +812,16 @@ export function WorkerDashboard() {
                           <Button className="flex-1" variant="outline" onClick={() => handleJobAction(job.id, 'complete')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-complete`}>
                             <CheckCircle className="w-4 h-4 mr-2" />Marcar como completado
                           </Button>
-                          {job.cameraUrl && (
+                          {job.assignedMachine?.octoprintUrl ? (
+                            <a
+                              href={`${job.assignedMachine.octoprintUrl}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-2 rounded-lg border border-green-500/30 hover:bg-green-500/10 text-green-400 transition-colors text-sm flex items-center gap-2"
+                            >
+                              <Video className="w-4 h-4" />OctoPrint
+                            </a>
+                          ) : job.cameraUrl ? (
                             <a
                               href={job.cameraUrl}
                               target="_blank"
@@ -715,7 +830,7 @@ export function WorkerDashboard() {
                             >
                               <Video className="w-4 h-4" />Cámara
                             </a>
-                          )}
+                          ) : null}
                         </>
                       )}
                       {['assigned', 'accepted', 'printing'].includes(job.status) && job.status !== 'correction_requested' && (
