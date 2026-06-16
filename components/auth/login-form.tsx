@@ -18,6 +18,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
+  const verified = searchParams.get('verified');
 
   const {
     register,
@@ -36,6 +37,11 @@ export function LoginForm() {
         password: data.password,
         redirect: false,
       });
+
+      if (result?.error === 'EMAIL_NOT_VERIFIED') {
+        setError('Debes verificar tu correo antes de iniciar sesión. Revisa tu inbox.');
+        return;
+      }
 
       if (result?.error) {
         setError('Email o contraseña incorrectos');
@@ -62,8 +68,14 @@ export function LoginForm() {
         </div>
 
         {registered && (
+          <div className="mb-6 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm">
+            Cuenta creada. Revisa tu correo y verifica tu cuenta antes de iniciar sesión.
+          </div>
+        )}
+
+        {verified && (
           <div className="mb-6 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-sm">
-            ¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.
+            ¡Correo verificado! Ya puedes iniciar sesión.
           </div>
         )}
 

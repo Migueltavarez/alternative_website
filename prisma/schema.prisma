@@ -20,8 +20,12 @@ model User {
   discountBalance   Float     @default(0)
   stripeCustomerId  String?   @unique
   credits           Int       @default(0)
-  resetToken        String?   @unique
-  resetTokenExpiry  DateTime?
+  resetToken              String?   @unique
+  resetTokenExpiry        DateTime?
+  emailVerified           Boolean   @default(false)
+  verificationToken       String?   @unique
+  verificationTokenExpiry DateTime?
+  isStudent               Boolean   @default(false)
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

@@ -41,12 +41,17 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Invalid email or password');
         }
 
+        if (!user.emailVerified) {
+          throw new Error('EMAIL_NOT_VERIFIED');
+        }
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
           image: user.image,
+          isStudent: user.isStudent,
         };
       },
     }),
@@ -56,6 +61,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.isStudent = (user as any).isStudent;
       }
 
       if (trigger === 'update' && session) {
@@ -77,6 +83,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
+        (session.user as any).isStudent = token.isStudent;
       }
       return session;
     },

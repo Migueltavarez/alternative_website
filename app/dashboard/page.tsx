@@ -550,6 +550,7 @@ export default function DashboardPage() {
             <MyModels
               printJobs={printJobs}
               onRefresh={fetchPrintJobs}
+              isStudent={(session?.user as any)?.isStudent === true}
             />
           </div>
 

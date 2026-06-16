@@ -60,6 +60,7 @@ interface PrintJob {
 interface MyModelsProps {
   printJobs: PrintJob[];
   onRefresh: () => void;
+  isStudent?: boolean;
 }
 
 // ── Service icons ─────────────────────────────────────────────────────────────
@@ -120,7 +121,7 @@ function formatSeconds(s: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
+export function MyModels({ printJobs, onRefresh, isStudent = false }: MyModelsProps) {
   const [showForm, setShowForm]           = useState(false);
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
 
@@ -1167,8 +1168,22 @@ export function MyModels({ printJobs, onRefresh }: MyModelsProps) {
                         <DollarSign className="w-4 h-4" />
                         Cotización recibida
                       </span>
-                      <span className="text-xl font-bold">{formatDOP(job.price)}</span>
+                      <div className="text-right">
+                        {isStudent ? (
+                          <>
+                            <span className="text-xs text-muted-foreground line-through block">{formatDOP(job.price)}</span>
+                            <span className="text-xl font-bold text-green-400">{formatDOP(job.price * 0.9)}</span>
+                          </>
+                        ) : (
+                          <span className="text-xl font-bold">{formatDOP(job.price)}</span>
+                        )}
+                      </div>
                     </div>
+                    {isStudent && (
+                      <div className="flex items-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-1.5">
+                        <span>Descuento estudiantil 10% aplicado</span>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Acepta el precio para proceder con el pago, o apela si crees que no es correcto.
                     </p>

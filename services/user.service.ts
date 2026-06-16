@@ -1,7 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { generateReferralCode } from '@/lib/utils';
-import { sendWelcomeEmail } from '@/lib/email';
+import { sendVerificationEmail } from '@/lib/email';
+
+const STUDENT_DOMAINS = ['unphu.edu.do', 'unapec.edu.do', 'ce.pucmm.edu.do'];
 
 interface RegisterUserInput {
   email: string;
@@ -47,6 +50,12 @@ export async function registerUser(input: RegisterUserInput) {
     attempts++;
   }
 
+  const domain = email.toLowerCase().split('@')[1];
+  const isStudent = STUDENT_DOMAINS.includes(domain);
+
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
   const user = await prisma.user.create({
     data: {
       email: email.toLowerCase(),
@@ -54,11 +63,17 @@ export async function registerUser(input: RegisterUserInput) {
       name,
       referralCode: newReferralCode.toUpperCase(),
       referredBy: validReferralCode?.toUpperCase(),
+      isStudent,
+      verificationToken,
+      verificationTokenExpiry,
     },
   });
 
-  sendWelcomeEmail(user.email, user.name).catch(err =>
-    console.error('Welcome email error:', err)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';
+  const verifyUrl = `${appUrl}/verify-email?token=${verificationToken}`;
+
+  sendVerificationEmail(user.email, verifyUrl, user.name).catch(err =>
+    console.error('Verification email error:', err)
   );
 
   return user;
