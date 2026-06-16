@@ -7,6 +7,14 @@ export default withAuth(
     if (token && token.emailVerified === false) {
       return NextResponse.redirect(new URL('/verify-email', req.url));
     }
+    if (
+      token &&
+      token.role !== 'ADMIN' &&
+      token.profileComplete === false &&
+      !req.nextUrl.pathname.startsWith('/complete-profile')
+    ) {
+      return NextResponse.redirect(new URL('/complete-profile', req.url));
+    }
     return NextResponse.next();
   },
   {
@@ -21,5 +29,7 @@ export const config = {
     '/dashboard/:path*',
     '/admin/:path*',
     '/settings/:path*',
+    '/profile/:path*',
+    '/complete-profile/:path*',
   ],
 };

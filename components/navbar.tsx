@@ -8,7 +8,7 @@ import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Sun, Moon, User, LogOut, LayoutDashboard, Shield,
-  ChevronDown, MessageSquare, Printer, ShoppingBag
+  ChevronDown, MessageSquare, Printer, ShoppingBag, UserCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from './store/cart-context';
@@ -138,6 +138,24 @@ export function Navbar() {
                         <LayoutDashboard className="w-4 h-4" />
                         Dashboard
                       </Link>
+                      <Link
+                        href="/profile"
+                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        <UserCircle className="w-4 h-4" />
+                        Mi Perfil
+                      </Link>
+                      {!isAdmin && (
+                        <Link
+                          href="/dashboard?tab=soporte"
+                          className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => setDropdownOpen(false)}
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          Soporte
+                        </Link>
+                      )}
                       {isWorker && (
                         <Link
                           href="/worker"

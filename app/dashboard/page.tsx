@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { redirect } from 'next/navigation';
+import { redirect, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, CreditCard, TrendingUp, Gift,
   Loader2, CheckCircle, XCircle, AlertCircle, X, Copy, Check,
   Printer, ChevronRight, Activity, History, DollarSign,
-  LayoutDashboard, Wrench, Clock, Users, BarChart2,
+  LayoutDashboard, Wrench, Clock, Users, BarChart2, MessageSquare,
 } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
@@ -16,6 +16,7 @@ import { CreditPackages } from '@/components/credit-packages';
 import { MyModels } from '@/components/my-models';
 import { Button } from '@/components/ui/button';
 import { BankTransferModal } from '@/components/bank-transfer-modal';
+import { ChatThread } from '@/components/chat-thread';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,10 +198,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type DashTab = 'inicio' | 'servicios' | 'historial';
+type DashTab = 'inicio' | 'servicios' | 'historial' | 'soporte';
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
 
   const [userData, setUserData]             = useState<UserData | null>(null);
   const [isLoading, setIsLoading]           = useState(true);
@@ -237,6 +239,13 @@ export default function DashboardPage() {
       fetchReferrals();
     }
   }, [status]);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'soporte' || tab === 'inicio' || tab === 'servicios' || tab === 'historial') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const fetchUserData = async () => {
     try {
@@ -437,6 +446,7 @@ export default function DashboardPage() {
     { id: 'inicio',    label: 'Inicio',    icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'servicios', label: 'Servicios', icon: <Wrench className="w-4 h-4" /> },
     { id: 'historial', label: 'Historial', icon: <History className="w-4 h-4" /> },
+    { id: 'soporte',   label: 'Soporte',   icon: <MessageSquare className="w-4 h-4" /> },
   ];
 
   return (
@@ -919,6 +929,27 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
+          {/* ── SOPORTE ───────────────────────────────────────────────────── */}
+          {activeTab === 'soporte' && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} key="soporte">
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <h2 className="text-lg font-semibold">Soporte</h2>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Comunícate directamente con el administrador si tienes algún problema con un servicio o tu cuenta.
+                </p>
+                <ChatThread
+                  fetchUrl="/api/chat"
+                  postUrl="/api/chat"
+                  mySender="USER"
+                  emptyLabel="Aún no has iniciado una conversación con soporte."
+                />
+              </div>
+            </motion.div>
+          )}
+
         </div>
       </main>
 
@@ -1024,5 +1055,19 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

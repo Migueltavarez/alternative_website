@@ -27,6 +27,11 @@ model User {
   verificationTokenExpiry DateTime?
   isStudent               Boolean   @default(false)
 
+  // Profile data
+  phone             String?
+  cedula            String?
+  birthDate         DateTime?
+
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -40,6 +45,38 @@ model User {
   printJobs         PrintJob[]      @relation("ClientJobs")
   workerJobs        PrintJob[]      @relation("WorkerJobs")
   workerProfile     WorkerProfile?
+  addresses         UserAddress[]
+  chatMessages      ChatMessage[]
+}
+
+model UserAddress {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label         String   // e.g. "Casa", "Oficina"
+  recipientName String
+  phone         String
+  street        String
+  sector        String
+  city          String
+  province      String
+  notes         String?
+  isDefault     Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender      String   // 'USER' | 'ADMIN'
+  content     String
+  readByUser  Boolean  @default(false)
+  readByAdmin Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
 }
 
 model WorkerProfile {

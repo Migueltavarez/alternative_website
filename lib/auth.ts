@@ -29,6 +29,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase() },
+          include: { addresses: { select: { id: true } } },
         });
 
         if (!user || !user.password) {
@@ -45,6 +46,8 @@ export const authOptions: NextAuthOptions = {
           throw new Error('EMAIL_NOT_VERIFIED');
         }
 
+        const profileComplete = !!(user.phone && user.cedula && user.birthDate && user.addresses.length > 0);
+
         return {
           id: user.id,
           email: user.email,
@@ -53,6 +56,7 @@ export const authOptions: NextAuthOptions = {
           image: user.image,
           isStudent: user.isStudent,
           emailVerified: user.emailVerified,
+          profileComplete,
         };
       },
     }),
@@ -64,6 +68,7 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.isStudent = (user as any).isStudent;
         token.emailVerified = (user as any).emailVerified;
+        token.profileComplete = (user as any).profileComplete;
       }
 
       if (trigger === 'update' && session) {
@@ -77,6 +82,16 @@ export const authOptions: NextAuthOptions = {
           });
           if (dbUser) token.role = dbUser.role;
         }
+        // Refresh profile completion flag after the user fills in their data
+        if (session.refreshProfile) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            include: { addresses: { select: { id: true } } },
+          });
+          if (dbUser) {
+            token.profileComplete = !!(dbUser.phone && dbUser.cedula && dbUser.birthDate && dbUser.addresses.length > 0);
+          }
+        }
       }
 
       return token;
@@ -86,6 +101,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).isStudent = token.isStudent;
+        (session.user as any).profileComplete = token.profileComplete;
       }
       return session;
     },

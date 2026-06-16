@@ -84,6 +84,7 @@ export async function getUserById(id: string) {
     where: { id },
     include: {
       subscription: true,
+      addresses: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
       referralsGiven: {
         include: {
           referredUser: {
@@ -92,6 +93,16 @@ export async function getUserById(id: string) {
         },
       },
     },
+  });
+}
+
+export async function updateUserProfile(
+  userId: string,
+  data: { phone?: string; cedula?: string; birthDate?: Date }
+) {
+  return prisma.user.update({
+    where: { id: userId },
+    data,
   });
 }
 

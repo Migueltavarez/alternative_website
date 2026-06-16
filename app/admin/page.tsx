@@ -13,8 +13,17 @@ import {
 import { PRICE_STATUS_LABELS } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/navbar';
+import { ChatThread } from '@/components/chat-thread';
 import { formatCurrency, formatDate, getStatusColor, getPlanBadgeColor } from '@/lib/utils';
 import { PLANS } from '@/lib/stripe';
+
+interface ChatConversation {
+  userId: string;
+  name: string | null;
+  email: string;
+  lastMessage: { content: string; createdAt: string; sender: 'USER' | 'ADMIN' };
+  unreadCount: number;
+}
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -29,7 +38,9 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones'>('trabajos');
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes'>('trabajos');
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [selectedConvUserId, setSelectedConvUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -40,6 +51,7 @@ export default function AdminPage() {
         router.push('/dashboard');
       } else {
         fetchData();
+        fetchConversations();
       }
     }
   }, [status, session, router]);
@@ -76,6 +88,25 @@ export default function AdminPage() {
       setLoading(false);
     }
   };
+
+  const fetchConversations = async () => {
+    try {
+      const res = await fetch('/api/admin/chat');
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'mensajes') return;
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 7000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     setActionLoading(userId);
@@ -478,6 +509,7 @@ export default function AdminPage() {
               { key: 'trabajos', label: 'Trabajos', icon: ListChecks },
               { key: 'usuarios', label: 'Usuarios', icon: Users },
               { key: 'suscripciones', label: 'Suscripciones', icon: CreditCard },
+              { key: 'mensajes', label: 'Mensajes', icon: MessageSquare },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -490,6 +522,11 @@ export default function AdminPage() {
               >
                 <Icon className="w-4 h-4" />
                 {label}
+                {key === 'mensajes' && conversations.reduce((sum, c) => sum + c.unreadCount, 0) > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-semibold">
+                    {conversations.reduce((sum, c) => sum + c.unreadCount, 0)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -1412,6 +1449,62 @@ export default function AdminPage() {
           </motion.div>
 
           </>)}
+
+          {/* ══════════════════ TAB: MENSAJES ══════════════════ */}
+          {activeTab === 'mensajes' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <h2 className="text-2xl font-bold mb-6">Mensajes de Soporte</h2>
+              <div className="glass rounded-2xl overflow-hidden grid md:grid-cols-3">
+                <div className="border-r border-border max-h-[70vh] overflow-y-auto">
+                  {conversations.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                      No hay conversaciones aún
+                    </div>
+                  ) : (
+                    conversations
+                      .slice()
+                      .sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime())
+                      .map((c) => (
+                        <button
+                          key={c.userId}
+                          onClick={() => setSelectedConvUserId(c.userId)}
+                          className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors ${
+                            selectedConvUserId === c.userId ? 'bg-accent' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-sm truncate">{c.name || c.email}</p>
+                            {c.unreadCount > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
+                                {c.unreadCount}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {c.lastMessage.sender === 'ADMIN' ? 'Tú: ' : ''}{c.lastMessage.content}
+                          </p>
+                        </button>
+                      ))
+                  )}
+                </div>
+                <div className="md:col-span-2 p-4">
+                  {selectedConvUserId ? (
+                    <ChatThread
+                      key={selectedConvUserId}
+                      fetchUrl={`/api/admin/chat/${selectedConvUserId}`}
+                      postUrl={`/api/admin/chat/${selectedConvUserId}`}
+                      mySender="ADMIN"
+                      emptyLabel="Aún no hay mensajes en esta conversación."
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-[50vh] text-muted-foreground text-sm">
+                      Selecciona una conversación
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
