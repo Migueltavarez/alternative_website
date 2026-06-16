@@ -22,7 +22,7 @@ ssh $VPS "
   cd $REMOTE_DIR
   docker compose build
   docker compose up -d
-  docker compose exec app node_modules/.bin/prisma db push --skip-generate || true
+  docker compose exec -T app node node_modules/prisma/build/index.js db push --skip-generate
 "
 
 echo "==> Deploy completado"
