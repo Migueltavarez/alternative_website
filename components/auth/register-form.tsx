@@ -42,7 +42,7 @@ export function RegisterForm() {
         return;
       }
 
-      router.push('/verify-email');
+      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch {
       setGlobalError('Something went wrong. Please try again.');
     }

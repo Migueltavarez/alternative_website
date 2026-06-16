@@ -15,6 +15,9 @@ import { Input, Label } from '@/components/ui/input';
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
@@ -28,8 +31,25 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
+  const handleResend = async () => {
+    if (!unverifiedEmail) return;
+    setResendLoading(true);
+    try {
+      await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: unverifiedEmail }),
+      });
+      setResendDone(true);
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   const onSubmit = async (data: LoginInput) => {
     setError('');
+    setUnverifiedEmail('');
+    setResendDone(false);
 
     try {
       const result = await signIn('credentials', {
@@ -38,12 +58,29 @@ export function LoginForm() {
         redirect: false,
       });
 
-      if (result?.error === 'EMAIL_NOT_VERIFIED') {
-        setError('Debes verificar tu correo antes de iniciar sesión. Revisa tu inbox.');
-        return;
-      }
+      if (!result?.ok) {
+        const isNotVerified =
+          result?.error === 'EMAIL_NOT_VERIFIED' ||
+          result?.error?.includes('EMAIL_NOT_VERIFIED');
 
-      if (result?.error) {
+        if (isNotVerified) {
+          setError('Debes verificar tu correo antes de iniciar sesión.');
+          setUnverifiedEmail(data.email);
+          return;
+        }
+
+        const res = await fetch('/api/auth/resend-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: data.email, checkOnly: true }),
+        });
+        const { unverified } = await res.json();
+        if (unverified) {
+          setError('Debes verificar tu correo antes de iniciar sesión.');
+          setUnverifiedEmail(data.email);
+          return;
+        }
+
         setError('Email o contraseña incorrectos');
         return;
       }
@@ -51,7 +88,7 @@ export function LoginForm() {
       router.push('/dashboard');
       router.refresh();
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError('Algo salió mal. Intenta de nuevo.');
     }
   };
 
@@ -83,6 +120,22 @@ export function LoginForm() {
           {error && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
               {error}
+              {unverifiedEmail && (
+                <div className="mt-2">
+                  {resendDone ? (
+                    <p className="text-green-400 text-xs">Correo de verificación reenviado. Revisa tu inbox.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resendLoading}
+                      className="text-xs underline text-red-400 hover:text-red-300 disabled:opacity-50"
+                    >
+                      {resendLoading ? 'Enviando...' : 'Reenviar correo de verificación'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

@@ -8,7 +8,7 @@ import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
   CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
-  DollarSign, ExternalLink, CheckCircle2, Coins,
+  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks,
 } from 'lucide-react';
 import { PRICE_STATUS_LABELS } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones'>('trabajos');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -471,111 +472,30 @@ export default function AdminPage() {
             </motion.div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mb-8"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Distribución por plan</h2>
-              <Button variant="outline" size="sm" onClick={fetchData}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Actualizar
-              </Button>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              {['BASIC', 'PRO', 'PREMIUM'].map((plan) => (
-                <div key={plan} className="glass rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="font-semibold">{PLANS[plan as keyof typeof PLANS]?.name}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(plan)}`}>
-                      {plan}
-                    </span>
-                  </div>
-                  <div className="text-3xl font-bold">{stats?.byPlan?.[plan] || 0}</div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {formatCurrency((stats?.byPlan?.[plan] || 0) * (PLANS[plan as keyof typeof PLANS]?.price || 0))}/mes
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+          {/* ── Tabs ─────────────────────────────────────────────────── */}
+          <div className="flex gap-1 mb-8 p-1 glass rounded-xl w-fit">
+            {([
+              { key: 'trabajos', label: 'Trabajos', icon: ListChecks },
+              { key: 'usuarios', label: 'Usuarios', icon: Users },
+              { key: 'suscripciones', label: 'Suscripciones', icon: CreditCard },
+            ] as const).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === key
+                    ? 'bg-primary text-white shadow'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55 }}
-            className="mb-8"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <CalendarClock className="w-6 h-6 text-blue-500" />
-              <h2 className="text-2xl font-bold">Próximos Cobros del Mes</h2>
-            </div>
-            <div className="glass rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-accent/50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Monto</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Próximo Cobro</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {subscriptions
-                      .filter((sub: any) => sub.status === 'active' && new Date(sub.currentPeriodEnd) > new Date())
-                      .sort((a: any, b: any) => new Date(a.currentPeriodEnd).getTime() - new Date(b.currentPeriodEnd).getTime())
-                      .slice(0, 10)
-                      .map((sub: any) => (
-                        <tr key={sub.id}>
-                          <td className="px-6 py-4">
-                            <div className="font-medium">{sub.user?.name || 'Usuario'}</div>
-                            <div className="text-sm text-muted-foreground">{sub.user?.email}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(sub.plan)}`}>
-                              {sub.plan}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-green-500">
-                            {formatCurrency(PLANS[sub.plan as keyof typeof PLANS]?.price || 0)}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-medium">
-                              {formatDate(sub.currentPeriodEnd)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {Math.ceil((new Date(sub.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            {sub.cancelAtPeriodEnd ? (
-                              <span className="flex items-center gap-1 text-yellow-500 text-sm">
-                                <AlertCircle className="w-4 h-4" />
-                                Cancelará
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-green-500 text-sm">
-                                <CreditCard className="w-4 h-4" />
-                                Activo
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-                {subscriptions.filter((sub: any) => sub.status === 'active').length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground">
-                    No hay suscripciones activas
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
+          {/* ══════════════════ TAB: TRABAJOS ══════════════════ */}
+          {activeTab === 'trabajos' && (<>
 
           {/* Pending credit purchases */}
           {creditPurchases.filter((p: any) => p.status === 'proof_uploaded').length > 0 && (
@@ -655,94 +575,14 @@ export default function AdminPage() {
             </motion.div>
           )}
 
-          {/* Pending subscription payments */}
-          {subscriptions.filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment').length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.64 }}
-              className="mb-8"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <CreditCard className="w-6 h-6 text-blue-400" />
-                <h2 className="text-2xl font-bold">Suscripciones Pendientes</h2>
-                <span className="px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-400 font-semibold">
-                  {subscriptions.filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment').length}
-                </span>
-              </div>
-              <div className="glass rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-accent/50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Banco</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Comprobante</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {subscriptions
-                        .filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment')
-                        .map((s: any) => (
-                          <tr key={s.id}>
-                            <td className="px-6 py-4">
-                              <div className="font-medium">{s.user?.name || 'Usuario'}</div>
-                              <div className="text-sm text-muted-foreground">{s.user?.email}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(s.plan)}`}>
-                                {s.plan}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-xs text-yellow-400 font-medium">
-                                {s.status === 'proof_uploaded' ? 'Comprobante enviado' : 'Esperando pago'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm">{s.paymentMethod || '—'}</td>
-                            <td className="px-6 py-4">
-                              {s.paymentProofUrl ? (
-                                <a
-                                  href={s.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-sm text-blue-400 hover:underline"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Ver
-                                </a>
-                              ) : '—'}
-                            </td>
-                            <td className="px-6 py-4">
-                              {s.status === 'proof_uploaded' && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleConfirmSubscription(s.id)}
-                                  disabled={actionLoading === s.id}
-                                  isLoading={actionLoading === s.id}
-                                  className="bg-green-600 hover:bg-green-700 text-white"
-                                >
-                                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                                  Activar
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </motion.div>
-          )}
+          </>)}
 
+          {/* ══════════════════ TAB: USUARIOS ══════════════════ */}
+          {activeTab === 'usuarios' && (<>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: 0.1 }}
             className="mb-8"
           >
             <h2 className="text-2xl font-bold mb-6">Usuarios</h2>
@@ -855,10 +695,178 @@ export default function AdminPage() {
             </div>
           </motion.div>
 
+          </>)}
+
+          {/* ══════════════════ TAB: SUSCRIPCIONES ══════════════════ */}
+          {activeTab === 'suscripciones' && (<>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Distribución por plan</h2>
+              <Button variant="outline" size="sm" onClick={fetchData}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Actualizar
+              </Button>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4 mb-8">
+              {['BASIC', 'PRO', 'PREMIUM'].map((plan) => (
+                <div key={plan} className="glass rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-semibold">{PLANS[plan as keyof typeof PLANS]?.name}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(plan)}`}>{plan}</span>
+                  </div>
+                  <div className="text-3xl font-bold">{stats?.byPlan?.[plan] || 0}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {formatCurrency((stats?.byPlan?.[plan] || 0) * (PLANS[plan as keyof typeof PLANS]?.price || 0))}/mes
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <CalendarClock className="w-6 h-6 text-blue-500" />
+              <h2 className="text-2xl font-bold">Próximos Cobros del Mes</h2>
+            </div>
+            <div className="glass rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-accent/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Monto</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Próximo Cobro</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {subscriptions
+                      .filter((sub: any) => sub.status === 'active' && new Date(sub.currentPeriodEnd) > new Date())
+                      .sort((a: any, b: any) => new Date(a.currentPeriodEnd).getTime() - new Date(b.currentPeriodEnd).getTime())
+                      .slice(0, 10)
+                      .map((sub: any) => (
+                        <tr key={sub.id}>
+                          <td className="px-6 py-4">
+                            <div className="font-medium">{sub.user?.name || 'Usuario'}</div>
+                            <div className="text-sm text-muted-foreground">{sub.user?.email}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(sub.plan)}`}>{sub.plan}</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-semibold text-green-500">
+                            {formatCurrency(PLANS[sub.plan as keyof typeof PLANS]?.price || 0)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium">{formatDate(sub.currentPeriodEnd)}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {Math.ceil((new Date(sub.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {sub.cancelAtPeriodEnd ? (
+                              <span className="flex items-center gap-1 text-yellow-500 text-sm"><AlertCircle className="w-4 h-4" />Cancelará</span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-green-500 text-sm"><CreditCard className="w-4 h-4" />Activo</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+                {subscriptions.filter((sub: any) => sub.status === 'active').length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">No hay suscripciones activas</div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
+          {subscriptions.filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment').length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-8"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <CreditCard className="w-6 h-6 text-blue-400" />
+                <h2 className="text-2xl font-bold">Suscripciones Pendientes</h2>
+                <span className="px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-400 font-semibold">
+                  {subscriptions.filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment').length}
+                </span>
+              </div>
+              <div className="glass rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-accent/50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Banco</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Comprobante</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {subscriptions
+                        .filter((s: any) => s.status === 'proof_uploaded' || s.status === 'pending_payment')
+                        .map((s: any) => (
+                          <tr key={s.id}>
+                            <td className="px-6 py-4">
+                              <div className="font-medium">{s.user?.name || 'Usuario'}</div>
+                              <div className="text-sm text-muted-foreground">{s.user?.email}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs ${getPlanBadgeColor(s.plan)}`}>{s.plan}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-xs text-yellow-400 font-medium">
+                                {s.status === 'proof_uploaded' ? 'Comprobante enviado' : 'Esperando pago'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm">{s.paymentMethod || '—'}</td>
+                            <td className="px-6 py-4">
+                              {s.paymentProofUrl ? (
+                                <a href={s.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-sm text-blue-400 hover:underline">
+                                  <ExternalLink className="w-3 h-3" />Ver
+                                </a>
+                              ) : '—'}
+                            </td>
+                            <td className="px-6 py-4">
+                              {s.status === 'proof_uploaded' && (
+                                <Button size="sm" onClick={() => handleConfirmSubscription(s.id)}
+                                  disabled={actionLoading === s.id} isLoading={actionLoading === s.id}
+                                  className="bg-green-600 hover:bg-green-700 text-white">
+                                  <CheckCircle2 className="w-4 h-4 mr-1" />Activar
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mb-8"
           >
             <h2 className="text-2xl font-bold mb-6">Todas las Suscripciones</h2>
             <div className="glass rounded-2xl overflow-hidden">
@@ -899,6 +907,11 @@ export default function AdminPage() {
               </div>
             </div>
           </motion.div>
+
+          </>)}
+
+          {/* ══════════════════ TAB: TRABAJOS (Makers + Cola) ══════════════════ */}
+          {activeTab === 'trabajos' && (<>
 
           {/* Workers section */}
           <motion.div
@@ -1397,6 +1410,8 @@ export default function AdminPage() {
               </div>
             </div>
           </motion.div>
+
+          </>)}
         </div>
       </div>
     </div>

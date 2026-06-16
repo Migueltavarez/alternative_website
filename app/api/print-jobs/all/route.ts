@@ -11,7 +11,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const existingUserIds = await prisma.user.findMany({ select: { id: true } }).then(u => u.map(u => u.id));
     const printJobs = await prisma.printJob.findMany({
+      where: { userId: { in: existingUserIds } },
       include: {
         user: {
           select: { id: true, name: true, email: true, credits: true },

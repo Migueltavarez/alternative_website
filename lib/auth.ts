@@ -52,6 +52,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           image: user.image,
           isStudent: user.isStudent,
+          emailVerified: user.emailVerified,
         };
       },
     }),
@@ -62,6 +63,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = (user as any).role;
         token.isStudent = (user as any).isStudent;
+        token.emailVerified = (user as any).emailVerified;
       }
 
       if (trigger === 'update' && session) {

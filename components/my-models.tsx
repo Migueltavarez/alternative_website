@@ -61,6 +61,7 @@ interface MyModelsProps {
   printJobs: PrintJob[];
   onRefresh: () => void;
   isStudent?: boolean;
+  formOnly?: boolean;
 }
 
 // ── Service icons ─────────────────────────────────────────────────────────────
@@ -121,8 +122,8 @@ function formatSeconds(s: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function MyModels({ printJobs, onRefresh, isStudent = false }: MyModelsProps) {
-  const [showForm, setShowForm]           = useState(false);
+export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = false }: MyModelsProps) {
+  const [showForm, setShowForm]           = useState(formOnly);
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
 
   // OctoPrint live data (polled every 10s for printing jobs)
@@ -441,13 +442,15 @@ export function MyModels({ printJobs, onRefresh, isStudent = false }: MyModelsPr
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Mis Trabajos de Impresión</h2>
-        <Button onClick={() => { setShowForm(!showForm); if (showForm) resetForm(); }}>
-          <Upload className="w-4 h-4 mr-2" />
-          Solicitar servicio
-        </Button>
-      </div>
+      {!formOnly && (
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Mis Trabajos de Impresión</h2>
+          <Button onClick={() => { setShowForm(!showForm); if (showForm) resetForm(); }}>
+            <Upload className="w-4 h-4 mr-2" />
+            Solicitar servicio
+          </Button>
+        </div>
+      )}
 
       {/* ── Request form ────────────────────────────────────────────── */}
       <AnimatePresence>
@@ -461,12 +464,14 @@ export function MyModels({ printJobs, onRefresh, isStudent = false }: MyModelsPr
             <div className="p-6">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-semibold">Nueva solicitud</h3>
-                <button
-                  onClick={() => { setShowForm(false); resetForm(); }}
-                  className="p-1 hover:bg-accent rounded-lg"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {!formOnly && (
+                  <button
+                    onClick={() => { setShowForm(false); resetForm(); }}
+                    className="p-1 hover:bg-accent rounded-lg"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -941,6 +946,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false }: MyModelsPr
       </AnimatePresence>
 
       {/* ── Job list ─────────────────────────────────────────────────── */}
+      {!formOnly && (<>
       {printJobs.length === 0 ? (
         <div className="glass rounded-2xl p-8 text-center">
           <Printer className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -1686,6 +1692,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false }: MyModelsPr
           </div>
         </motion.div>
       )}
+      </>)}
     </motion.div>
   );
 }

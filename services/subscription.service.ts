@@ -1,7 +1,9 @@
 import prisma from '@/lib/prisma';
 
 export async function getAllSubscriptions() {
+  const existingUserIds = await prisma.user.findMany({ select: { id: true } }).then(u => u.map(u => u.id));
   return prisma.subscription.findMany({
+    where: { userId: { in: existingUserIds } },
     include: {
       user: {
         select: {
