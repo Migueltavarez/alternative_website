@@ -1,10 +1,13 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
+
 const FROM = process.env.RESEND_FROM_EMAIL || 'Alternative 3D Studio <onboarding@resend.dev>';
 
-async function send(payload: Parameters<typeof resend.emails.send>[0]) {
-  const { data, error } = await resend.emails.send(payload);
+async function send(payload: Parameters<Resend['emails']['send']>[0]) {
+  const { data, error } = await getResend().emails.send(payload);
   if (error) throw new Error(`Resend error: ${JSON.stringify(error)}`);
   return data;
 }
