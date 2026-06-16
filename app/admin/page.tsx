@@ -8,9 +8,9 @@ import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
   CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
-  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks,
+  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool,
 } from 'lucide-react';
-import { PRICE_STATUS_LABELS } from '@/lib/print-constants';
+import { PRICE_STATUS_LABELS, SERVICE_MACHINE_TYPES, MACHINE_TYPES } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/navbar';
 import { ChatThread } from '@/components/chat-thread';
@@ -261,7 +261,9 @@ export default function AdminPage() {
     try {
       const body = value === ''
         ? { assignWorker: null }
-        : { assignWorker: { workerId: value.split(':')[0], machineId: value.split(':')[1] } };
+        : value.includes(':')
+          ? { assignWorker: { workerId: value.split(':')[0], machineId: value.split(':')[1] } }
+          : { assignWorker: { workerId: value, machineId: null } };
 
       await fetch(`/api/print-jobs/${jobId}`, {
         method: 'PATCH',
@@ -652,7 +654,8 @@ export default function AdminPage() {
                             className="bg-transparent border border-input rounded px-2 py-1 text-sm"
                           >
                             <option value="USER">USER</option>
-                            <option value="WORKER">WORKER</option>
+                            <option value="WORKER">WORKER (Printeo/Láser)</option>
+                            <option value="DESIGNER">DESIGNER</option>
                             <option value="ADMIN">ADMIN</option>
                           </select>
                         </td>
@@ -961,16 +964,16 @@ export default function AdminPage() {
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <Printer className="w-6 h-6 text-primary" />
                 Makers Registrados
-                <span className="text-base font-normal text-muted-foreground">({workers.length})</span>
+                <span className="text-base font-normal text-muted-foreground">({workers.filter((w: any) => w.user?.role !== 'DESIGNER').length})</span>
               </h2>
             </div>
-            {workers.length === 0 ? (
+            {workers.filter((w: any) => w.user?.role !== 'DESIGNER').length === 0 ? (
               <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
                 No hay makers registrados aún
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {workers.map((w: any) => {
+                {workers.filter((w: any) => w.user?.role !== 'DESIGNER').map((w: any) => {
                   const activeWorkerJobs = printJobs.filter(
                     (j) => j.assignedWorkerId === w.userId &&
                       ['assigned', 'accepted', 'printing'].includes(j.status)
@@ -1019,11 +1022,15 @@ export default function AdminPage() {
                               (j) => j.assignedMachineId === m.id &&
                                 ['assigned', 'accepted', 'printing'].includes(j.status)
                             ).length;
+                            const mType = m.machineType ?? 'printer_3d';
                             return (
                               <div key={m.id} className="p-2 rounded-lg bg-card border border-border text-xs">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className={`w-1.5 h-1.5 rounded-full ${m.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
                                   <span className="font-medium">{m.name}</span>
+                                  <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px]">
+                                    {MACHINE_TYPES.find((t) => t.value === mType)?.label}
+                                  </span>
                                   <div className="ml-auto flex items-center gap-1.5">
                                     {activeMachineJobs > 0 && (
                                       <span className="font-medium text-amber-400">{activeMachineJobs} activo{activeMachineJobs !== 1 ? 's' : ''}</span>
@@ -1031,12 +1038,82 @@ export default function AdminPage() {
                                     <span className="text-muted-foreground">{m.completedJobs} done</span>
                                   </div>
                                 </div>
-                                <p className="text-muted-foreground truncate">{m.supportedFilaments.join(', ')}</p>
+                                <p className="text-muted-foreground truncate">
+                                  {mType === 'laser' ? `${m.laserType ?? ''} · ${m.dimensions ?? ''}` : m.supportedFilaments.join(', ')}
+                                </p>
                               </div>
                             );
                           })}
                         </div>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Designers section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.87 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <PenTool className="w-6 h-6 text-pink-400" />
+                Diseñadores
+                <span className="text-base font-normal text-muted-foreground">({workers.filter((w: any) => w.user?.role === 'DESIGNER').length})</span>
+              </h2>
+            </div>
+            {workers.filter((w: any) => w.user?.role === 'DESIGNER').length === 0 ? (
+              <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
+                No hay diseñadores asignados aún. Asígnalos desde la pestaña Usuarios.
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {workers.filter((w: any) => w.user?.role === 'DESIGNER').map((w: any) => {
+                  const activeWorkerJobs = printJobs.filter(
+                    (j) => j.assignedWorkerId === w.userId &&
+                      ['assigned', 'accepted', 'printing'].includes(j.status)
+                  ).length;
+                  return (
+                    <div key={w.id} className="glass rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold">{w.user?.name || 'Sin nombre'}</p>
+                          <p className="text-xs text-muted-foreground">{w.user?.email}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{w.completedJobs} completados</span>
+                            {activeWorkerJobs > 0 && (
+                              <span className="text-xs font-medium text-amber-400">{activeWorkerJobs} activo{activeWorkerJobs !== 1 ? 's' : ''}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${w.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                          <button
+                            onClick={async () => {
+                              setActionLoading(w.id);
+                              try {
+                                await fetch('/api/workers/all', {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ workerId: w.id, isActive: !w.isActive }),
+                                });
+                                fetchData();
+                              } finally {
+                                setActionLoading(null);
+                              }
+                            }}
+                            disabled={actionLoading === w.id}
+                            className="text-xs px-2 py-1 rounded border border-border hover:bg-accent transition-colors"
+                          >
+                            {w.isActive ? 'Pausar' : 'Activar'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1166,54 +1243,64 @@ export default function AdminPage() {
                             ) : (
                               <span className="text-muted-foreground text-xs">Sin asignar</span>
                             )
-                          ) : (
-                            <div className="flex flex-col gap-1.5">
-                              {job.assignedWorker && !(jobId => assignSelections[jobId] !== undefined)(job.id) && (
-                                <div className="text-xs">
-                                  <span className="font-medium">{job.assignedWorker.name || job.assignedWorker.email}</span>
-                                  <span className="text-muted-foreground block">{job.assignedMachine?.name}</span>
-                                </div>
-                              )}
-                              <select
-                                value={assignSelections[job.id] ?? (
-                                  job.assignedWorkerId && job.assignedMachineId
-                                    ? `${job.assignedWorkerId}:${job.assignedMachineId}`
-                                    : ''
+                          ) : (() => {
+                            const currentValue = job.assignedWorkerId
+                              ? (job.assignedMachineId ? `${job.assignedWorkerId}:${job.assignedMachineId}` : job.assignedWorkerId)
+                              : '';
+                            const requiredTypes = SERVICE_MACHINE_TYPES[job.serviceType ?? 'print_3d'];
+                            const isDesign = job.serviceType === 'design';
+
+                            return (
+                              <div className="flex flex-col gap-1.5">
+                                {job.assignedWorker && !(jobId => assignSelections[jobId] !== undefined)(job.id) && (
+                                  <div className="text-xs">
+                                    <span className="font-medium">{job.assignedWorker.name || job.assignedWorker.email}</span>
+                                    {job.assignedMachine?.name && <span className="text-muted-foreground block">{job.assignedMachine.name}</span>}
+                                  </div>
                                 )}
-                                onChange={(e) =>
-                                  setAssignSelections((prev) => ({ ...prev, [job.id]: e.target.value }))
-                                }
-                                disabled={actionLoading === job.id}
-                                className="bg-transparent border border-input rounded px-2 py-1 text-xs w-44"
-                              >
-                                <option value="">Sin asignar</option>
-                                {workers.filter((w: any) => w.isActive).map((w: any) =>
-                                  w.machines?.filter((m: any) => m.isActive).map((m: any) => (
-                                    <option key={`${w.userId}:${m.id}`} value={`${w.userId}:${m.id}`}>
-                                      {w.user?.name || w.user?.email} — {m.name}
-                                    </option>
-                                  ))
-                                )}
-                              </select>
-                              <Button
-                                size="sm"
-                                onClick={() => handleAssignWorker(job.id)}
-                                disabled={
-                                  actionLoading === job.id ||
-                                  assignSelections[job.id] === undefined ||
-                                  assignSelections[job.id] === (
-                                    job.assignedWorkerId && job.assignedMachineId
-                                      ? `${job.assignedWorkerId}:${job.assignedMachineId}`
-                                      : ''
-                                  )
-                                }
-                                className="w-full text-xs h-7 gap-1"
-                              >
-                                <UserCheck className="w-3 h-3" />
-                                Asignar
-                              </Button>
-                            </div>
-                          )}
+                                <select
+                                  value={assignSelections[job.id] ?? currentValue}
+                                  onChange={(e) =>
+                                    setAssignSelections((prev) => ({ ...prev, [job.id]: e.target.value }))
+                                  }
+                                  disabled={actionLoading === job.id}
+                                  className="bg-transparent border border-input rounded px-2 py-1 text-xs w-44"
+                                >
+                                  <option value="">Sin asignar</option>
+                                  {isDesign
+                                    ? workers
+                                        .filter((w: any) => w.isActive && w.user?.role === 'DESIGNER')
+                                        .map((w: any) => (
+                                          <option key={w.userId} value={w.userId}>
+                                            {w.user?.name || w.user?.email}
+                                          </option>
+                                        ))
+                                    : workers.filter((w: any) => w.isActive).map((w: any) =>
+                                        w.machines
+                                          ?.filter((m: any) => m.isActive && (!requiredTypes || requiredTypes.includes(m.machineType ?? 'printer_3d')))
+                                          .map((m: any) => (
+                                            <option key={`${w.userId}:${m.id}`} value={`${w.userId}:${m.id}`}>
+                                              {w.user?.name || w.user?.email} — {m.name}
+                                            </option>
+                                          ))
+                                      )}
+                                </select>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAssignWorker(job.id)}
+                                  disabled={
+                                    actionLoading === job.id ||
+                                    assignSelections[job.id] === undefined ||
+                                    assignSelections[job.id] === currentValue
+                                  }
+                                  className="w-full text-xs h-7 gap-1"
+                                >
+                                  <UserCheck className="w-3 h-3" />
+                                  Asignar
+                                </Button>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">

@@ -22,19 +22,25 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (!machine) return NextResponse.json({ error: 'Máquina no encontrada' }, { status: 404 });
 
     const body = await request.json();
-    const { name, description, supportedColors, supportedFilaments, supportedNozzles, isActive, octoprintUrl, octoprintApiKey } = body;
+    const {
+      name, description, machineType, supportedColors, supportedFilaments, supportedNozzles,
+      isActive, octoprintUrl, octoprintApiKey, dimensions, laserType,
+    } = body;
 
     const updated = await prisma.printerMachine.update({
       where: { id: params.id },
       data: {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
+        ...(machineType !== undefined && { machineType }),
         ...(supportedColors && { supportedColors: JSON.stringify(supportedColors) }),
         ...(supportedFilaments && { supportedFilaments: JSON.stringify(supportedFilaments) }),
         ...(supportedNozzles && { supportedNozzles: JSON.stringify(supportedNozzles) }),
         ...(isActive !== undefined && { isActive }),
         ...(octoprintUrl !== undefined && { octoprintUrl: octoprintUrl || null }),
         ...(octoprintApiKey !== undefined && { octoprintApiKey: octoprintApiKey || null }),
+        ...(dimensions !== undefined && { dimensions: dimensions || null }),
+        ...(laserType !== undefined && { laserType: laserType || null }),
       },
     });
 

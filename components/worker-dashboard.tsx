@@ -9,15 +9,23 @@ import {
   Video, ExternalLink, Camera, Eye, EyeOff, Link, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES, MODEL_ISSUES, SERVICE_TYPES, RESIN_USES } from '@/lib/print-constants';
+import {
+  JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES,
+  MODEL_ISSUES, SERVICE_TYPES, RESIN_USES, MACHINE_TYPES, LASER_TYPES,
+} from '@/lib/print-constants';
+
+type MachineTypeValue = (typeof MACHINE_TYPES)[number]['value'];
 
 interface PrinterMachine {
   id: string;
   name: string;
   description?: string;
+  machineType?: MachineTypeValue;
   supportedColors: string[];
   supportedFilaments: string[];
   supportedNozzles: string[];
+  laserType?: string | null;
+  dimensions?: string | null;
   isActive: boolean;
   completedJobs: number;
   octoprintUrl?: string | null;
@@ -110,11 +118,14 @@ function MachineForm({
   onCancel: () => void;
   saving: boolean;
 }) {
+  const [machineType, setMachineType] = useState<MachineTypeValue>(initial?.machineType ?? 'printer_3d');
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [colors, setColors] = useState<string[]>(initial?.supportedColors ?? []);
   const [filaments, setFilaments] = useState<string[]>(initial?.supportedFilaments ?? []);
   const [nozzles, setNozzles] = useState<string[]>(initial?.supportedNozzles ?? []);
+  const [dimensions, setDimensions] = useState(initial?.dimensions ?? '');
+  const [laserType, setLaserType] = useState(initial?.laserType ?? '');
   const [octoprintUrl, setOctoprintUrl] = useState(initial?.octoprintUrl ?? '');
   const [octoprintApiKey, setOctoprintApiKey] = useState(initial?.octoprintApiKey ?? '');
   const [showApiKey, setShowApiKey] = useState(false);
@@ -123,27 +134,54 @@ function MachineForm({
 
   const submit = () => {
     if (!name.trim()) { setError('El nombre es requerido'); return; }
-    if (!colors.length) { setError('Selecciona al menos un color'); return; }
-    if (!filaments.length) { setError('Selecciona al menos un filamento'); return; }
-    if (!nozzles.length) { setError('Selecciona al menos un nozzle'); return; }
-    if (octoprintUrl && !octoprintApiKey) { setError('Ingresa el API Key de OctoPrint'); return; }
+    if (machineType === 'laser') {
+      if (!dimensions.trim()) { setError('Indica las dimensiones del equipo'); return; }
+      if (!laserType) { setError('Selecciona el tipo de láser'); return; }
+    } else {
+      if (!colors.length) { setError('Selecciona al menos un color'); return; }
+      if (!filaments.length) { setError('Selecciona al menos un material'); return; }
+      if (machineType === 'printer_3d' && !nozzles.length) { setError('Selecciona al menos un nozzle'); return; }
+      if (octoprintUrl && !octoprintApiKey) { setError('Ingresa el API Key de OctoPrint'); return; }
+    }
     setError('');
     onSave({
       name: name.trim(),
       description: description || undefined,
-      supportedColors: colors,
-      supportedFilaments: filaments,
-      supportedNozzles: nozzles,
+      machineType,
+      supportedColors: machineType === 'laser' ? [] : colors,
+      supportedFilaments: machineType === 'laser' ? [] : filaments,
+      supportedNozzles: machineType === 'printer_3d' ? nozzles : [],
       isActive: initial?.isActive ?? true,
-      octoprintUrl: octoprintUrl.trim() || null,
-      octoprintApiKey: octoprintApiKey.trim() || null,
+      octoprintUrl: machineType === 'printer_3d' ? (octoprintUrl.trim() || null) : null,
+      octoprintApiKey: machineType === 'printer_3d' ? (octoprintApiKey.trim() || null) : null,
+      dimensions: machineType === 'laser' ? dimensions.trim() : null,
+      laserType: machineType === 'laser' ? laserType : null,
     });
   };
 
   return (
     <div className="space-y-4 pt-2">
       <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Nombre de la máquina *</label>
+        <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tipo de equipo *</label>
+        <div className="flex gap-2">
+          {MACHINE_TYPES.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setMachineType(t.value)}
+              className={`flex-1 px-2 py-2 rounded-lg text-xs font-medium border transition-all ${
+                machineType === t.value
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background border-border hover:border-primary/50'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Nombre del equipo *</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -160,11 +198,55 @@ function MachineForm({
           className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
         />
       </div>
-      <MultiSelect label="Colores disponibles *" options={FILAMENT_COLORS} selected={colors} onChange={setColors} />
-      <MultiSelect label="Tipos de filamento *" options={FILAMENT_TYPES} selected={filaments} onChange={setFilaments} />
-      <MultiSelect label="Tamaños de nozzle *" options={NOZZLE_SIZES} selected={nozzles} onChange={setNozzles} />
 
-      {/* ── OctoPrint / Cloudflare Tunnel ── */}
+      {machineType === 'laser' ? (
+        <>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Dimensiones del equipo *</label>
+            <input
+              value={dimensions}
+              onChange={(e) => setDimensions(e.target.value)}
+              placeholder="Ej: Área de trabajo 60x90cm"
+              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tipo de láser *</label>
+            <div className="flex gap-1.5">
+              {LASER_TYPES.map((lt) => (
+                <button
+                  key={lt}
+                  type="button"
+                  onClick={() => setLaserType(lt)}
+                  className={`px-3 py-1.5 rounded-full text-xs border transition-all ${
+                    laserType === lt
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border hover:border-primary/50'
+                  }`}
+                >
+                  {lt}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <MultiSelect label="Colores disponibles *" options={FILAMENT_COLORS} selected={colors} onChange={setColors} />
+          <MultiSelect
+            label={machineType === 'resin' ? 'Tipos de resina *' : 'Tipos de filamento *'}
+            options={FILAMENT_TYPES}
+            selected={filaments}
+            onChange={setFilaments}
+          />
+          {machineType === 'printer_3d' && (
+            <MultiSelect label="Tamaños de nozzle *" options={NOZZLE_SIZES} selected={nozzles} onChange={setNozzles} />
+          )}
+        </>
+      )}
+
+      {/* ── OctoPrint / Cloudflare Tunnel (solo impresoras 3D) ── */}
+      {machineType === 'printer_3d' && (
       <div className="pt-2 border-t border-border space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-green-400 flex items-center gap-1.5">
@@ -233,6 +315,7 @@ function MachineForm({
           </div>
         )}
       </div>
+      )}
 
       {error && <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
       <div className="flex gap-2 pt-1">
@@ -247,7 +330,7 @@ function MachineForm({
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
-export function WorkerDashboard() {
+export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGNER' }) {
   const [jobs, setJobs] = useState<WorkerJob[]>([]);
   const [profile, setProfile] = useState<WorkerProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -310,7 +393,7 @@ export function WorkerDashboard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al procesar');
-      const msg = { accept: '¡Trabajo aceptado! Prepara los materiales.', start: 'Impresión iniciada.', complete: 'Trabajo completado.' }[action];
+      const msg = { accept: '¡Trabajo aceptado! Prepara los materiales.', start: 'Trabajo iniciado.', complete: 'Trabajo completado.' }[action];
       showNotification('success', msg);
       setCameraModal(null);
       await fetchData();
@@ -545,12 +628,29 @@ export function WorkerDashboard() {
         )}
       </AnimatePresence>
 
+      {/* Profile-level pause toggle (always visible) */}
+      {profile && (
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+          <span className={`w-2.5 h-2.5 rounded-full ${profile.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+          <span className="text-sm flex-1">
+            {profile.isActive ? 'Perfil activo — recibiendo trabajos' : 'Perfil pausado — no recibirás nuevos trabajos'}
+          </span>
+          <button
+            onClick={handleToggleWorker}
+            className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors"
+          >
+            {profile.isActive ? 'Pausar todo' : 'Reactivar'}
+          </button>
+        </div>
+      )}
+
       {/* ── My Machines ────────────────────────────────────────────── */}
+      {role !== 'DESIGNER' && (
       <section>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <Printer className="w-5 h-5 text-primary" />
-            Mis Máquinas
+            Mis Equipos
             <span className="text-sm font-normal text-muted-foreground">({profile?.machines.length ?? 0})</span>
           </h3>
           <div className="flex items-center gap-2">
@@ -558,26 +658,10 @@ export function WorkerDashboard() {
               <RefreshCw className="w-4 h-4" />
             </button>
             <Button onClick={() => { setShowAddMachine(true); setEditingMachineId(null); }} className="text-sm">
-              <Plus className="w-4 h-4 mr-1" /> Agregar máquina
+              <Plus className="w-4 h-4 mr-1" /> Agregar equipo
             </Button>
           </div>
         </div>
-
-        {/* Worker-level pause toggle */}
-        {profile && (
-          <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-card border border-border">
-            <span className={`w-2.5 h-2.5 rounded-full ${profile.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
-            <span className="text-sm flex-1">
-              {profile.isActive ? 'Perfil activo — recibiendo trabajos' : 'Perfil pausado — no recibirás nuevos trabajos'}
-            </span>
-            <button
-              onClick={handleToggleWorker}
-              className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors"
-            >
-              {profile.isActive ? 'Pausar todo' : 'Reactivar'}
-            </button>
-          </div>
-        )}
 
         {/* Add machine form */}
         <AnimatePresence>
@@ -611,6 +695,9 @@ export function WorkerDashboard() {
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${m.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
                         <p className="font-semibold truncate">{m.name}</p>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary shrink-0">
+                          {MACHINE_TYPES.find((t) => t.value === (m.machineType ?? 'printer_3d'))?.label}
+                        </span>
                       </div>
                       {m.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{m.description}</p>}
                       <p className="text-xs text-muted-foreground mt-1">{m.completedJobs} trabajos completados</p>
@@ -643,25 +730,46 @@ export function WorkerDashboard() {
 
                   {/* Capabilities summary */}
                   <div className="space-y-1.5 text-xs">
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-muted-foreground mr-1">🎨</span>
-                      {m.supportedColors.slice(0, 5).map((c) => (
-                        <span key={c} className="px-1.5 py-0.5 rounded bg-accent">{c}</span>
-                      ))}
-                      {m.supportedColors.length > 5 && <span className="px-1.5 py-0.5 rounded bg-accent">+{m.supportedColors.length - 5}</span>}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-muted-foreground mr-1">🧵</span>
-                      {m.supportedFilaments.map((f) => (
-                        <span key={f} className="px-1.5 py-0.5 rounded bg-accent">{f}</span>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      <span className="text-muted-foreground mr-1">⚙️</span>
-                      {m.supportedNozzles.map((n) => (
-                        <span key={n} className="px-1.5 py-0.5 rounded bg-accent">{n}</span>
-                      ))}
-                    </div>
+                    {(m.machineType ?? 'printer_3d') === 'laser' ? (
+                      <>
+                        {m.dimensions && (
+                          <div className="flex flex-wrap gap-1">
+                            <span className="text-muted-foreground mr-1">📐</span>
+                            <span className="px-1.5 py-0.5 rounded bg-accent">{m.dimensions}</span>
+                          </div>
+                        )}
+                        {m.laserType && (
+                          <div className="flex flex-wrap gap-1">
+                            <span className="text-muted-foreground mr-1">⚡</span>
+                            <span className="px-1.5 py-0.5 rounded bg-accent">{m.laserType}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-muted-foreground mr-1">🎨</span>
+                          {m.supportedColors.slice(0, 5).map((c) => (
+                            <span key={c} className="px-1.5 py-0.5 rounded bg-accent">{c}</span>
+                          ))}
+                          {m.supportedColors.length > 5 && <span className="px-1.5 py-0.5 rounded bg-accent">+{m.supportedColors.length - 5}</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-muted-foreground mr-1">🧵</span>
+                          {m.supportedFilaments.map((f) => (
+                            <span key={f} className="px-1.5 py-0.5 rounded bg-accent">{f}</span>
+                          ))}
+                        </div>
+                        {m.machineType !== 'resin' && (
+                          <div className="flex flex-wrap gap-1">
+                            <span className="text-muted-foreground mr-1">⚙️</span>
+                            {m.supportedNozzles.map((n) => (
+                              <span key={n} className="px-1.5 py-0.5 rounded bg-accent">{n}</span>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -686,6 +794,7 @@ export function WorkerDashboard() {
           </div>
         )}
       </section>
+      )}
 
       {/* ── Active Jobs ─────────────────────────────────────────────── */}
       <section>
@@ -802,11 +911,22 @@ export function WorkerDashboard() {
                           <CheckCircle className="w-4 h-4 mr-2" />Aceptar corrección
                         </Button>
                       )}
-                      {job.status === 'accepted' && (
-                        <Button className="flex-1" onClick={() => setCameraModal({ jobId: job.id, cameraUrl: '' })} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-start`}>
-                          <Play className="w-4 h-4 mr-2" />Iniciar impresión
-                        </Button>
-                      )}
+                      {job.status === 'accepted' && (() => {
+                        const usesCamera = !job.serviceType || ['print_3d', 'resin', 'plans'].includes(job.serviceType);
+                        const startLabel = job.serviceType === 'laser' ? 'Iniciar corte'
+                          : job.serviceType === 'design' ? 'Iniciar diseño'
+                          : 'Iniciar impresión';
+                        return (
+                          <Button
+                            className="flex-1"
+                            onClick={() => usesCamera ? setCameraModal({ jobId: job.id, cameraUrl: '' }) : handleJobAction(job.id, 'start')}
+                            disabled={!!actionLoading}
+                            isLoading={actionLoading === `${job.id}-start`}
+                          >
+                            <Play className="w-4 h-4 mr-2" />{startLabel}
+                          </Button>
+                        );
+                      })()}
                       {job.status === 'printing' && (
                         <>
                           <Button className="flex-1" variant="outline" onClick={() => handleJobAction(job.id, 'complete')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-complete`}>
@@ -971,8 +1091,7 @@ export function WorkerDashboard() {
                   <div>
                     <p className="font-medium text-sm">{job.fileName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {job.color} · {job.filamentType}
-                      {job.assignedMachine && ` · ${job.assignedMachine.name}`}
+                      {[job.color, job.filamentType, job.assignedMachine?.name].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                 </div>

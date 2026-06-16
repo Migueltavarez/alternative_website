@@ -12,15 +12,51 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id;
     const body = await request.json();
-    const { machineName, machineDescription, supportedColors, supportedFilaments, supportedNozzles } = body;
+    const {
+      machineType = 'printer_3d',
+      machineName,
+      machineDescription,
+      supportedColors,
+      supportedFilaments,
+      supportedNozzles,
+      dimensions,
+      laserType,
+    } = body;
 
-    if (!machineName) {
-      return NextResponse.json({ error: 'El nombre de la máquina es requerido' }, { status: 400 });
+    if (!['printer_3d', 'resin', 'laser'].includes(machineType)) {
+      return NextResponse.json({ error: 'Tipo de equipo inválido' }, { status: 400 });
     }
-    if (!supportedColors?.length || !supportedFilaments?.length || !supportedNozzles?.length) {
+    if (!machineName) {
+      return NextResponse.json({ error: 'El nombre del equipo es requerido' }, { status: 400 });
+    }
+
+    if (machineType === 'laser') {
+      if (!dimensions || !laserType) {
+        return NextResponse.json(
+          { error: 'Indica las dimensiones y el tipo de láser del equipo' },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (!supportedColors?.length || !supportedFilaments?.length) {
+        return NextResponse.json(
+          { error: 'Debes seleccionar al menos un color y un tipo de material' },
+          { status: 400 }
+        );
+      }
+      if (machineType === 'printer_3d' && !supportedNozzles?.length) {
+        return NextResponse.json(
+          { error: 'Debes seleccionar al menos un tamaño de nozzle' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (currentUser?.role === 'DESIGNER' || currentUser?.role === 'ADMIN') {
       return NextResponse.json(
-        { error: 'Debes seleccionar al menos un color, tipo de filamento y tamaño de nozzle' },
-        { status: 400 }
+        { error: `Tu cuenta ya tiene asignado el rol de ${currentUser.role === 'DESIGNER' ? 'Diseñador' : 'Administrador'}. Contacta al administrador si también deseas registrar equipo.` },
+        { status: 409 }
       );
     }
 
@@ -38,9 +74,12 @@ export async function POST(request: NextRequest) {
             create: {
               name: machineName,
               description: machineDescription || null,
-              supportedColors: JSON.stringify(supportedColors),
-              supportedFilaments: JSON.stringify(supportedFilaments),
-              supportedNozzles: JSON.stringify(supportedNozzles),
+              machineType,
+              supportedColors: JSON.stringify(supportedColors ?? []),
+              supportedFilaments: JSON.stringify(supportedFilaments ?? []),
+              supportedNozzles: JSON.stringify(supportedNozzles ?? []),
+              laserType: machineType === 'laser' ? laserType : null,
+              dimensions: machineType === 'laser' ? dimensions : null,
             },
           },
         },

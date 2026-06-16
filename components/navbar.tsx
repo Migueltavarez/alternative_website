@@ -39,7 +39,9 @@ export function Navbar() {
 
   const user = session?.user as any;
   const isAdmin = user?.role === 'ADMIN';
-  const isWorker = user?.role === 'WORKER' || user?.role === 'ADMIN';
+  const isDesigner = user?.role === 'DESIGNER';
+  const isWorker = user?.role === 'WORKER' || user?.role === 'ADMIN' || isDesigner;
+  const workerPanelLabel = isDesigner ? 'Panel de Diseño' : 'Panel Maker';
 
   return (
     <motion.nav
@@ -106,7 +108,7 @@ export function Navbar() {
                 className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 <Printer className="w-4 h-4" />
-                Panel Maker
+                {workerPanelLabel}
               </a>
             )}
 
@@ -163,7 +165,7 @@ export function Navbar() {
                           onClick={() => setDropdownOpen(false)}
                         >
                           <Printer className="w-4 h-4" />
-                          Panel Maker
+                          {workerPanelLabel}
                         </Link>
                       )}
                       {isAdmin && (

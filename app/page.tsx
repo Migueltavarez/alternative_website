@@ -378,13 +378,13 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
-                {(session?.user as any)?.role === 'WORKER' || (session?.user as any)?.role === 'ADMIN' ? (
+                {['WORKER', 'DESIGNER', 'ADMIN'].includes((session?.user as any)?.role) ? (
                   <a
                     href="/worker"
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
                   >
                     <Printer className="w-4 h-4" />
-                    Ir a mi Panel de Maker
+                    {(session?.user as any)?.role === 'DESIGNER' ? 'Ir a mi Panel de Diseño' : 'Ir a mi Panel de Maker'}
                   </a>
                 ) : (
                   <Link

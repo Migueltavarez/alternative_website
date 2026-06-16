@@ -46,15 +46,25 @@ export async function PATCH(
         updateData.status = 'pending';
       } else {
         const { workerId, machineId } = assignWorker;
-        const machine = await prisma.printerMachine.findUnique({
-          where: { id: machineId },
-          include: { workerProfile: { select: { userId: true } } },
-        });
-        if (!machine || machine.workerProfile.userId !== workerId) {
-          return NextResponse.json({ error: 'Máquina o worker inválido' }, { status: 400 });
+
+        if (machineId) {
+          const machine = await prisma.printerMachine.findUnique({
+            where: { id: machineId },
+            include: { workerProfile: { select: { userId: true } } },
+          });
+          if (!machine || machine.workerProfile.userId !== workerId) {
+            return NextResponse.json({ error: 'Máquina o worker inválido' }, { status: 400 });
+          }
+        } else {
+          // Machine-less assignment (e.g. design jobs assigned to a Designer)
+          const workerProfile = await prisma.workerProfile.findUnique({ where: { userId: workerId } });
+          if (!workerProfile) {
+            return NextResponse.json({ error: 'Worker inválido' }, { status: 400 });
+          }
         }
+
         updateData.assignedWorkerId = workerId;
-        updateData.assignedMachineId = machineId;
+        updateData.assignedMachineId = machineId || null;
         updateData.assignedAt = new Date();
         updateData.acceptedAt = null;
         updateData.startedAt = null;

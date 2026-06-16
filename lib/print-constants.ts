@@ -33,6 +33,31 @@ export const DR_PROVINCES = [
   'Valverde',
 ] as const;
 
+export const MACHINE_TYPES = [
+  { value: 'printer_3d', label: 'Impresora 3D' },
+  { value: 'resin', label: 'Impresora de Resina' },
+  { value: 'laser', label: 'Máquina Láser' },
+] as const;
+
+export const LASER_TYPES = ['CO2', 'Plasma'] as const;
+
+// Maps a job's service type to the machine type(s) eligible to fulfill it.
+// 'plans' has no dedicated equipment yet, so any active machine qualifies (legacy behavior).
+export const SERVICE_MACHINE_TYPES: Record<string, string[] | null> = {
+  print_3d: ['printer_3d'],
+  resin: ['resin'],
+  laser: ['laser'],
+  plans: null,
+  design: [],
+};
+
+export const ROLE_LABELS: Record<string, string> = {
+  USER: 'Usuario',
+  WORKER: 'Printeo / Corte Láser',
+  DESIGNER: 'Diseñador',
+  ADMIN: 'Administrador',
+};
+
 export const FILAMENT_COLORS = [
   'Blanco',
   'Negro',

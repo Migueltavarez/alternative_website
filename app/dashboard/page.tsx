@@ -253,7 +253,7 @@ function DashboardContent() {
       if (res.ok) {
         const data = await res.json();
         setUserData(data.user);
-        if (data.user?.role === 'WORKER' || data.user?.role === 'ADMIN') {
+        if (['WORKER', 'DESIGNER', 'ADMIN'].includes(data.user?.role)) {
           fetchWorkerProfile();
         }
       }
@@ -483,7 +483,7 @@ function DashboardContent() {
           </motion.div>
 
           {/* Worker panel */}
-          {(userData?.role === 'WORKER' || userData?.role === 'ADMIN') && (
+          {(['WORKER', 'DESIGNER', 'ADMIN'].includes(userData?.role ?? '')) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -496,7 +496,7 @@ function DashboardContent() {
                     <Printer className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="font-semibold text-lg">Panel del Maker</p>
+                    <p className="font-semibold text-lg">{userData?.role === 'DESIGNER' ? 'Panel de Diseño' : 'Panel del Maker'}</p>
                     <div className="flex items-center gap-3 mt-0.5">
                       {workerProfile ? (
                         <>
@@ -504,15 +504,19 @@ function DashboardContent() {
                             <Activity className="w-3 h-3" />
                             {workerProfile.isActive ? 'Activo' : 'Pausado'}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {workerProfile.machines.length} {workerProfile.machines.length === 1 ? 'máquina' : 'máquinas'}
-                          </span>
+                          {userData?.role !== 'DESIGNER' && (
+                            <span className="text-xs text-muted-foreground">
+                              {workerProfile.machines.length} {workerProfile.machines.length === 1 ? 'equipo' : 'equipos'}
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground">
                             {workerProfile.completedJobs} trabajos completados
                           </span>
                         </>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Gestiona tus máquinas y trabajos de impresión</span>
+                        <span className="text-xs text-muted-foreground">
+                          {userData?.role === 'DESIGNER' ? 'Gestiona tus trabajos de diseño' : 'Gestiona tus equipos y trabajos asignados'}
+                        </span>
                       )}
                     </div>
                   </div>

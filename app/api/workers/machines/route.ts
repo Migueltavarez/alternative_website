@@ -47,23 +47,42 @@ export async function POST(request: NextRequest) {
     if (!profile) return NextResponse.json({ error: 'No tienes perfil de maker' }, { status: 404 });
 
     const body = await request.json();
-    const { name, description, supportedColors, supportedFilaments, supportedNozzles, octoprintUrl, octoprintApiKey } = body;
+    const {
+      name, description, machineType = 'printer_3d',
+      supportedColors, supportedFilaments, supportedNozzles,
+      octoprintUrl, octoprintApiKey, dimensions, laserType,
+    } = body;
 
-    if (!name) return NextResponse.json({ error: 'El nombre de la máquina es requerido' }, { status: 400 });
-    if (!supportedColors?.length) return NextResponse.json({ error: 'Selecciona al menos un color' }, { status: 400 });
-    if (!supportedFilaments?.length) return NextResponse.json({ error: 'Selecciona al menos un filamento' }, { status: 400 });
-    if (!supportedNozzles?.length) return NextResponse.json({ error: 'Selecciona al menos un nozzle' }, { status: 400 });
+    if (!['printer_3d', 'resin', 'laser'].includes(machineType)) {
+      return NextResponse.json({ error: 'Tipo de equipo inválido' }, { status: 400 });
+    }
+    if (!name) return NextResponse.json({ error: 'El nombre del equipo es requerido' }, { status: 400 });
+
+    if (machineType === 'laser') {
+      if (!dimensions || !laserType) {
+        return NextResponse.json({ error: 'Indica las dimensiones y el tipo de láser del equipo' }, { status: 400 });
+      }
+    } else {
+      if (!supportedColors?.length) return NextResponse.json({ error: 'Selecciona al menos un color' }, { status: 400 });
+      if (!supportedFilaments?.length) return NextResponse.json({ error: 'Selecciona al menos un material' }, { status: 400 });
+      if (machineType === 'printer_3d' && !supportedNozzles?.length) {
+        return NextResponse.json({ error: 'Selecciona al menos un nozzle' }, { status: 400 });
+      }
+    }
 
     const machine = await prisma.printerMachine.create({
       data: {
         workerProfileId: profile.id,
         name,
         description: description || null,
-        supportedColors: JSON.stringify(supportedColors),
-        supportedFilaments: JSON.stringify(supportedFilaments),
-        supportedNozzles: JSON.stringify(supportedNozzles),
-        octoprintUrl: octoprintUrl || null,
-        octoprintApiKey: octoprintApiKey || null,
+        machineType,
+        supportedColors: JSON.stringify(machineType === 'laser' ? [] : (supportedColors ?? [])),
+        supportedFilaments: JSON.stringify(machineType === 'laser' ? [] : (supportedFilaments ?? [])),
+        supportedNozzles: JSON.stringify(machineType === 'printer_3d' ? (supportedNozzles ?? []) : []),
+        octoprintUrl: machineType === 'printer_3d' ? (octoprintUrl || null) : null,
+        octoprintApiKey: machineType === 'printer_3d' ? (octoprintApiKey || null) : null,
+        laserType: machineType === 'laser' ? laserType : null,
+        dimensions: machineType === 'laser' ? dimensions : null,
       },
     });
 

@@ -96,9 +96,12 @@ model PrinterMachine {
   workerProfile      WorkerProfile @relation(fields: [workerProfileId], references: [id], onDelete: Cascade)
   name               String
   description        String?
+  machineType        String        @default("printer_3d") // printer_3d | resin | laser
   supportedColors    String        // JSON array
   supportedFilaments String        // JSON array
   supportedNozzles   String        // JSON array
+  laserType          String?       // CO2 | Plasma (laser only)
+  dimensions         String?       // equipment dimensions (laser only)
   isActive           Boolean       @default(true)
   completedJobs      Int           @default(0)
   octoprintUrl       String?

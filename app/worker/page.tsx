@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Loader2, Printer } from 'lucide-react';
+import { Loader2, Printer, PenTool } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { WorkerDashboard } from '@/components/worker-dashboard';
@@ -14,6 +14,8 @@ export default function WorkerPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+  const role = (session?.user as any)?.role;
+  const isDesigner = role === 'DESIGNER';
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -44,6 +46,13 @@ export default function WorkerPage() {
   }
 
   if (!hasProfile) {
+    if (isDesigner) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -56,7 +65,7 @@ export default function WorkerPage() {
               <h1 className="text-3xl font-bold mb-3">Panel de Makers</h1>
               <p className="text-muted-foreground mb-8">
                 Aún no estás registrado como maker. Regístrate para empezar a recibir
-                trabajos de impresión 3D y poner tu máquina a trabajar.
+                trabajos de impresión 3D, resina o corte láser.
               </p>
               <Button onClick={() => router.push('/worker/register')} className="px-8">
                 Registrarme como Maker
@@ -77,10 +86,10 @@ export default function WorkerPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Printer className="w-5 h-5 text-primary" />
+                {isDesigner ? <PenTool className="w-5 h-5 text-primary" /> : <Printer className="w-5 h-5 text-primary" />}
               </div>
               <div>
-                <h1 className="text-3xl font-bold">Panel del Maker</h1>
+                <h1 className="text-3xl font-bold">{isDesigner ? 'Panel de Diseño' : 'Panel del Maker'}</h1>
                 <p className="text-muted-foreground text-sm">
                   {session?.user?.name ?? session?.user?.email}
                 </p>
@@ -88,7 +97,7 @@ export default function WorkerPage() {
             </div>
           </motion.div>
 
-          <WorkerDashboard />
+          <WorkerDashboard role={isDesigner ? 'DESIGNER' : 'WORKER'} />
         </div>
       </main>
     </div>

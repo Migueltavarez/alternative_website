@@ -12,12 +12,21 @@ export async function GET() {
 
     const userId = (session.user as any).id;
 
-    const profile = await prisma.workerProfile.findUnique({
+    let profile = await prisma.workerProfile.findUnique({
       where: { userId },
       include: {
         machines: { orderBy: { createdAt: 'asc' } },
       },
     });
+
+    // Designers have no equipment to self-register; provision an empty
+    // profile lazily so they can always access their panel.
+    if (!profile && (session.user as any).role === 'DESIGNER') {
+      profile = await prisma.workerProfile.create({
+        data: { userId },
+        include: { machines: true },
+      });
+    }
 
     if (!profile) return NextResponse.json({ profile: null });
 
