@@ -31,10 +31,9 @@ export async function POST(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    if (process.env.RESEND_API_KEY) {
       await sendPasswordResetEmail(user.email, resetUrl);
     } else {
-      // Dev mode: log the link
       console.log(`[DEV] Reset URL for ${user.email}: ${resetUrl}`);
     }
 

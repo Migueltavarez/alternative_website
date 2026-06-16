@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { generateReferralCode } from '@/lib/utils';
+import { sendWelcomeEmail } from '@/lib/email';
 
 interface RegisterUserInput {
   email: string;
@@ -55,6 +56,10 @@ export async function registerUser(input: RegisterUserInput) {
       referredBy: validReferralCode?.toUpperCase(),
     },
   });
+
+  sendWelcomeEmail(user.email, user.name).catch(err =>
+    console.error('Welcome email error:', err)
+  );
 
   return user;
 }
