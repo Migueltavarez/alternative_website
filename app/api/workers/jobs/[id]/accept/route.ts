@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { sendJobStatusUpdateEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -13,7 +14,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const userId = (session.user as any).id;
     const jobId = params.id;
 
-    const job = await prisma.printJob.findUnique({ where: { id: jobId } });
+    const job = await prisma.printJob.findUnique({
+      where: { id: jobId },
+      include: { user: { select: { email: true, name: true } } },
+    });
 
     if (!job) {
       return NextResponse.json({ error: 'Trabajo no encontrado' }, { status: 404 });
@@ -30,7 +34,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
-    // Check 10-minute window only for normal assignments
     if (job.status === 'assigned') {
       const TEN_MIN = 10 * 60 * 1000;
       if (job.assignedAt && Date.now() - job.assignedAt.getTime() > TEN_MIN) {
@@ -45,6 +48,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       where: { id: jobId },
       data: { status: 'accepted', acceptedAt: new Date() },
     });
+
+    if (job.user && process.env.RESEND_API_KEY) {
+      sendJobStatusUpdateEmail(
+        job.user.email,
+        job.user.name,
+        job.fileName,
+        'Tu trabajo ha sido aceptado',
+        'Un especialista ha revisado tu solicitud y la ha aceptado. La producción comenzará en breve.',
+      ).catch((e) => console.error('Accept email error:', e));
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

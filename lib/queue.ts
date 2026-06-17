@@ -1,5 +1,6 @@
 import prisma from './prisma';
 import { SERVICE_MACHINE_TYPES } from './print-constants';
+import { sendJobAssignedToWorkerEmail } from './email';
 
 const ASSIGNMENT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -120,11 +121,25 @@ export async function assignJobToWorker(
   const job = await prisma.printJob.findUnique({ where: { id: jobId } });
   if (!job || job.status !== 'pending') return null;
 
+  let workerId: string | null;
   if (job.serviceType === 'design') {
-    return assignDesignJobToDesigner(jobId, exclude?.workerId);
+    workerId = await assignDesignJobToDesigner(jobId, exclude?.workerId);
+  } else {
+    workerId = await assignJobToMachine(jobId, job, exclude?.machineId);
   }
 
-  return assignJobToMachine(jobId, job, exclude?.machineId);
+  if (workerId && process.env.RESEND_API_KEY) {
+    prisma.user.findUnique({ where: { id: workerId }, select: { email: true, name: true } })
+      .then((worker) => {
+        if (worker) {
+          sendJobAssignedToWorkerEmail(worker.email, worker.name, job.fileName, job.serviceType)
+            .catch((e) => console.error('Worker assignment email error:', e));
+        }
+      })
+      .catch(() => {});
+  }
+
+  return workerId;
 }
 
 export async function reassignStaleJobs(): Promise<number> {

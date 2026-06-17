@@ -82,7 +82,21 @@ export async function registerUser(input: RegisterUserInput) {
 export async function getUserById(id: string) {
   return prisma.user.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      role: true,
+      credits: true,
+      discountBalance: true,
+      referralCode: true,
+      isStudent: true,
+      emailVerified: true,
+      phone: true,
+      cedula: true,
+      birthDate: true,
+      createdAt: true,
       subscription: true,
       addresses: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
       referralsGiven: {
@@ -108,7 +122,20 @@ export async function updateUserProfile(
 
 export async function getAllUsers() {
   return prisma.user.findMany({
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      role: true,
+      credits: true,
+      discountBalance: true,
+      referralCode: true,
+      referredBy: true,
+      stripeCustomerId: true,
+      isStudent: true,
+      emailVerified: true,
+      createdAt: true,
       subscription: true,
       _count: {
         select: {

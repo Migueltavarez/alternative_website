@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { sendJobAssignedToWorkerEmail } from '@/lib/email';
 
 export async function PATCH(
   request: NextRequest,
@@ -135,6 +136,19 @@ export async function PATCH(
         },
       },
     });
+
+    // Email worker on manual assignment by admin
+    if (assignWorker && assignWorker !== null && process.env.RESEND_API_KEY) {
+      const { workerId } = assignWorker;
+      prisma.user.findUnique({ where: { id: workerId }, select: { email: true, name: true } })
+        .then((worker) => {
+          if (worker) {
+            sendJobAssignedToWorkerEmail(worker.email, worker.name, printJob.fileName, printJob.serviceType)
+              .catch((e) => console.error('Admin assignment email error:', e));
+          }
+        })
+        .catch(() => {});
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

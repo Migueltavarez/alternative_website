@@ -53,6 +53,8 @@ interface PrintJob {
   paidAt?: string | null;
   createdAt: string;
   assignedAt?: string;
+  acceptedAt?: string;
+  startedAt?: string;
   cameraUrl?: string | null;
 }
 
@@ -173,6 +175,15 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 const ACTIVE_STATUSES = ['pending', 'assigned', 'accepted', 'printing', 'needs_revision', 'proof_uploaded'];
+
+const PROGRESS_STEPS = ['Solicitado', 'Asignado', 'En producción', 'Completado'];
+const PROGRESS_STEP_MAP: Record<string, number> = {
+  pending: 0, assigned: 1, accepted: 1, printing: 2,
+  needs_revision: 2, correction_requested: 1, proof_uploaded: 2, completed: 3,
+};
+function getProgressStep(status: string) {
+  return PROGRESS_STEP_MAP[status] ?? 0;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   pending:        'Pendiente',
@@ -742,25 +753,48 @@ function DashboardContent() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {activeJobs.map((job) => (
-                      <div key={job.id} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-card border border-border">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Printer className="w-4 h-4 text-primary" />
+                    {activeJobs.map((job) => {
+                      const step = getProgressStep(job.status);
+                      return (
+                        <div key={job.id} className="p-3 rounded-xl bg-card border border-border">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <Printer className="w-4 h-4 text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm truncate">{job.fileName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {SERVICE_LABELS[job.serviceType ?? ''] ?? 'Impresión 3D'}
+                                  {' · '}{new Date(job.createdAt).toLocaleDateString('es-ES')}
+                                </p>
+                              </div>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded-full border shrink-0 ${STATUS_COLORS[job.status] ?? ''}`}>
+                              {STATUS_LABELS[job.status] ?? job.status}
+                            </span>
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">{job.fileName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {SERVICE_LABELS[job.serviceType ?? ''] ?? 'Impresión 3D'}
-                              {' · '}{new Date(job.createdAt).toLocaleDateString('es-ES')}
-                            </p>
+                          {/* Status progress timeline */}
+                          <div className="mt-2.5 flex items-center">
+                            {PROGRESS_STEPS.map((label, idx) => (
+                              <div key={label} className="flex items-center flex-1 last:flex-none">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <div className={`w-2 h-2 rounded-full transition-colors ${
+                                    idx < step ? 'bg-green-400' : idx === step ? 'bg-primary' : 'bg-border'
+                                  }`} />
+                                  <span className={`text-[9px] leading-tight whitespace-nowrap ${
+                                    idx === step ? 'text-primary font-medium' : idx < step ? 'text-green-400' : 'text-muted-foreground'
+                                  }`}>{label}</span>
+                                </div>
+                                {idx < PROGRESS_STEPS.length - 1 && (
+                                  <div className={`flex-1 h-px mx-1 mb-3 ${idx < step ? 'bg-green-400/60' : 'bg-border'}`} />
+                                )}
+                              </div>
+                            ))}
                           </div>
                         </div>
-                        <span className={`text-xs px-2 py-1 rounded-full border shrink-0 ${STATUS_COLORS[job.status] ?? ''}`}>
-                          {STATUS_LABELS[job.status] ?? job.status}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

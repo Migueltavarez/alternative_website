@@ -61,8 +61,14 @@ interface WorkerJob {
   resinUse?: string;
   // Design
   designDescription?: string;
+  designMeasures?: string;
+  designReferenceUrls?: string;
   designMaterial?: string;
   designUse?: string;
+  designIsVehicle?: boolean;
+  designVehicleMake?: string;
+  designVehicleModel?: string;
+  designVehicleYear?: string;
 }
 
 interface WorkerProfile {
@@ -886,10 +892,47 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                       {job.designUse && <span className="text-xs px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300">{job.designUse === 'decorative' ? '🌸 Decorativo' : '⚙️ Mecánico'}</span>}
                     </div>
 
-                    {/* Design description */}
-                    {job.serviceType === 'design' && job.designDescription && (
-                      <div className="mt-2 p-3 rounded-lg bg-pink-500/5 border border-pink-500/20 text-xs text-muted-foreground">
-                        <span className="font-medium text-pink-400">Descripción: </span>{job.designDescription}
+                    {/* Design full brief */}
+                    {job.serviceType === 'design' && (
+                      <div className="mt-2 space-y-1.5">
+                        {job.designDescription && (
+                          <div className="p-3 rounded-lg bg-pink-500/5 border border-pink-500/20 text-xs text-muted-foreground">
+                            <span className="font-medium text-pink-400">Descripción: </span>{job.designDescription}
+                          </div>
+                        )}
+                        {job.designMeasures && (
+                          <div className="p-2.5 rounded-lg bg-pink-500/5 border border-pink-500/20 text-xs">
+                            <span className="font-medium text-pink-400">Medidas: </span>
+                            <span className="text-muted-foreground">{job.designMeasures}</span>
+                          </div>
+                        )}
+                        {job.designIsVehicle && (job.designVehicleMake || job.designVehicleModel) && (
+                          <div className="p-2.5 rounded-lg bg-pink-500/5 border border-pink-500/20 text-xs">
+                            <span className="font-medium text-pink-400">Vehículo: </span>
+                            <span className="text-muted-foreground">
+                              {[job.designVehicleMake, job.designVehicleModel, job.designVehicleYear].filter(Boolean).join(' ')}
+                            </span>
+                          </div>
+                        )}
+                        {job.designReferenceUrls && (
+                          <div className="p-2.5 rounded-lg bg-pink-500/5 border border-pink-500/20 text-xs">
+                            <p className="font-medium text-pink-400 mb-1.5">Referencias:</p>
+                            <div className="space-y-1">
+                              {job.designReferenceUrls.split('\n').filter(Boolean).map((url, i) => (
+                                <a
+                                  key={i}
+                                  href={url.trim()}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 text-blue-400 hover:underline truncate"
+                                >
+                                  <ExternalLink className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{url.trim()}</span>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1091,7 +1134,11 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                   <div>
                     <p className="font-medium text-sm">{job.fileName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[job.color, job.filamentType, job.assignedMachine?.name].filter(Boolean).join(' · ')}
+                      {job.serviceType === 'design'
+                        ? 'Diseño 3D'
+                        : job.serviceType === 'laser'
+                          ? `Corte Láser${job.assignedMachine ? ` · ${job.assignedMachine.name}` : ''}`
+                          : [job.color, job.filamentType, job.assignedMachine?.name].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                 </div>

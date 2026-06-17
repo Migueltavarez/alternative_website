@@ -64,6 +64,82 @@ export async function sendVerificationEmail(email: string, verifyUrl: string, na
   });
 }
 
+export async function sendJobStatusUpdateEmail(
+  email: string,
+  name: string | null | undefined,
+  fileName: string,
+  subject: string,
+  body: string,
+) {
+  const firstName = name?.split(' ')[0] || 'allí';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';
+  await send({
+    from: FROM,
+    to: email,
+    subject: `${subject} — Alternative 3D Studio`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#0f0f1a;color:#e2e8f0;padding:32px;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <h1 style="color:#8b5cf6;font-size:24px;margin:0;">Alternative 3D Studio</h1>
+        </div>
+        <h2 style="font-size:20px;margin:0 0 12px;">¡Hola, ${firstName}!</h2>
+        <p style="color:#94a3b8;line-height:1.6;">${body}</p>
+        <div style="background:#1e1b4b;border:1px solid #312e81;border-radius:8px;padding:12px 16px;margin:20px 0;">
+          <p style="margin:0;font-size:12px;color:#a5b4fc;">Archivo</p>
+          <p style="margin:4px 0 0;font-weight:600;color:#e2e8f0;">${fileName}</p>
+        </div>
+        <div style="text-align:center;margin:28px 0;">
+          <a href="${appUrl}/dashboard" style="display:inline-block;padding:14px 32px;background:#8b5cf6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Ver en mi panel
+          </a>
+        </div>
+        <hr style="border:none;border-top:1px solid #1e293b;margin:24px 0;" />
+        <p style="color:#475569;font-size:12px;text-align:center;margin:0;">Alternative 3D Studio · República Dominicana</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendJobAssignedToWorkerEmail(
+  email: string,
+  name: string | null | undefined,
+  fileName: string,
+  serviceType: string,
+) {
+  const firstName = name?.split(' ')[0] || 'allí';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';
+  const serviceLabels: Record<string, string> = {
+    print_3d: 'Impresión 3D', laser: 'Corte Láser',
+    resin: 'Impresión en Resina', plans: 'Impresión de Planos', design: 'Diseño 3D',
+  };
+  const serviceLabel = serviceLabels[serviceType] ?? 'Trabajo';
+  await send({
+    from: FROM,
+    to: email,
+    subject: `Nuevo trabajo asignado — ${serviceLabel}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#0f0f1a;color:#e2e8f0;padding:32px;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <h1 style="color:#8b5cf6;font-size:24px;margin:0;">Alternative 3D Studio</h1>
+        </div>
+        <h2 style="font-size:20px;margin:0 0 12px;">¡Hola, ${firstName}!</h2>
+        <p style="color:#94a3b8;line-height:1.6;">Se te ha asignado un nuevo trabajo de <strong style="color:#e2e8f0;">${serviceLabel}</strong>. Tienes <strong style="color:#8b5cf6;">10 minutos</strong> para aceptarlo desde tu panel antes de que sea reasignado automáticamente.</p>
+        <div style="background:#1e1b4b;border:1px solid #312e81;border-radius:8px;padding:12px 16px;margin:20px 0;">
+          <p style="margin:0;font-size:12px;color:#a5b4fc;">Archivo</p>
+          <p style="margin:4px 0 0;font-weight:600;color:#e2e8f0;">${fileName}</p>
+        </div>
+        <div style="text-align:center;margin:28px 0;">
+          <a href="${appUrl}/worker" style="display:inline-block;padding:14px 32px;background:#8b5cf6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Ir a mi panel de trabajo
+          </a>
+        </div>
+        <hr style="border:none;border-top:1px solid #1e293b;margin:24px 0;" />
+        <p style="color:#475569;font-size:12px;text-align:center;margin:0;">Alternative 3D Studio · República Dominicana</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendWelcomeEmail(email: string, name?: string | null) {
   const firstName = name?.split(' ')[0] || 'allí';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';
