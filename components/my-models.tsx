@@ -6,7 +6,7 @@ import {
   Upload, File, X, Clock, Printer, AlertTriangle,
   ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
   DollarSign, CheckCircle2, MessageSquare, History, ExternalLink, Copy, Check,
-  PenTool, Car, Video, Thermometer, Activity, Timer,
+  PenTool, Car, Video, Thermometer, Activity, Timer, Camera, Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
@@ -55,6 +55,11 @@ interface PrintJob {
   paymentProofUrl?: string | null;
   paymentMethod?: string | null;
   paidAt?: string | null;
+  completionPhotoUrl?: string | null;
+  completedAt?: string | null;
+  rating?: number | null;
+  ratingComment?: string | null;
+  ratedAt?: string | null;
 }
 
 interface MyModelsProps {
@@ -193,6 +198,13 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError]   = useState('');
   const [copiedBank, setCopiedBank]       = useState<string | null>(null);
+
+  // Rating
+  const [ratingJobId, setRatingJobId]   = useState<string | null>(null);
+  const [ratingValue, setRatingValue]   = useState(0);
+  const [ratingText, setRatingText]     = useState('');
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingError, setRatingError]   = useState('');
 
   // Form state
   const [serviceType, setServiceType]     = useState('');
@@ -434,6 +446,32 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
     navigator.clipboard.writeText(text);
     setCopiedBank(key);
     setTimeout(() => setCopiedBank(null), 2000);
+  };
+
+  const handleRateJob = async () => {
+    if (!ratingJobId || ratingValue < 1) return;
+    setRatingLoading(true);
+    setRatingError('');
+    try {
+      const res = await fetch(`/api/print-jobs/${ratingJobId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: ratingValue, ratingComment: ratingText || undefined }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setRatingError(data.error || 'Error al calificar');
+      } else {
+        setRatingJobId(null);
+        setRatingValue(0);
+        setRatingText('');
+        onRefresh();
+      }
+    } catch {
+      setRatingError('Error al calificar');
+    } finally {
+      setRatingLoading(false);
+    }
   };
 
   // Jobs with confirmed payment for history section
@@ -1620,6 +1658,50 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                     )}
                   </div>
                 )}
+
+                {/* Completion photo */}
+                {job.status === 'completed' && job.completionPhotoUrl && (
+                  <div className="mt-3 p-3 rounded-xl border border-green-500/30 bg-green-500/5">
+                    <p className="text-xs font-medium text-green-400 mb-2 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5" /> Foto del trabajo terminado
+                    </p>
+                    <a href={`/api/download${job.completionPhotoUrl}`} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={`/api/download${job.completionPhotoUrl}`}
+                        alt="Trabajo completado"
+                        className="rounded-lg max-h-48 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                      />
+                    </a>
+                  </div>
+                )}
+
+                {/* Rating */}
+                {job.status === 'completed' && (
+                  <div className="mt-3">
+                    {job.ratedAt ? (
+                      <div className="p-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
+                        <p className="text-xs text-muted-foreground mb-1.5">Tu calificación</p>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star key={s} className={`w-4 h-4 ${s <= (job.rating ?? 0) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`} />
+                          ))}
+                          <span className="text-xs text-muted-foreground ml-2">{job.rating}/5</span>
+                        </div>
+                        {job.ratingComment && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">&ldquo;{job.ratingComment}&rdquo;</p>
+                        )}
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full text-sm text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10"
+                        onClick={() => { setRatingJobId(job.id); setRatingValue(0); setRatingText(''); setRatingError(''); }}
+                      >
+                        <Star className="w-4 h-4 mr-2" />Calificar este trabajo
+                      </Button>
+                    )}
+                  </div>
+                )}
               </motion.div>
             );
           })}
@@ -1693,6 +1775,72 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
         </motion.div>
       )}
       </>)}
+
+      {/* ── Rating modal ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {ratingJobId && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="glass rounded-2xl p-6 w-full max-w-sm"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-400" />Calificar trabajo
+                </h3>
+                <button onClick={() => setRatingJobId(null)} className="p-1 rounded-lg hover:bg-white/10 transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">¿Cómo fue tu experiencia con este trabajo?</p>
+
+              <div className="flex items-center justify-center gap-2 mb-4">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setRatingValue(s)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <Star className={`w-8 h-8 ${s <= ratingValue ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/40'}`} />
+                  </button>
+                ))}
+              </div>
+              {ratingValue > 0 && (
+                <p className="text-center text-xs text-muted-foreground mb-3">
+                  {['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'][ratingValue]}
+                </p>
+              )}
+
+              <textarea
+                value={ratingText}
+                onChange={(e) => setRatingText(e.target.value)}
+                placeholder="Comentario opcional..."
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm resize-none mb-3"
+              />
+
+              {ratingError && <p className="text-xs text-red-400 mb-3">{ratingError}</p>}
+
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1"
+                  onClick={handleRateJob}
+                  isLoading={ratingLoading}
+                  disabled={ratingValue < 1 || ratingLoading}
+                >
+                  Enviar calificación
+                </Button>
+                <Button variant="outline" onClick={() => setRatingJobId(null)} disabled={ratingLoading}>
+                  Cancelar
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

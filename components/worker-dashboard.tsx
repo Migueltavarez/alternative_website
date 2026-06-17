@@ -360,6 +360,9 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
   // Camera modal state
   const [cameraModal, setCameraModal] = useState<{ jobId: string; cameraUrl: string } | null>(null);
 
+  // Completion photo modal state
+  const [completionModal, setCompletionModal] = useState<{ jobId: string; photoUrl: string; uploading: boolean } | null>(null);
+
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
@@ -388,10 +391,14 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
     return () => { clearInterval(pollInterval); clearInterval(tickInterval); };
   }, [fetchData]);
 
-  const handleJobAction = async (jobId: string, action: 'accept' | 'start' | 'complete', cameraUrl?: string) => {
+  const handleJobAction = async (jobId: string, action: 'accept' | 'start' | 'complete', cameraUrl?: string, completionPhotoUrl?: string) => {
     setActionLoading(`${jobId}-${action}`);
     try {
-      const body = action === 'start' ? JSON.stringify({ cameraUrl: cameraUrl || undefined }) : undefined;
+      const body = action === 'start'
+        ? JSON.stringify({ cameraUrl: cameraUrl || undefined })
+        : action === 'complete'
+        ? JSON.stringify({ completionPhotoUrl: completionPhotoUrl || undefined })
+        : undefined;
       const res = await fetch(`/api/workers/jobs/${jobId}/${action}`, {
         method: 'POST',
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
@@ -402,11 +409,31 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
       const msg = { accept: '¡Trabajo aceptado! Prepara los materiales.', start: 'Trabajo iniciado.', complete: 'Trabajo completado.' }[action];
       showNotification('success', msg);
       setCameraModal(null);
+      setCompletionModal(null);
       await fetchData();
     } catch (err: any) {
       showNotification('error', err.message);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleCompletionPhotoUpload = async (file: File) => {
+    setCompletionModal(prev => prev ? { ...prev, uploading: true } : null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        setCompletionModal(prev => prev ? { ...prev, photoUrl: data.fileUrl, uploading: false } : null);
+      } else {
+        setCompletionModal(prev => prev ? { ...prev, uploading: false } : null);
+        showNotification('error', 'Error al subir la foto');
+      }
+    } catch {
+      setCompletionModal(prev => prev ? { ...prev, uploading: false } : null);
+      showNotification('error', 'Error al subir la foto');
     }
   };
 
@@ -626,6 +653,74 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                   <Play className="w-4 h-4 mr-2" />Iniciar impresión
                 </Button>
                 <Button variant="outline" onClick={() => setCameraModal(null)} disabled={!!actionLoading}>
+                  Cancelar
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Completion photo modal */}
+      <AnimatePresence>
+        {completionModal && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="glass rounded-2xl p-6 w-full max-w-md"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-green-400" />Completar trabajo
+                </h3>
+                <button onClick={() => setCompletionModal(null)} className="p-1 rounded-lg hover:bg-white/10 transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">Sube una foto del resultado (opcional) antes de marcar como completado.</p>
+
+              {completionModal.photoUrl ? (
+                <div className="mb-4 relative">
+                  <img src={`/api/download${completionModal.photoUrl}`} alt="Foto del resultado" className="w-full rounded-xl max-h-48 object-cover" />
+                  <button
+                    onClick={() => setCompletionModal({ ...completionModal, photoUrl: '' })}
+                    className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl p-6 mb-4 cursor-pointer hover:bg-white/5 transition ${completionModal.uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {completionModal.uploading ? (
+                    <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-8 h-8 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Haz clic para subir foto</span>
+                      <span className="text-xs text-muted-foreground/60">JPG, PNG, WEBP</span>
+                    </>
+                  )}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCompletionPhotoUpload(file);
+                  }} />
+                </label>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1"
+                  onClick={() => handleJobAction(completionModal.jobId, 'complete', undefined, completionModal.photoUrl || undefined)}
+                  isLoading={actionLoading === `${completionModal.jobId}-complete`}
+                  disabled={!!actionLoading || completionModal.uploading}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  {completionModal.photoUrl ? 'Completar con foto' : 'Completar sin foto'}
+                </Button>
+                <Button variant="outline" onClick={() => setCompletionModal(null)} disabled={!!actionLoading}>
                   Cancelar
                 </Button>
               </div>
@@ -972,7 +1067,7 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                       })()}
                       {job.status === 'printing' && (
                         <>
-                          <Button className="flex-1" variant="outline" onClick={() => handleJobAction(job.id, 'complete')} disabled={!!actionLoading} isLoading={actionLoading === `${job.id}-complete`}>
+                          <Button className="flex-1" variant="outline" onClick={() => setCompletionModal({ jobId: job.id, photoUrl: '', uploading: false })} disabled={!!actionLoading}>
                             <CheckCircle className="w-4 h-4 mr-2" />Marcar como completado
                           </Button>
                           {job.assignedMachine?.octoprintUrl ? (

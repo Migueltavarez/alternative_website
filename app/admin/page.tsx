@@ -16,6 +16,10 @@ import { Navbar } from '@/components/navbar';
 import { ChatThread } from '@/components/chat-thread';
 import { formatCurrency, formatDate, getStatusColor, getPlanBadgeColor } from '@/lib/utils';
 import { PLANS } from '@/lib/stripe';
+import dynamic from 'next/dynamic';
+
+const AdminMetrics = dynamic(() => import('@/components/admin-metrics').then(m => m.AdminMetrics), { ssr: false });
+const QmsDashboard = dynamic(() => import('@/components/qms-dashboard').then(m => m.QmsDashboard), { ssr: false });
 
 interface ChatConversation {
   userId: string;
@@ -38,7 +42,7 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes'>('trabajos');
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms'>('trabajos');
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedConvUserId, setSelectedConvUserId] = useState<string | null>(null);
 
@@ -512,6 +516,8 @@ export default function AdminPage() {
               { key: 'usuarios', label: 'Usuarios', icon: Users },
               { key: 'suscripciones', label: 'Suscripciones', icon: CreditCard },
               { key: 'mensajes', label: 'Mensajes', icon: MessageSquare },
+              { key: 'metricas', label: 'Métricas', icon: TrendingUp },
+              { key: 'qms', label: 'Control QC', icon: Shield },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -1590,6 +1596,24 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
+            </motion.div>
+          )}
+          {/* ══════════════════ TAB: MÉTRICAS ══════════════════ */}
+          {activeTab === 'metricas' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <h2 className="text-2xl font-bold mb-6">Métricas de la plataforma</h2>
+              <AdminMetrics />
+            </motion.div>
+          )}
+
+          {/* ══════════════════ TAB: QMS ══════════════════ */}
+          {activeTab === 'qms' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Control de Calidad (QMS)</h2>
+                <span className="text-xs text-muted-foreground glass px-3 py-1.5 rounded-lg">Quality Management System</span>
+              </div>
+              <QmsDashboard />
             </motion.div>
           )}
         </div>

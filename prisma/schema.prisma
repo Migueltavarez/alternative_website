@@ -256,6 +256,21 @@ model PrintJob {
   // Live camera feed
   cameraUrl         String?
 
+  // Proof of work & rating
+  completionPhotoUrl String?
+  completedAt        DateTime?
+  rating             Int?
+  ratingComment      String?
+  ratedAt            DateTime?
+
+  // Quality Management System
+  qmsStage           String?   // file_validation | print_setup | in_production | post_processing | quality_check | ready | delivered | redo
+  deliveredAt        DateTime?
+
+  qualityInspection  QualityInspection?
+  qualityPhotos      QualityPhoto[]
+  productionLogs     ProductionLog[]
+
   // Maker feedback
   makerFeedback     String?   // JSON: { issues[], notes, suggestion }
 
@@ -279,4 +294,44 @@ model PrintJob {
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+model QualityInspection {
+  id              String   @id @default(cuid())
+  printJobId      String   @unique
+  printJob        PrintJob @relation(fields: [printJobId], references: [id], onDelete: Cascade)
+  fileValidation  String?
+  printSetup      String?
+  productionData  String?
+  postProcessing  String?
+  qualityScore    String?
+  initiatedBy     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model QualityPhoto {
+  id          String   @id @default(cuid())
+  printJobId  String
+  printJob    PrintJob @relation(fields: [printJobId], references: [id], onDelete: Cascade)
+  category    String
+  fileUrl     String
+  caption     String?
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+}
+
+model ProductionLog {
+  id          String   @id @default(cuid())
+  printJobId  String
+  printJob    PrintJob @relation(fields: [printJobId], references: [id], onDelete: Cascade)
+  stage       String
+  action      String
+  fromStage   String?
+  toStage     String?
+  userId      String
+  userName    String
+  comment     String?
+  metadata    String?
+  createdAt   DateTime @default(now())
 }

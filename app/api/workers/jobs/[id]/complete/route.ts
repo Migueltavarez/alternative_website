@@ -14,6 +14,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const userId = (session.user as any).id;
     const jobId = params.id;
 
+    let completionPhotoUrl: string | undefined;
+    try { const body = await request.json(); completionPhotoUrl = body.completionPhotoUrl || undefined; } catch { /* optional */ }
+
     const job = await prisma.printJob.findUnique({
       where: { id: jobId },
       include: { user: { select: { email: true, name: true } } },
@@ -25,7 +28,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const profile = await prisma.workerProfile.findUnique({ where: { userId } });
 
     const updates: any[] = [
-      prisma.printJob.update({ where: { id: jobId }, data: { status: 'completed' } }),
+      prisma.printJob.update({
+        where: { id: jobId },
+        data: { status: 'completed', completedAt: new Date(), ...(completionPhotoUrl ? { completionPhotoUrl } : {}) },
+      }),
       ...(profile ? [prisma.workerProfile.update({ where: { id: profile.id }, data: { completedJobs: { increment: 1 } } })] : []),
       ...(job.assignedMachineId ? [prisma.printerMachine.update({ where: { id: job.assignedMachineId }, data: { completedJobs: { increment: 1 } } })] : []),
     ];
