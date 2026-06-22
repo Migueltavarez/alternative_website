@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       resinColor, resinUse,
       // Design
       designDescription, designMeasures, designReferenceUrls,
+      referenceImageUrls,
       designMaterial, designUse, designIsVehicle,
       designVehicleMake, designVehicleModel, designVehicleYear,
     } = body;
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
         designDescription: designDescription || null,
         designMeasures: designMeasures || null,
         designReferenceUrls: designReferenceUrls || null,
+        referenceImageUrls: referenceImageUrls || null,
         designMaterial: designMaterial || null,
         designUse: designUse || null,
         designIsVehicle: designIsVehicle || false,

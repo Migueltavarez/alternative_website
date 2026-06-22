@@ -12,6 +12,11 @@ export async function GET() {
 
     const userId = (session.user as any).id;
 
+    const userRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { workerApproved: true },
+    });
+
     let profile = await prisma.workerProfile.findUnique({
       where: { userId },
       include: {
@@ -33,6 +38,7 @@ export async function GET() {
     return NextResponse.json({
       profile: {
         ...profile,
+        workerApproved: userRow?.workerApproved ?? true,
         machines: profile.machines.map((m) => ({
           ...m,
           supportedColors: JSON.parse(m.supportedColors),

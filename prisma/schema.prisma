@@ -26,6 +26,7 @@ model User {
   verificationToken       String?   @unique
   verificationTokenExpiry DateTime?
   isStudent               Boolean   @default(false)
+  workerApproved          Boolean   @default(true)   // set to false on worker self-registration; admin flips to true
 
   // Profile data
   phone             String?
@@ -252,6 +253,12 @@ model PrintJob {
   designVehicleMake   String?
   designVehicleModel  String?
   designVehicleYear   String?
+  referenceImageUrls  String?   // JSON array of uploaded reference image URLs
+
+  // Designer payment
+  designerEarnings    Float?
+  designerPaid        Boolean   @default(false)
+  designerPaidAt      DateTime?
 
   // Live camera feed
   cameraUrl         String?

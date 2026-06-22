@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       }),
       prisma.user.update({
         where: { id: userId },
-        data: { role: 'WORKER' },
+        data: { role: 'WORKER', workerApproved: false },
       }),
     ]);
 

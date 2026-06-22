@@ -42,9 +42,11 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms'>('trabajos');
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones'>('trabajos');
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedConvUserId, setSelectedConvUserId] = useState<string | null>(null);
+  const [pendingWorkers, setPendingWorkers] = useState<any[]>([]);
+  const [earningsInputs, setEarningsInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -62,22 +64,24 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [statsRes, usersRes, subsRes, printJobsRes, workersRes, creditPurchasesRes] = await Promise.all([
+      const [statsRes, usersRes, subsRes, printJobsRes, workersRes, creditPurchasesRes, pendingWorkersRes] = await Promise.all([
         fetch('/api/stats'),
         fetch('/api/users'),
         fetch('/api/subscriptions'),
         fetch('/api/print-jobs/all'),
         fetch('/api/workers/all'),
         fetch('/api/credits/purchases'),
+        fetch('/api/admin/workers/pending'),
       ]);
 
-      const [statsData, usersData, subsData, printJobsData, workersData, creditPurchasesData] = await Promise.all([
+      const [statsData, usersData, subsData, printJobsData, workersData, creditPurchasesData, pendingWorkersData] = await Promise.all([
         statsRes.json(),
         usersRes.json(),
         subsRes.json(),
         printJobsRes.json(),
         workersRes.json(),
         creditPurchasesRes.json(),
+        pendingWorkersRes.json(),
       ]);
 
       setStats(statsData);
@@ -86,6 +90,7 @@ export default function AdminPage() {
       setPrintJobs(Array.isArray(printJobsData) ? printJobsData : []);
       setWorkers(Array.isArray(workersData) ? workersData : []);
       setCreditPurchases(Array.isArray(creditPurchasesData) ? creditPurchasesData : []);
+      setPendingWorkers(Array.isArray(pendingWorkersData) ? pendingWorkersData : []);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -380,9 +385,59 @@ export default function AdminPage() {
     finally { setActionLoading(null); }
   };
 
+  const handleWorkerAction = async (userId: string, action: 'approve' | 'reject') => {
+    setActionLoading(`worker-${userId}-${action}`);
+    try {
+      const res = await fetch(`/api/admin/workers/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        setPendingWorkers((prev) => prev.filter((w) => w.id !== userId));
+      }
+    } catch { console.error('Worker action error'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleSetDesignerEarnings = async (jobId: string) => {
+    const amount = parseFloat(earningsInputs[jobId] ?? '');
+    if (isNaN(amount) || amount < 0) return alert('Ingresa un monto válido');
+    setActionLoading(`earnings-${jobId}`);
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/designer-earnings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount }),
+      });
+      if (res.ok) {
+        setPrintJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, designerEarnings: amount } : j));
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Error');
+      }
+    } catch { console.error('Set earnings error'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleMarkDesignerPaid = async (jobId: string) => {
+    if (!confirm('¿Confirmar que se pagó al diseñador por este trabajo?')) return;
+    setActionLoading(`paid-${jobId}`);
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/designer-paid`, { method: 'POST' });
+      if (res.ok) {
+        setPrintJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, designerPaid: true, designerPaidAt: new Date().toISOString() } : j));
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Error');
+      }
+    } catch { console.error('Mark paid error'); }
+    finally { setActionLoading(null); }
+  };
+
   const handleOpenInBambuStudio = (fileUrl: string, fileName: string) => {
     let publicUrl: string;
-    
+
     if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
       publicUrl = fileUrl;
     } else if (fileUrl.startsWith('/uploads/')) {
@@ -393,18 +448,11 @@ export default function AdminPage() {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
       publicUrl = `${appUrl}/api/print-file/${fileUrl}`;
     }
-    
-    const encodedUrl = encodeURIComponent(publicUrl);
-    
-    let bambuProtocol: string;
-    
-    if (typeof navigator !== 'undefined' && navigator.platform?.toLowerCase().includes('mac')) {
-      bambuProtocol = `bambustudioopen://${encodedUrl}`;
-    } else {
-      bambuProtocol = `bambustudio://open?file=${encodedUrl}`;
-    }
-    
-    window.location.href = bambuProtocol;
+
+    // Bambu Studio expects a plain URL in the protocol — do not encodeURIComponent
+    // the full URL because that converts :// and / into %3A%2F%2F etc., which
+    // Bambu Studio cannot decode, causing "download failed: unknown file format".
+    window.location.href = `bambustudio://open?file=${publicUrl}`;
   };
 
   if (status === 'loading' || loading) {
@@ -513,6 +561,7 @@ export default function AdminPage() {
           <div className="flex gap-1 mb-8 p-1 glass rounded-xl w-fit">
             {([
               { key: 'trabajos', label: 'Trabajos', icon: ListChecks },
+              { key: 'aprobaciones', label: 'Aprobaciones', icon: UserCheck },
               { key: 'usuarios', label: 'Usuarios', icon: Users },
               { key: 'suscripciones', label: 'Suscripciones', icon: CreditCard },
               { key: 'mensajes', label: 'Mensajes', icon: MessageSquare },
@@ -533,6 +582,11 @@ export default function AdminPage() {
                 {key === 'mensajes' && conversations.reduce((sum, c) => sum + c.unreadCount, 0) > 0 && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-semibold">
                     {conversations.reduce((sum, c) => sum + c.unreadCount, 0)}
+                  </span>
+                )}
+                {key === 'aprobaciones' && pendingWorkers.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white font-semibold">
+                    {pendingWorkers.length}
                   </span>
                 )}
               </button>
@@ -1233,6 +1287,70 @@ export default function AdminPage() {
                               ))}
                             </div>
                           )}
+                          {/* Reference images */}
+                          {job.referenceImageUrls && (() => {
+                            try {
+                              const imgs: string[] = JSON.parse(job.referenceImageUrls);
+                              if (!imgs.length) return null;
+                              return (
+                                <div className="flex gap-1 mt-1 flex-wrap">
+                                  {imgs.slice(0, 4).map((url: string, i: number) => (
+                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                      className="block w-10 h-10 rounded overflow-hidden border border-border hover:border-primary/40 shrink-0">
+                                      <img src={url} alt={`ref-${i}`} className="w-full h-full object-cover" />
+                                    </a>
+                                  ))}
+                                  {imgs.length > 4 && <span className="text-xs text-muted-foreground self-center">+{imgs.length - 4}</span>}
+                                </div>
+                              );
+                            } catch { return null; }
+                          })()}
+                          {/* Designer earnings */}
+                          {job.serviceType === 'design' && (
+                            <div className="mt-2 pt-2 border-t border-white/5">
+                              {job.designerPaid ? (
+                                <div className="flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                                  <span className="text-xs text-green-400 font-medium">
+                                    Pagado RD$ {(job.designerEarnings ?? 0).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              ) : job.designerEarnings != null ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-amber-400 font-medium">
+                                    Ganancia: RD$ {job.designerEarnings.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                                  </span>
+                                  <button
+                                    onClick={() => handleMarkDesignerPaid(job.id)}
+                                    disabled={!!actionLoading}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                                  >
+                                    Marcar pagado
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-muted-foreground shrink-0">Ganancia RD$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={earningsInputs[job.id] ?? ''}
+                                    onChange={(e) => setEarningsInputs((prev) => ({ ...prev, [job.id]: e.target.value }))}
+                                    className="w-20 px-1.5 py-0.5 rounded bg-card border border-border text-xs"
+                                  />
+                                  <button
+                                    onClick={() => handleSetDesignerEarnings(job.id)}
+                                    disabled={!!actionLoading || !earningsInputs[job.id]}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors disabled:opacity-50"
+                                  >
+                                    Guardar
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {job.notes && (
                             <p className="text-xs text-muted-foreground mt-1 truncate max-w-xs">
                               {job.notes}
@@ -1614,6 +1732,88 @@ export default function AdminPage() {
                 <span className="text-xs text-muted-foreground glass px-3 py-1.5 rounded-lg">Quality Management System</span>
               </div>
               <QmsDashboard />
+            </motion.div>
+          )}
+
+          {/* ══════════════════ TAB: APROBACIONES ══════════════════ */}
+          {activeTab === 'aprobaciones' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <div className="flex items-center gap-3 mb-6">
+                <UserCheck className="w-6 h-6 text-amber-400" />
+                <h2 className="text-2xl font-bold">Aprobaciones Pendientes</h2>
+                {pendingWorkers.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20 text-amber-400 font-semibold">{pendingWorkers.length}</span>
+                )}
+              </div>
+
+              {pendingWorkers.length === 0 ? (
+                <div className="glass rounded-2xl p-10 text-center">
+                  <UserCheck className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No hay solicitudes pendientes de aprobación.</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {pendingWorkers.map((w: any) => (
+                    <div key={w.id} className="glass rounded-2xl p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${
+                              w.role === 'DESIGNER'
+                                ? 'border-pink-500/30 bg-pink-500/10 text-pink-400'
+                                : 'border-violet-500/30 bg-violet-500/10 text-violet-400'
+                            }`}>
+                              {w.role === 'DESIGNER' ? 'Diseñador' : 'Maker'}
+                            </span>
+                          </div>
+                          <p className="font-semibold">{w.name ?? '—'}</p>
+                          <p className="text-sm text-muted-foreground">{w.email}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Solicitud: {new Date(w.workerProfile?.createdAt ?? w.createdAt).toLocaleDateString('es-ES')}
+                          </p>
+
+                          {/* Machines */}
+                          {w.workerProfile?.machines?.length > 0 && (
+                            <div className="mt-3 space-y-1">
+                              {w.workerProfile.machines.map((m: any) => (
+                                <div key={m.id} className="text-xs text-muted-foreground flex items-center gap-2">
+                                  <Printer className="w-3 h-3 shrink-0" />
+                                  <span className="font-medium text-foreground">{m.name}</span>
+                                  <span>·</span>
+                                  <span>{m.machineType === 'laser' ? `Láser ${m.laserType ?? ''}` : m.machineType === 'resin' ? 'Resina' : 'Impresora 3D'}</span>
+                                  {m.dimensions && <span>· {m.dimensions}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => handleWorkerAction(w.id, 'approve')}
+                            isLoading={actionLoading === `worker-${w.id}-approve`}
+                            disabled={!!actionLoading}
+                            className="bg-green-500 hover:bg-green-600 text-white"
+                          >
+                            Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleWorkerAction(w.id, 'reject')}
+                            isLoading={actionLoading === `worker-${w.id}-reject`}
+                            disabled={!!actionLoading}
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          >
+                            Rechazar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </div>

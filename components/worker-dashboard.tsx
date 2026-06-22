@@ -6,7 +6,7 @@ import {
   Printer, CheckCircle, Play, Clock, AlertCircle,
   File, User, ChevronDown, ChevronUp, RefreshCw,
   Plus, Pencil, Trash2, X, Save, AlertTriangle, MessageSquare,
-  Video, ExternalLink, Camera, Eye, EyeOff, Link, Info
+  Video, ExternalLink, Camera, Eye, EyeOff, Link, Info, DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,19 +63,35 @@ interface WorkerJob {
   designDescription?: string;
   designMeasures?: string;
   designReferenceUrls?: string;
+  referenceImageUrls?: string | null;
   designMaterial?: string;
   designUse?: string;
   designIsVehicle?: boolean;
   designVehicleMake?: string;
   designVehicleModel?: string;
   designVehicleYear?: string;
+  designerEarnings?: number | null;
+  designerPaid?: boolean;
 }
 
 interface WorkerProfile {
   id: string;
   isActive: boolean;
   completedJobs: number;
+  workerApproved: boolean;
   machines: PrinterMachine[];
+}
+
+interface DesignerEarning {
+  id: string;
+  fileName: string;
+  status: string;
+  designerEarnings: number | null;
+  designerPaid: boolean;
+  designerPaidAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  user: { name: string | null; email: string };
 }
 
 // ─── Multi-select pill component ───────────────────────────────────────────
@@ -363,6 +379,9 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
   // Completion photo modal state
   const [completionModal, setCompletionModal] = useState<{ jobId: string; photoUrl: string; uploading: boolean } | null>(null);
 
+  // Designer earnings
+  const [earnings, setEarnings] = useState<{ jobs: DesignerEarning[]; pendingBalance: number; totalEarned: number } | null>(null);
+
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
@@ -370,19 +389,26 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
 
   const fetchData = useCallback(async () => {
     try {
-      const [jobsRes, profileRes] = await Promise.all([
+      const fetches: Promise<Response>[] = [
         fetch('/api/workers/jobs'),
         fetch('/api/workers/profile'),
-      ]);
-      const [jobsData, profileData] = await Promise.all([jobsRes.json(), profileRes.json()]);
+      ];
+      if (role === 'DESIGNER') fetches.push(fetch('/api/workers/earnings'));
+
+      const responses = await Promise.all(fetches);
+      const [jobsData, profileData] = await Promise.all([responses[0].json(), responses[1].json()]);
       setJobs(Array.isArray(jobsData) ? jobsData : []);
       setProfile(profileData.profile ?? null);
+      if (role === 'DESIGNER' && responses[2]) {
+        const earningsData = await responses[2].json();
+        setEarnings(earningsData);
+      }
     } catch (e) {
       console.error('Worker fetch error:', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     fetchData();
@@ -729,8 +755,21 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
         )}
       </AnimatePresence>
 
-      {/* Profile-level pause toggle (always visible) */}
-      {profile && (
+      {/* Pending approval banner */}
+      {profile && !profile.workerApproved && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-400">Cuenta pendiente de aprobación</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Tu registro está siendo revisado por un administrador. Una vez aprobado podrás ver y aceptar trabajos.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Profile-level pause toggle (only when approved) */}
+      {profile && profile.workerApproved && (
         <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
           <span className={`w-2.5 h-2.5 rounded-full ${profile.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
           <span className="text-sm flex-1">
@@ -743,6 +782,62 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
             {profile.isActive ? 'Pausar todo' : 'Reactivar'}
           </button>
         </div>
+      )}
+
+      {/* Designer earnings section */}
+      {role === 'DESIGNER' && earnings && (
+        <section>
+          <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+            <DollarSign className="w-5 h-5 text-primary" />
+            Mis Ganancias
+          </h3>
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Balance pendiente de pago</p>
+              <p className="text-2xl font-black text-amber-400">
+                RD$ {earnings.pendingBalance.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total recibido</p>
+              <p className="text-2xl font-black text-green-400">
+                RD$ {earnings.totalEarned.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+
+          {earnings.jobs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No hay trabajos de diseño registrados aún.</p>
+          ) : (
+            <div className="space-y-2">
+              {earnings.jobs.map((j) => (
+                <div key={j.id} className={`rounded-xl border p-3 flex items-center justify-between gap-3 ${
+                  j.designerPaid ? 'border-white/5 bg-white/2' : j.designerEarnings ? 'border-amber-500/20 bg-amber-500/5' : 'border-border bg-card'
+                }`}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{j.fileName}</p>
+                    <p className="text-xs text-muted-foreground">{j.user.name ?? j.user.email} · {new Date(j.createdAt).toLocaleDateString('es-ES')}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {j.designerEarnings ? (
+                      <>
+                        <p className={`text-sm font-bold ${j.designerPaid ? 'text-green-400' : 'text-amber-400'}`}>
+                          RD$ {j.designerEarnings.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {j.designerPaid ? `Pagado ${new Date(j.designerPaidAt!).toLocaleDateString('es-ES')}` : 'Pendiente de pago'}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Sin monto asignado</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* ── My Machines ────────────────────────────────────────────── */}
@@ -898,7 +993,7 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
       )}
 
       {/* ── Active Jobs ─────────────────────────────────────────────── */}
-      <section>
+      {(!profile || profile.workerApproved) && <section>
         <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
           <Printer className="w-5 h-5 text-primary" />
           Trabajos Activos
@@ -1026,6 +1121,38 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                                 </a>
                               ))}
                             </div>
+                          </div>
+                        )}
+                        {job.referenceImageUrls && (() => {
+                          try {
+                            const imgs: string[] = JSON.parse(job.referenceImageUrls!);
+                            if (!imgs.length) return null;
+                            return (
+                              <div className="p-2.5 rounded-lg bg-pink-500/5 border border-pink-500/20">
+                                <p className="text-xs font-medium text-pink-400 mb-2">Fotos de referencia:</p>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  {imgs.map((url, i) => (
+                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                      className="aspect-square rounded-lg overflow-hidden border border-pink-500/20 hover:border-pink-400/40 transition-all">
+                                      <img src={url} alt={`ref-${i}`} className="w-full h-full object-cover" />
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          } catch { return null; }
+                        })()}
+                        {job.designerEarnings != null && (
+                          <div className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs ${
+                            job.designerPaid
+                              ? 'border-green-500/20 bg-green-500/5 text-green-400'
+                              : 'border-amber-500/20 bg-amber-500/5 text-amber-400'
+                          }`}>
+                            <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                            <span className="font-medium">
+                              {job.designerPaid ? 'Pagado: ' : 'Tu ganancia: '}
+                              RD$ {job.designerEarnings.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -1210,10 +1337,10 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
             })}
           </div>
         )}
-      </section>
+      </section>}
 
       {/* ── Completed ───────────────────────────────────────────────── */}
-      {completedJobs.length > 0 && (
+      {(!profile || profile.workerApproved) && completedJobs.length > 0 && (
         <section>
           <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-green-400" />

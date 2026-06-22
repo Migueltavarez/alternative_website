@@ -14,6 +14,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const userId = (session.user as any).id;
     const jobId = params.id;
 
+    const workerUser = await prisma.user.findUnique({ where: { id: userId }, select: { workerApproved: true } });
+    if (!workerUser?.workerApproved) {
+      return NextResponse.json({ error: 'Tu cuenta está pendiente de aprobación' }, { status: 403 });
+    }
+
     const job = await prisma.printJob.findUnique({
       where: { id: jobId },
       include: { user: { select: { email: true, name: true } } },

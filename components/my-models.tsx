@@ -39,6 +39,7 @@ interface PrintJob {
   designDescription?: string;
   designMeasures?: string;
   designReferenceUrls?: string;
+  referenceImageUrls?: string | null;
   designMaterial?: string;
   designUse?: string;
   designIsVehicle?: boolean;
@@ -235,6 +236,10 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const [designVehicleModel, setDesignVehicleModel]   = useState('');
   const [designVehicleYear, setDesignVehicleYear]     = useState('');
   const [designColor, setDesignColor]                 = useState('');
+  const [referenceImages, setReferenceImages]         = useState<{ url: string; name: string }[]>([]);
+  const [uploadingRefImg, setUploadingRefImg]         = useState(false);
+  const [showPhotoGuide, setShowPhotoGuide]           = useState(false);
+  const refImgInputRef                               = useRef<HTMLInputElement>(null);
 
   const [error, setError]     = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -253,7 +258,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
     setDesignDescription(''); setDesignMeasures(''); setDesignReferenceUrls('');
     setDesignMaterial(''); setDesignUse(''); setDesignIsVehicle(false);
     setDesignVehicleMake(''); setDesignVehicleModel(''); setDesignVehicleYear('');
-    setDesignColor('');
+    setDesignColor(''); setReferenceImages([]);
     setError('');
   };
 
@@ -266,6 +271,25 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const handleFileUploaded = (fileName: string, fileUrl: string, fileSize?: number) => {
     setUploadedFile({ fileName, fileUrl, fileSize });
     setIsUploading(false);
+  };
+
+  const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploadingRefImg(true);
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          setReferenceImages((prev) => [...prev, { url: data.fileUrl, name: file.name }]);
+        }
+      } catch { /* ignore individual failures */ }
+    }
+    setUploadingRefImg(false);
+    if (refImgInputRef.current) refImgInputRef.current.value = '';
   };
 
   const validate = (): string | null => {
@@ -332,6 +356,9 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
           designDescription: serviceType === 'design' ? designDescription.trim() : undefined,
           designMeasures: serviceType === 'design' && designMeasures.trim() ? designMeasures.trim() : undefined,
           designReferenceUrls: serviceType === 'design' && designReferenceUrls.trim() ? designReferenceUrls.trim() : undefined,
+          referenceImageUrls: serviceType === 'design' && referenceImages.length > 0
+            ? JSON.stringify(referenceImages.map((r) => r.url))
+            : undefined,
           designMaterial: serviceType === 'design' ? designMaterial : undefined,
           designUse: serviceType === 'design' ? designUse : undefined,
           designIsVehicle: serviceType === 'design' ? designIsVehicle : undefined,
@@ -927,6 +954,92 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                               rows={3}
                               className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
                             />
+                          </div>
+
+                          {/* Reference photo upload */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="block text-sm font-medium">
+                                Fotos de referencia <span className="text-muted-foreground font-normal">(opcional — puedes subir varias)</span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setShowPhotoGuide((v) => !v)}
+                                className="text-xs text-primary underline underline-offset-2"
+                              >
+                                {showPhotoGuide ? 'Ocultar guía' : '¿Cómo tomar las fotos?'}
+                              </button>
+                            </div>
+
+                            <AnimatePresence>
+                              {showPhotoGuide && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden mb-3"
+                                >
+                                  <div className="rounded-xl overflow-hidden border border-border">
+                                    <img
+                                      src="/design-guide.jpg"
+                                      alt="Guía: cómo tomar fotos para diseño 3D"
+                                      className="w-full"
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            {/* Uploaded images grid */}
+                            {referenceImages.length > 0 && (
+                              <div className="grid grid-cols-3 gap-2 mb-2">
+                                {referenceImages.map((img, i) => (
+                                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-accent">
+                                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                                    <button
+                                      type="button"
+                                      onClick={() => setReferenceImages((prev) => prev.filter((_, idx) => idx !== i))}
+                                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                                    >
+                                      <X className="w-3 h-3 text-white" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <input
+                              ref={refImgInputRef}
+                              type="file"
+                              multiple
+                              accept=".jpg,.jpeg,.png,.webp"
+                              onChange={handleReferenceImageUpload}
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => refImgInputRef.current?.click()}
+                              disabled={uploadingRefImg}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-sm disabled:opacity-50"
+                            >
+                              {uploadingRefImg ? (
+                                <>
+                                  <Camera className="w-4 h-4 animate-pulse text-primary" />
+                                  Subiendo...
+                                </>
+                              ) : (
+                                <>
+                                  <Camera className="w-4 h-4 text-muted-foreground" />
+                                  {referenceImages.length > 0 ? 'Agregar más fotos' : 'Subir fotos de referencia'}
+                                </>
+                              )}
+                            </button>
+                            <p className="text-xs text-muted-foreground mt-1.5">
+                              JPG, PNG o WEBP. Toma fotos desde múltiples ángulos para mejores resultados.
+                            </p>
                           </div>
                         </div>
                       )}

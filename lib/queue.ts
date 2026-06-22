@@ -13,7 +13,7 @@ async function assignDesignJobToDesigner(jobId: string, excludeWorkerId?: string
   const designers = await prisma.workerProfile.findMany({
     where: {
       isActive: true,
-      user: { role: 'DESIGNER' },
+      user: { role: 'DESIGNER', workerApproved: true },
       ...(excludeWorkerId ? { userId: { not: excludeWorkerId } } : {}),
     },
     select: { userId: true },
@@ -59,7 +59,7 @@ async function assignJobToMachine(
     where: {
       isActive: true,
       ...(excludeMachineId ? { id: { not: excludeMachineId } } : {}),
-      workerProfile: { isActive: true },
+      workerProfile: { isActive: true, user: { workerApproved: true } },
       ...(requiredTypes && requiredTypes.length > 0 ? { machineType: { in: requiredTypes } } : {}),
     },
     include: {
