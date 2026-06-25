@@ -8,7 +8,7 @@ import {
   Coins, CreditCard, TrendingUp, Gift,
   Loader2, CheckCircle, XCircle, AlertCircle, X, Copy, Check,
   Printer, ChevronRight, Activity, History, DollarSign,
-  LayoutDashboard, Wrench, Clock, Users, BarChart2, MessageSquare,
+  LayoutDashboard, Wrench, Clock, Users, MessageSquare,
 } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
@@ -108,12 +108,6 @@ interface UserData {
   subscription: SubscriptionDetails | null;
 }
 
-interface PlatformStats {
-  totalJobs: number;
-  completedJobs: number;
-  serviceBreakdown: Record<string, number>;
-}
-
 interface Referral {
   id: string;
   createdAt: string;
@@ -167,11 +161,14 @@ const PLAN_BADGE: Record<string, string> = {
 };
 
 const SERVICE_LABELS: Record<string, string> = {
-  print_3d: 'Impresión 3D',
-  laser:    'Corte Láser',
-  resin:    'Resina',
-  plans:    'Planos',
-  design:   'Diseño 3D',
+  print_3d:       'Impresión 3D',
+  laser:          'Corte Láser',
+  resin:          'Resina',
+  plans:          'Planos',
+  design:         'Diseño 3D',
+  armado_maqueta: 'Armado de maquetas',
+  planimetria:    'Planimetría',
+  asesoria:       'Asesorías',
 };
 
 const ACTIVE_STATUSES = ['pending', 'assigned', 'accepted', 'printing', 'needs_revision', 'proof_uploaded'];
@@ -234,7 +231,6 @@ function DashboardContent() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory | null>(null);
   const [activeTab, setActiveTab]           = useState<DashTab>('inicio');
-  const [platformStats, setPlatformStats]   = useState<PlatformStats | null>(null);
   const [referrals, setReferrals]           = useState<Referral[]>([]);
 
   useEffect(() => {
@@ -246,7 +242,6 @@ function DashboardContent() {
       fetchUserData();
       fetchPrintJobs();
       fetchPaymentHistory();
-      fetchPlatformStats();
       fetchReferrals();
     }
   }, [status]);
@@ -308,18 +303,6 @@ function DashboardContent() {
       }
     } catch (error) {
       console.error('Error fetching payment history:', error);
-    }
-  };
-
-  const fetchPlatformStats = async () => {
-    try {
-      const res = await fetch('/api/platform-stats');
-      if (res.ok) {
-        const data = await res.json();
-        setPlatformStats(data);
-      }
-    } catch (error) {
-      console.error('Error fetching platform stats:', error);
     }
   };
 
@@ -629,31 +612,6 @@ function DashboardContent() {
                 </div>
               </div>
 
-              {/* Platform overview */}
-              {platformStats && (
-                <div className="glass rounded-2xl p-6 mb-8">
-                  <div className="flex items-center gap-3 mb-5">
-                    <BarChart2 className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Actividad en la plataforma</h2>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-4 rounded-xl bg-card border border-border text-center">
-                      <p className="text-2xl font-bold">{platformStats.totalJobs}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Total de trabajos</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-card border border-border text-center">
-                      <p className="text-2xl font-bold text-green-400">{platformStats.completedJobs}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Completados</p>
-                    </div>
-                    {Object.entries(platformStats.serviceBreakdown).map(([svc, count]) => (
-                      <div key={svc} className="p-4 rounded-xl bg-card border border-border text-center">
-                        <p className="text-2xl font-bold">{count}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{SERVICE_LABELS[svc] ?? svc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Plan widget */}
               <div className="glass rounded-2xl p-6 mb-8">

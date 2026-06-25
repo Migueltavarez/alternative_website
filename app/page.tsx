@@ -463,15 +463,20 @@ export default function HomePage() {
 
       <footer className="py-12 border-t border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
                 <span className="text-white font-bold">A</span>
               </div>
               <span className="font-bold">Alternative 3D Studio</span>
             </div>
+            <div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
+              <Link href="/legal/terminos" className="hover:text-foreground transition-colors">Términos y Condiciones</Link>
+              <Link href="/legal/privacidad" className="hover:text-foreground transition-colors">Política de Privacidad</Link>
+              <Link href="/legal/confidencialidad" className="hover:text-foreground transition-colors">Confidencialidad</Link>
+            </div>
             <div className="text-sm text-muted-foreground">
-              © 2024 Alternative 3D Studio. Todos los derechos reservados.
+              © 2025 Alternative 3D Studio. Todos los derechos reservados.
             </div>
           </div>
         </div>

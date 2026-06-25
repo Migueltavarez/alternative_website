@@ -42,13 +42,17 @@ export const MACHINE_TYPES = [
 export const LASER_TYPES = ['CO2', 'Plasma'] as const;
 
 // Maps a job's service type to the machine type(s) eligible to fulfill it.
-// 'plans' has no dedicated equipment yet, so any active machine qualifies (legacy behavior).
+// null  → any active machine / worker
+// []    → DESIGNER role only
 export const SERVICE_MACHINE_TYPES: Record<string, string[] | null> = {
-  print_3d: ['printer_3d'],
-  resin: ['resin'],
-  laser: ['laser'],
-  plans: null,
-  design: [],
+  print_3d:       ['printer_3d'],
+  resin:          ['resin'],
+  laser:          ['laser'],
+  plans:          null,
+  design:         [],
+  armado_maqueta: null,
+  planimetria:    null,
+  asesoria:       [],
 };
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -106,9 +110,9 @@ export const NOZZLE_SIZES = [
 ] as const;
 
 export const DELIVERY_TIMES = [
-  { value: 'standard', label: 'Estándar (7-10 días hábiles)' },
-  { value: 'express', label: 'Express (3-5 días hábiles)' },
-  { value: 'urgent', label: 'Urgente (1-2 días hábiles)' },
+  { value: 'standard', label: 'Estándar (7-10 días hábiles)', price: 0,   priceLabel: 'Gratis' },
+  { value: 'express',  label: 'Express (3-5 días hábiles)',   price: 100, priceLabel: 'RD$100' },
+  { value: 'urgent',   label: 'Urgente (1-2 días hábiles)',   price: 200, priceLabel: 'RD$200' },
 ] as const;
 
 export const JOB_STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -157,6 +161,27 @@ export const SERVICE_TYPES = [
     id: 'design',
     label: 'Diseño 3D',
     description: 'Modelado y diseño de piezas desde cero',
+    acceptedExtensions: ['.jpg', '.jpeg', '.png', '.pdf', '.webp'],
+    acceptStr: '.jpg,.jpeg,.png,.pdf,.webp',
+  },
+  {
+    id: 'armado_maqueta',
+    label: 'Armado de maquetas',
+    description: 'Ensamblaje y construcción de maquetas a escala',
+    acceptedExtensions: ['.jpg', '.jpeg', '.png', '.pdf', '.webp'],
+    acceptStr: '.jpg,.jpeg,.png,.pdf,.webp',
+  },
+  {
+    id: 'planimetria',
+    label: 'Planimetría',
+    description: 'Elevaciones, secciones, planos técnicos y detalles',
+    acceptedExtensions: ['.pdf', '.dwg', '.dxf'],
+    acceptStr: '.pdf,.dwg,.dxf',
+  },
+  {
+    id: 'asesoria',
+    label: 'Asesorías',
+    description: 'Consultoría técnica especializada en fabricación digital',
     acceptedExtensions: ['.jpg', '.jpeg', '.png', '.pdf', '.webp'],
     acceptStr: '.jpg,.jpeg,.png,.pdf,.webp',
   },

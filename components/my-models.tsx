@@ -6,7 +6,7 @@ import {
   Upload, File, X, Clock, Printer, AlertTriangle,
   ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
   DollarSign, CheckCircle2, MessageSquare, History, ExternalLink, Copy, Check,
-  PenTool, Car, Video, Thermometer, Activity, Timer, Camera, Star,
+  PenTool, Car, Video, Thermometer, Activity, Timer, Camera, Star, Truck, MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
@@ -50,6 +50,9 @@ interface PrintJob {
   assignedAt?: string;
   cameraUrl?: string | null;
   makerFeedback?: string | null;
+  deliveryType?: string | null;
+  deliveryAddress?: string | null;
+  trackingUrl?: string | null;
   price?: number | null;
   priceStatus?: string;
   appealNote?: string | null;
@@ -73,19 +76,25 @@ interface MyModelsProps {
 // ── Service icons ─────────────────────────────────────────────────────────────
 
 const SERVICE_ICONS: Record<string, React.ReactNode> = {
-  print_3d: <Printer className="w-6 h-6" />,
-  laser:    <Scissors className="w-6 h-6" />,
-  resin:    <Layers className="w-6 h-6" />,
-  plans:    <FileText className="w-6 h-6" />,
-  design:   <PenTool className="w-6 h-6" />,
+  print_3d:       <Printer className="w-6 h-6" />,
+  laser:          <Scissors className="w-6 h-6" />,
+  resin:          <Layers className="w-6 h-6" />,
+  plans:          <FileText className="w-6 h-6" />,
+  design:         <PenTool className="w-6 h-6" />,
+  armado_maqueta: <Wrench className="w-6 h-6" />,
+  planimetria:    <FileText className="w-6 h-6" />,
+  asesoria:       <MessageSquare className="w-6 h-6" />,
 };
 
 const SERVICE_COLORS: Record<string, string> = {
-  print_3d: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
-  laser:    'text-orange-400 bg-orange-500/10 border-orange-500/20',
-  resin:    'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
-  plans:    'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  design:   'text-pink-400 bg-pink-500/10 border-pink-500/20',
+  print_3d:       'text-violet-400 bg-violet-500/10 border-violet-500/20',
+  laser:          'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  resin:          'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+  plans:          'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  design:         'text-pink-400 bg-pink-500/10 border-pink-500/20',
+  armado_maqueta: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  planimetria:    'text-teal-400 bg-teal-500/10 border-teal-500/20',
+  asesoria:       'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
 };
 
 function getServiceLabel(id?: string) {
@@ -213,6 +222,9 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const [isUploading, setIsUploading]     = useState(false);
   const [notes, setNotes]                 = useState('');
   const [deliveryTime, setDeliveryTime]   = useState('standard');
+  const [deliveryType, setDeliveryType]   = useState<'pickup' | 'delivery'>('pickup');
+  const [userAddresses, setUserAddresses] = useState<{id:string;label:string;street:string;city:string;isDefault:boolean}[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
   // 3D print
   const [color, setColor]                 = useState('');
   const [filamentType, setFilamentType]   = useState('');
@@ -244,6 +256,20 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const [error, setError]     = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (deliveryType === 'delivery' && userAddresses.length === 0) {
+      fetch('/api/user/addresses')
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => {
+          const list = Array.isArray(data) ? data : (data.addresses ?? []);
+          setUserAddresses(list);
+          const def = list.find((a: any) => a.isDefault);
+          if (def) setSelectedAddressId(def.id);
+        })
+        .catch(() => {});
+    }
+  }, [deliveryType]);
+
   const selectedService = SERVICE_TYPES.find((s) => s.id === serviceType);
 
   const resetForm = () => {
@@ -252,6 +278,8 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
     setIsUploading(false);
     setNotes('');
     setDeliveryTime('standard');
+    setDeliveryType('pickup');
+    setSelectedAddressId('');
     setColor(''); setFilamentType(''); setScale(''); setCustomScale(''); setRealSize('');
     setLaserCutColor(''); setLaserEngravColor('');
     setResinColor(''); setResinUse('');
@@ -292,9 +320,12 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
     if (refImgInputRef.current) refImgInputRef.current.value = '';
   };
 
+  const NO_FILE_SERVICES = ['design', 'armado_maqueta', 'asesoria'];
+
   const validate = (): string | null => {
     if (!serviceType) return 'Selecciona un tipo de servicio';
-    if (serviceType !== 'design' && !uploadedFile) return 'Sube un archivo primero';
+    if (!NO_FILE_SERVICES.includes(serviceType) && !uploadedFile) return 'Sube un archivo primero';
+    if (deliveryType === 'delivery' && !selectedAddressId) return 'Selecciona una dirección de envío';
 
     if (serviceType === 'print_3d') {
       if (!color)        return 'Selecciona el color del filamento';
@@ -333,16 +364,24 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
 
     const finalScale = scale === 'Personalizada' ? customScale.trim() : scale;
 
+    let deliveryAddressJson: string | undefined;
+    if (deliveryType === 'delivery' && selectedAddressId) {
+      const addr = userAddresses.find((a) => a.id === selectedAddressId);
+      if (addr) deliveryAddressJson = JSON.stringify(addr);
+    }
+
     try {
       const res = await fetch('/api/print-jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fileName: uploadedFile?.fileName ?? 'diseño',
+          fileName: uploadedFile?.fileName ?? 'solicitud',
           fileUrl: uploadedFile?.fileUrl ?? '',
           fileSize: uploadedFile?.fileSize,
           notes: notes || undefined,
           deliveryTime,
+          deliveryType,
+          deliveryAddress: deliveryAddressJson,
           serviceType,
           color: serviceType === 'print_3d' ? color : (serviceType === 'design' && designColor ? designColor : undefined),
           filamentType: serviceType === 'print_3d' ? filamentType : undefined,
@@ -677,19 +716,19 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                             </div>
                             <div>
                               <label className="block text-sm font-medium mb-1">
-                                Tamaño real máximo del modelo <span className="text-red-400">*</span>
+                                Altura máxima real (metros) <span className="text-red-400">*</span>
                               </label>
                               <div className="relative">
                                 <input
                                   type="text"
                                   value={realSize}
                                   onChange={(e) => setRealSize(e.target.value)}
-                                  placeholder="Ej: 0.30 × 0.15 × 0.10"
+                                  placeholder="10"
                                   className="w-full pl-4 pr-14 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary"
                                 />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">metros</span>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-1">Largo × Ancho × Alto en metros reales</p>
+                              <p className="text-xs text-muted-foreground mt-1">Altura real del modelo terminado</p>
                             </div>
                           </div>
                         </div>
@@ -787,6 +826,36 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                           <p className="text-xs text-blue-400 font-medium mb-1">Impresión de planos</p>
                           <p className="text-xs text-muted-foreground">
                             Sube tu archivo PDF. Si necesitas un tamaño de papel específico (A0, A1, A2...) o alguna indicación especial, indícalo en las notas.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* ── Armado de maquetas ── */}
+                      {serviceType === 'armado_maqueta' && (
+                        <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                          <p className="text-xs text-amber-400 font-medium mb-1">Armado de maquetas</p>
+                          <p className="text-xs text-muted-foreground">
+                            Describe en las notas qué necesitas armar, el tamaño aproximado y los materiales disponibles. Puedes subir imágenes de referencia o planos de forma opcional.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* ── Planimetría ── */}
+                      {serviceType === 'planimetria' && (
+                        <div className="p-4 rounded-xl bg-teal-500/5 border border-teal-500/20">
+                          <p className="text-xs text-teal-400 font-medium mb-1">Planimetría técnica</p>
+                          <p className="text-xs text-muted-foreground">
+                            Sube tu archivo (PDF, DWG o DXF). Indica en las notas qué tipo de plano necesitas: elevaciones, secciones, planos técnicos o detalles constructivos.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* ── Asesorías ── */}
+                      {serviceType === 'asesoria' && (
+                        <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                          <p className="text-xs text-emerald-400 font-medium mb-1">Asesoría técnica</p>
+                          <p className="text-xs text-muted-foreground">
+                            Describe en las notas el tema sobre el que necesitas orientación: selección de materiales, optimización de modelos, viabilidad de impresión, costos, etc.
                           </p>
                         </div>
                       )}
@@ -1045,29 +1114,107 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                       )}
 
                       {/* Common fields */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        {/* Delivery time */}
                         <div>
-                          <label className="block text-sm font-medium mb-1">
+                          <label className="block text-sm font-medium mb-2">
                             Tiempo de entrega <span className="text-red-400">*</span>
                           </label>
-                          <select
-                            value={deliveryTime}
-                            onChange={(e) => setDeliveryTime(e.target.value)}
-                            className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                          >
+                          <div className="grid grid-cols-3 gap-3">
                             {DELIVERY_TIMES.map((d) => (
-                              <option key={d.value} value={d.value}>{d.label}</option>
+                              <label
+                                key={d.value}
+                                className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                                  deliveryTime === d.value
+                                    ? 'border-primary bg-primary/10'
+                                    : 'border-border hover:border-primary/40'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="deliveryTime"
+                                  value={d.value}
+                                  checked={deliveryTime === d.value}
+                                  onChange={() => setDeliveryTime(d.value)}
+                                  className="sr-only"
+                                />
+                                <span className="text-xs font-semibold">{d.label.split(' (')[0]}</span>
+                                <span className="text-[10px] text-muted-foreground">{d.label.match(/\(([^)]+)\)/)?.[1]}</span>
+                                <span className={`text-xs font-bold mt-0.5 ${d.price === 0 ? 'text-green-400' : 'text-amber-400'}`}>
+                                  {d.priceLabel}
+                                </span>
+                              </label>
                             ))}
-                          </select>
+                          </div>
                         </div>
+
+                        {/* Pickup / Delivery */}
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            Forma de entrega <span className="text-red-400">*</span>
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { value: 'pickup', label: 'Recoger en tienda', icon: <MapPin className="w-4 h-4" /> },
+                              { value: 'delivery', label: 'Envío a domicilio', icon: <Truck className="w-4 h-4" /> },
+                            ].map((opt) => (
+                              <label
+                                key={opt.value}
+                                className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                  deliveryType === opt.value
+                                    ? 'border-primary bg-primary/10'
+                                    : 'border-border hover:border-primary/40'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="deliveryType"
+                                  value={opt.value}
+                                  checked={deliveryType === opt.value}
+                                  onChange={() => setDeliveryType(opt.value as 'pickup' | 'delivery')}
+                                  className="sr-only"
+                                />
+                                {opt.icon}
+                                <span className="text-sm font-medium">{opt.label}</span>
+                              </label>
+                            ))}
+                          </div>
+
+                          {/* Address selector */}
+                          {deliveryType === 'delivery' && (
+                            <div className="mt-3">
+                              {userAddresses.length === 0 ? (
+                                <p className="text-xs text-amber-400 flex items-center gap-1.5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                  No tienes direcciones guardadas. <a href="/profile" className="underline">Agrega una en tu perfil</a>.
+                                </p>
+                              ) : (
+                                <select
+                                  value={selectedAddressId}
+                                  onChange={(e) => setSelectedAddressId(e.target.value)}
+                                  className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                                >
+                                  <option value="">Selecciona una dirección</option>
+                                  {userAddresses.map((a) => (
+                                    <option key={a.id} value={a.id}>
+                                      {a.label} — {a.street}, {a.city}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Notes */}
                         <div>
                           <label className="block text-sm font-medium mb-1">Notas adicionales</label>
                           <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Instrucciones especiales, detalles del proyecto..."
-                            rows={1}
-                            className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                            rows={2}
+                            className="w-full px-4 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
                           />
                         </div>
                       </div>
@@ -1080,12 +1227,15 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
 
                       <Button
                         type="submit"
-                        disabled={(serviceType !== 'design' && !uploadedFile) || isUploading || submitting}
+                        disabled={(!NO_FILE_SERVICES.includes(serviceType) && !uploadedFile) || isUploading || submitting}
                         className="w-full"
                         isLoading={submitting}
                       >
                         {!submitting && <Upload className="w-4 h-4 mr-2" />}
-                        {serviceType === 'design' ? 'Enviar Solicitud de Diseño' : 'Enviar a la Cola de Impresión'}
+                        {serviceType === 'design' ? 'Enviar Solicitud de Diseño'
+                          : ['armado_maqueta', 'asesoria'].includes(serviceType) ? 'Enviar Solicitud'
+                          : serviceType === 'planimetria' ? 'Enviar Planos'
+                          : 'Enviar a la Cola de Impresión'}
                       </Button>
                     </motion.div>
                   )}
@@ -1297,6 +1447,22 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                   );
                 })()}
 
+                {/* Tracking link */}
+                {job.deliveryType === 'delivery' && job.trackingUrl && (
+                  <div className="mt-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 flex items-center gap-3">
+                    <Truck className="w-4 h-4 text-blue-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-blue-400">Seguimiento del envío</p>
+                      <a href={job.trackingUrl} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-blue-300 hover:underline truncate block">{job.trackingUrl}</a>
+                    </div>
+                    <a href={job.trackingUrl} target="_blank" rel="noopener noreferrer"
+                      className="shrink-0 p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 transition-colors">
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                    </a>
+                  </div>
+                )}
+
                 {/* Design description */}
                 {job.serviceType === 'design' && job.designDescription && (
                   <div className="mt-2 p-3 rounded-lg bg-pink-500/5 border border-pink-500/20">
@@ -1345,64 +1511,21 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                       Acepta el precio para proceder con el pago, o apela si crees que no es correcto.
                     </p>
 
-                    {priceDecisionError && appealOpenJobId === job.id && (
+                    {priceDecisionError && (
                       <p className="text-xs text-red-400 flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{priceDecisionError}
                       </p>
                     )}
 
-                    {/* Appeal textarea */}
-                    {appealOpenJobId === job.id && (
-                      <div className="space-y-2">
-                        <textarea
-                          value={appealNote}
-                          onChange={(e) => setAppealNote(e.target.value)}
-                          placeholder="Explica por qué estás apelando el precio..."
-                          rows={3}
-                          className="w-full px-3 py-2 rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm resize-none"
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            className="flex-1 text-sm"
-                            onClick={() => handlePriceDecision(job.id, 'appeal')}
-                            disabled={priceDecisionLoading}
-                            isLoading={priceDecisionLoading}
-                          >
-                            {!priceDecisionLoading && <MessageSquare className="w-4 h-4 mr-2" />}
-                            Enviar apelación
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="text-sm"
-                            onClick={() => { setAppealOpenJobId(null); setAppealNote(''); setPriceDecisionError(''); }}
-                          >
-                            Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {appealOpenJobId !== job.id && (
-                      <div className="flex gap-2">
-                        <Button
-                          className="flex-1 text-sm"
-                          onClick={() => handlePriceDecision(job.id, 'accept')}
-                          disabled={priceDecisionLoading}
-                          isLoading={priceDecisionLoading}
-                        >
-                          {!priceDecisionLoading && <CheckCircle2 className="w-4 h-4 mr-2" />}
-                          Aceptar precio
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="text-sm text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
-                          onClick={() => { setAppealOpenJobId(job.id); setAppealNote(''); setPriceDecisionError(''); }}
-                        >
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          Apelar
-                        </Button>
-                      </div>
-                    )}
+                    <Button
+                      className="w-full text-sm"
+                      onClick={() => handlePriceDecision(job.id, 'accept')}
+                      disabled={priceDecisionLoading}
+                      isLoading={priceDecisionLoading}
+                    >
+                      {!priceDecisionLoading && <CheckCircle2 className="w-4 h-4 mr-2" />}
+                      Aceptar precio y continuar
+                    </Button>
                   </div>
                 )}
 

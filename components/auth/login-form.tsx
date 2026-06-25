@@ -69,18 +69,6 @@ export function LoginForm() {
           return;
         }
 
-        const res = await fetch('/api/auth/resend-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: data.email, checkOnly: true }),
-        });
-        const { unverified } = await res.json();
-        if (unverified) {
-          setError('Debes verificar tu correo antes de iniciar sesión.');
-          setUnverifiedEmail(data.email);
-          return;
-        }
-
         setError('Email o contraseña incorrectos');
         return;
       }

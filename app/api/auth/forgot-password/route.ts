@@ -2,26 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import prisma from '@/lib/prisma';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const ip = getClientIp(request);
+    const rl = rateLimit(`forgot:${ip}`, 5, 15 * 60 * 1000); // 5 per 15 min per IP
+    if (!rl.allowed) {
+      // Return 200 to avoid leaking rate-limit info to attackers
+      return NextResponse.json({ success: true });
+    }
+
+    const body = await request.json();
+    const email = typeof body?.email === 'string' ? body.email.toLowerCase().trim() : null;
 
     if (!email) {
       return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-    });
+    const user = await prisma.user.findUnique({ where: { email } });
 
-    // Always return success to avoid exposing which emails are registered
+    // Always return success — never reveal whether an email is registered
     if (!user) {
       return NextResponse.json({ success: true });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expiry = new Date(Date.now() + 60 * 60 * 1000);
 
     await prisma.user.update({
       where: { id: user.id },

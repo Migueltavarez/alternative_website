@@ -86,6 +86,12 @@ model WorkerProfile {
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   isActive      Boolean          @default(true)
   completedJobs Int              @default(0)
+
+  // Contract acceptance record
+  contractAccepted   Boolean   @default(false)
+  contractAcceptedAt DateTime?
+  contractAcceptedIp String?
+
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   machines      PrinterMachine[]
@@ -259,6 +265,11 @@ model PrintJob {
   designerEarnings    Float?
   designerPaid        Boolean   @default(false)
   designerPaidAt      DateTime?
+
+  // Delivery
+  deliveryType      String?   // 'pickup' | 'delivery'
+  deliveryAddress   String?   // JSON snapshot of the selected address
+  trackingUrl       String?   // Link to track the delivery (Uber/InDrive/DIDI)
 
   // Live camera feed
   cameraUrl         String?

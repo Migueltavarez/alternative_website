@@ -5,7 +5,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
 
-const contentTypes: Record<string, string> = {
+const CONTENT_TYPES: Record<string, string> = {
   '.stl': 'model/stl',
   '.obj': 'model/obj',
   '.3mf': 'application/x-3mf',
@@ -22,7 +22,11 @@ const contentTypes: Record<string, string> = {
   '.png': 'image/png',
   '.webp': 'image/webp',
   '.pdf': 'application/pdf',
+  '.dwg': 'application/acad',
+  '.dxf': 'application/dxf',
 };
+
+const UPLOADS_DIR = path.resolve(process.cwd(), 'public', 'uploads');
 
 export async function GET(
   request: NextRequest,
@@ -30,55 +34,44 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const filePathParts = params.filePath;
-    const fileName = filePathParts[filePathParts.length - 1];
-    const fileFullPath = path.join(process.cwd(), 'public', 'uploads', fileName);
+    // Use only the last segment and resolve against the uploads directory
+    const rawName = params.filePath[params.filePath.length - 1];
+
+    // Strip any directory traversal characters
+    const safeName = path.basename(rawName);
+    const fileFullPath = path.resolve(UPLOADS_DIR, safeName);
+
+    // Ensure the resolved path stays within the uploads directory
+    if (!fileFullPath.startsWith(UPLOADS_DIR + path.sep) && fileFullPath !== UPLOADS_DIR) {
+      return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+    }
 
     if (!existsSync(fileFullPath)) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    const ext = path.extname(fileName).toLowerCase();
-    const contentType = contentTypes[ext] || 'application/octet-stream';
+    const ext = path.extname(safeName).toLowerCase();
+    const contentType = CONTENT_TYPES[ext] || 'application/octet-stream';
 
     const fileBuffer = await readFile(fileFullPath);
 
-    const inlineExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
-    const disposition = inlineExtensions.includes(ext) ? 'inline' : 'attachment';
+    const inlineExts = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
+    const disposition = inlineExts.has(ext) ? 'inline' : 'attachment';
 
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': contentType,
         'Content-Length': fileBuffer.length.toString(),
-        'Content-Disposition': `${disposition}; filename="${fileName}"`,
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        'Content-Disposition': `${disposition}; filename="${safeName}"`,
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error) {
     console.error('Download error:', error);
-    return NextResponse.json(
-      { error: 'Error downloading file' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error downloading file' }, { status: 500 });
   }
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
 }

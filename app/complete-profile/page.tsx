@@ -19,12 +19,31 @@ export default function CompleteProfilePage() {
   const [step, setStep] = useState<'data' | 'address'>('data');
   const [profileLoading, setProfileLoading] = useState(false);
 
+  function validateCedulaDR(raw: string): boolean {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 11) return false;
+    const weights = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
+    let sum = 0;
+    for (let i = 0; i < 10; i++) {
+      let p = parseInt(digits[i]) * weights[i];
+      if (p >= 10) p -= 9;
+      sum += p;
+    }
+    const check = (10 - (sum % 10)) % 10;
+    return check === parseInt(digits[10]);
+  }
+
   const handleSubmitProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!phone || !cedula || !birthDate) {
       setError('Todos los campos son requeridos');
+      return;
+    }
+
+    if (!validateCedulaDR(cedula)) {
+      setError('La cédula ingresada no es válida. Verifica el número.');
       return;
     }
 
@@ -101,10 +120,17 @@ export default function CompleteProfilePage() {
                   type="text"
                   placeholder="000-0000000-0"
                   value={cedula}
-                  onChange={(e) => setCedula(e.target.value)}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    let formatted = raw;
+                    if (raw.length > 3) formatted = raw.slice(0, 3) + '-' + raw.slice(3);
+                    if (raw.length > 10) formatted = raw.slice(0, 3) + '-' + raw.slice(3, 10) + '-' + raw.slice(10);
+                    setCedula(formatted);
+                  }}
                   className="w-full px-3 py-2 rounded-lg bg-card border border-border text-sm"
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1">Formato: 000-0000000-0</p>
               </div>
 
               <div>

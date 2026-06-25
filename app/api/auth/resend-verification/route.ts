@@ -2,28 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendVerificationEmail } from '@/lib/email';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = rateLimit(`resend:${ip}`, 3, 10 * 60 * 1000); // 3 per 10 min per IP
+  if (!rl.allowed) {
+    return NextResponse.json({ ok: true }); // silent — don't leak rate-limit status
+  }
+
   const body = await request.json();
-  const { email, checkOnly } = body;
+  const email = typeof body?.email === 'string' ? body.email.toLowerCase().trim() : null;
 
   if (!email) {
     return NextResponse.json({ error: 'Email requerido' }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+    where: { email },
     select: { id: true, email: true, name: true, emailVerified: true },
   });
 
   if (!user || user.emailVerified) {
     return NextResponse.json({ ok: true, unverified: false });
-  }
-
-  if (checkOnly) {
-    return NextResponse.json({ ok: true, unverified: true });
   }
 
   const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
   });
 
   const verifyUrl = `${APP_URL}/verify-email?token=${verificationToken}`;
-  sendVerificationEmail(user.email, verifyUrl, user.name).catch(err =>
+  sendVerificationEmail(user.email, verifyUrl, user.name).catch((err) =>
     console.error('Resend verification error:', err)
   );
 

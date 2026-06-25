@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       fileName, fileUrl, fileSize, notes, deliveryTime,
+      deliveryType, deliveryAddress,
       serviceType,
       // 3D print
       color, filamentType, scale, realSize,
@@ -52,9 +53,10 @@ export async function POST(request: NextRequest) {
       designVehicleMake, designVehicleModel, designVehicleYear,
     } = body;
 
+    const NO_FILE_SERVICES = ['design', 'armado_maqueta', 'asesoria'];
     const isDesign = serviceType === 'design';
 
-    if (!fileName || (!fileUrl && !isDesign)) {
+    if (!fileName || (!fileUrl && !NO_FILE_SERVICES.includes(serviceType))) {
       return NextResponse.json(
         { error: 'fileName y fileUrl son requeridos' },
         { status: 400 }
@@ -71,11 +73,13 @@ export async function POST(request: NextRequest) {
     const printJob = await prisma.printJob.create({
       data: {
         userId,
-        fileName: fileName || 'diseño',
+        fileName: fileName || 'solicitud',
         fileUrl: fileUrl || '',
         fileSize: fileSize || null,
         notes: notes || null,
         deliveryTime: deliveryTime || 'standard',
+        deliveryType: deliveryType || 'pickup',
+        deliveryAddress: deliveryAddress || null,
         serviceType: serviceType || 'print_3d',
         status: 'pending',
         creditsCost: 0,

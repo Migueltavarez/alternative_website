@@ -6,7 +6,7 @@ import {
   Printer, CheckCircle, Play, Clock, AlertCircle,
   File, User, ChevronDown, ChevronUp, RefreshCw,
   Plus, Pencil, Trash2, X, Save, AlertTriangle, MessageSquare,
-  Video, ExternalLink, Camera, Eye, EyeOff, Link, Info, DollarSign,
+  Video, ExternalLink, Camera, Eye, EyeOff, Link, Info, DollarSign, Truck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,6 +72,11 @@ interface WorkerJob {
   designVehicleYear?: string;
   designerEarnings?: number | null;
   designerPaid?: boolean;
+  // Delivery
+  deliveryType?: string | null;
+  deliveryAddress?: string | null;
+  trackingUrl?: string | null;
+  priceStatus?: string;
 }
 
 interface WorkerProfile {
@@ -382,9 +387,35 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
   // Designer earnings
   const [earnings, setEarnings] = useState<{ jobs: DesignerEarning[]; pendingBalance: number; totalEarned: number } | null>(null);
 
+  // Tracking URL state: jobId -> { url, loading, saved }
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, { url: string; loading: boolean; saved: boolean }>>({});
+
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleSaveTracking = async (jobId: string) => {
+    const url = trackingInputs[jobId]?.url?.trim();
+    if (!url) return;
+    setTrackingInputs((prev) => ({ ...prev, [jobId]: { ...prev[jobId], loading: true } }));
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/tracking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackingUrl: url }),
+      });
+      if (res.ok) {
+        setTrackingInputs((prev) => ({ ...prev, [jobId]: { url, loading: false, saved: true } }));
+        showNotification('success', 'Link de seguimiento guardado');
+      } else {
+        showNotification('error', 'Error al guardar el link');
+        setTrackingInputs((prev) => ({ ...prev, [jobId]: { ...prev[jobId], loading: false } }));
+      }
+    } catch {
+      showNotification('error', 'Error de red');
+      setTrackingInputs((prev) => ({ ...prev, [jobId]: { ...prev[jobId], loading: false } }));
+    }
   };
 
   const fetchData = useCallback(async () => {
@@ -1162,6 +1193,57 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                     {job.notes && (
                       <div className="mt-2 p-3 rounded-lg bg-card border border-border text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">Notas del cliente: </span>{job.notes}
+                      </div>
+                    )}
+
+                    {/* Delivery address */}
+                    {job.deliveryType === 'delivery' && job.deliveryAddress && (() => {
+                      try {
+                        const addr = JSON.parse(job.deliveryAddress);
+                        return (
+                          <div className="mt-3 p-3 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                            <p className="text-xs font-semibold text-blue-400 flex items-center gap-1.5 mb-1">
+                              <Truck className="w-3.5 h-3.5" />Dirección de envío
+                            </p>
+                            <p className="text-xs text-foreground">{addr.recipientName} · {addr.phone}</p>
+                            <p className="text-xs text-muted-foreground">{addr.street}, {addr.sector}, {addr.city}, {addr.province}</p>
+                            {addr.notes && <p className="text-xs text-muted-foreground mt-0.5">Ref: {addr.notes}</p>}
+                          </div>
+                        );
+                      } catch { return null; }
+                    })()}
+
+                    {/* Tracking URL for completed delivery jobs */}
+                    {job.deliveryType === 'delivery' && job.status === 'completed' && (
+                      <div className="mt-3 p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-2">
+                        <p className="text-xs font-semibold text-blue-400 flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5" />Link de seguimiento del envío
+                        </p>
+                        {(trackingInputs[job.id]?.saved || job.trackingUrl) ? (
+                          <a href={trackingInputs[job.id]?.url || job.trackingUrl!} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-blue-300 hover:underline truncate flex items-center gap-1">
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                            {trackingInputs[job.id]?.url || job.trackingUrl}
+                          </a>
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              placeholder="https://..."
+                              value={trackingInputs[job.id]?.url ?? ''}
+                              onChange={(e) => setTrackingInputs((prev) => ({ ...prev, [job.id]: { url: e.target.value, loading: false, saved: false } }))}
+                              className="flex-1 px-3 py-1.5 rounded-lg bg-card border border-border text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                            <Button
+                              className="text-xs px-3 py-1.5 h-auto"
+                              onClick={() => handleSaveTracking(job.id)}
+                              disabled={trackingInputs[job.id]?.loading || !trackingInputs[job.id]?.url}
+                              isLoading={trackingInputs[job.id]?.loading}
+                            >
+                              Guardar
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
 
