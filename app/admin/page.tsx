@@ -435,6 +435,21 @@ export default function AdminPage() {
     finally { setActionLoading(null); }
   };
 
+  const handleMarkMakerPaid = async (jobId: string, credits: number) => {
+    if (!confirm(`¿Confirmar pago al maker por ${credits} crédito(s) = RD$ ${(credits * 10).toLocaleString('es-DO')}?`)) return;
+    setActionLoading(`makerpaid-${jobId}`);
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/maker-paid`, { method: 'POST' });
+      if (res.ok) {
+        setPrintJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, makerPaid: true, makerPaidAt: new Date().toISOString() } : j));
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Error');
+      }
+    } catch { console.error('Mark maker paid error'); }
+    finally { setActionLoading(null); }
+  };
+
   const handleOpenInBambuStudio = (fileUrl: string, fileName: string) => {
     let publicUrl: string;
 
@@ -1346,6 +1361,32 @@ export default function AdminPage() {
                                     className="text-[10px] px-2 py-0.5 rounded bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors disabled:opacity-50"
                                   >
                                     Guardar
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Maker earnings (non-design, completed, assigned) */}
+                          {job.serviceType !== 'design' && job.status === 'completed' && job.assignedWorkerId && (job.creditsCost ?? 0) > 0 && (
+                            <div className="mt-2 pt-2 border-t border-white/5">
+                              {job.makerPaid ? (
+                                <div className="flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                                  <span className="text-xs text-green-400 font-medium">
+                                    Maker pagado: RD$ {(job.creditsCost * 10).toLocaleString('es-DO', { minimumFractionDigits: 2 })} ({job.creditsCost} cred.)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-amber-400 font-medium">
+                                    Maker: RD$ {(job.creditsCost * 10).toLocaleString('es-DO', { minimumFractionDigits: 2 })} ({job.creditsCost} cred.)
+                                  </span>
+                                  <button
+                                    onClick={() => handleMarkMakerPaid(job.id, job.creditsCost)}
+                                    disabled={!!actionLoading}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-green-500/20 border border-green-500/30 text-green-400 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                                  >
+                                    Marcar pagado
                                   </button>
                                 </div>
                               )}

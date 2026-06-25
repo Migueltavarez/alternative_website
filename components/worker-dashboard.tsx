@@ -72,6 +72,10 @@ interface WorkerJob {
   designVehicleYear?: string;
   designerEarnings?: number | null;
   designerPaid?: boolean;
+  // Maker payment
+  creditsCost?: number;
+  makerPaid?: boolean;
+  makerPaidAt?: string | null;
   // Delivery
   deliveryType?: string | null;
   deliveryAddress?: string | null;
@@ -94,6 +98,20 @@ interface DesignerEarning {
   designerEarnings: number | null;
   designerPaid: boolean;
   designerPaidAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  user: { name: string | null; email: string };
+}
+
+interface MakerEarning {
+  id: string;
+  fileName: string;
+  serviceType: string;
+  status: string;
+  creditsCost: number;
+  makerEarnings: number;
+  makerPaid: boolean;
+  makerPaidAt: string | null;
   completedAt: string | null;
   createdAt: string;
   user: { name: string | null; email: string };
@@ -384,8 +402,18 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
   // Completion photo modal state
   const [completionModal, setCompletionModal] = useState<{ jobId: string; photoUrl: string; uploading: boolean } | null>(null);
 
-  // Designer earnings
-  const [earnings, setEarnings] = useState<{ jobs: DesignerEarning[]; pendingBalance: number; totalEarned: number } | null>(null);
+  // Earnings (designer or maker)
+  const [earnings, setEarnings] = useState<{
+    type: 'designer' | 'maker';
+    jobs: (DesignerEarning | MakerEarning)[];
+    pendingBalance: number;
+    totalEarned: number;
+    // maker-only
+    pendingCredits?: number;
+    paidCredits?: number;
+    totalCredits?: number;
+    earningPerCredit?: number;
+  } | null>(null);
 
   // Tracking URL state: jobId -> { url, loading, saved }
   const [trackingInputs, setTrackingInputs] = useState<Record<string, { url: string; loading: boolean; saved: boolean }>>({});
@@ -424,13 +452,13 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
         fetch('/api/workers/jobs'),
         fetch('/api/workers/profile'),
       ];
-      if (role === 'DESIGNER') fetches.push(fetch('/api/workers/earnings'));
+      if (role === 'DESIGNER' || role === 'WORKER') fetches.push(fetch('/api/workers/earnings'));
 
       const responses = await Promise.all(fetches);
       const [jobsData, profileData] = await Promise.all([responses[0].json(), responses[1].json()]);
       setJobs(Array.isArray(jobsData) ? jobsData : []);
       setProfile(profileData.profile ?? null);
-      if (role === 'DESIGNER' && responses[2]) {
+      if ((role === 'DESIGNER' || role === 'WORKER') && responses[2]) {
         const earningsData = await responses[2].json();
         setEarnings(earningsData);
       }
@@ -815,14 +843,13 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
         </div>
       )}
 
-      {/* Designer earnings section */}
-      {role === 'DESIGNER' && earnings && (
+      {/* Earnings section — DESIGNER */}
+      {role === 'DESIGNER' && earnings && earnings.type === 'designer' && (
         <section>
           <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
             <DollarSign className="w-5 h-5 text-primary" />
             Mis Ganancias
           </h3>
-
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
               <p className="text-xs text-muted-foreground mb-1">Balance pendiente de pago</p>
@@ -837,12 +864,11 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
               </p>
             </div>
           </div>
-
           {earnings.jobs.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No hay trabajos de diseño registrados aún.</p>
           ) : (
             <div className="space-y-2">
-              {earnings.jobs.map((j) => (
+              {(earnings.jobs as DesignerEarning[]).map((j) => (
                 <div key={j.id} className={`rounded-xl border p-3 flex items-center justify-between gap-3 ${
                   j.designerPaid ? 'border-white/5 bg-white/2' : j.designerEarnings ? 'border-amber-500/20 bg-amber-500/5' : 'border-border bg-card'
                 }`}>
@@ -863,6 +889,67 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                     ) : (
                       <p className="text-xs text-muted-foreground italic">Sin monto asignado</p>
                     )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Earnings section — WORKER (credits × RD$10) */}
+      {role === 'WORKER' && earnings && earnings.type === 'maker' && (
+        <section>
+          <h3 className="text-xl font-bold flex items-center gap-2 mb-4">
+            <DollarSign className="w-5 h-5 text-primary" />
+            Mis Ganancias
+          </h3>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Créditos totales</p>
+              <p className="text-2xl font-black text-primary">{earnings.totalCredits ?? 0}</p>
+              <p className="text-xs text-muted-foreground mt-1">trabajos completados</p>
+            </div>
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Pendiente de pago</p>
+              <p className="text-2xl font-black text-amber-400">
+                RD$ {earnings.pendingBalance.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">{earnings.pendingCredits ?? 0} créditos</p>
+            </div>
+            <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total recibido</p>
+              <p className="text-2xl font-black text-green-400">
+                RD$ {earnings.totalEarned.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">{earnings.paidCredits ?? 0} créditos</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Cada crédito te genera <span className="text-primary font-semibold">RD$ {earnings.earningPerCredit ?? 10}</span>. Los pagos los emite el administrador.
+          </p>
+          {earnings.jobs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Completa trabajos para ver tus ganancias aquí.</p>
+          ) : (
+            <div className="space-y-2">
+              {(earnings.jobs as MakerEarning[]).map((j) => (
+                <div key={j.id} className={`rounded-xl border p-3 flex items-center justify-between gap-3 ${
+                  j.makerPaid ? 'border-white/5 bg-white/2' : 'border-amber-500/20 bg-amber-500/5'
+                }`}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{j.fileName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {j.user.name ?? j.user.email} · {new Date(j.completedAt ?? j.createdAt).toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-muted-foreground">{j.creditsCost} crédito{j.creditsCost !== 1 ? 's' : ''}</p>
+                    <p className={`text-sm font-bold ${j.makerPaid ? 'text-green-400' : 'text-amber-400'}`}>
+                      RD$ {j.makerEarnings.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {j.makerPaid ? `Pagado ${new Date(j.makerPaidAt!).toLocaleDateString('es-ES')}` : 'Pendiente de pago'}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -1183,6 +1270,20 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                             <span className="font-medium">
                               {job.designerPaid ? 'Pagado: ' : 'Tu ganancia: '}
                               RD$ {job.designerEarnings.toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
+                        {role === 'WORKER' && job.status === 'completed' && (job.creditsCost ?? 0) > 0 && (
+                          <div className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs ${
+                            job.makerPaid
+                              ? 'border-green-500/20 bg-green-500/5 text-green-400'
+                              : 'border-amber-500/20 bg-amber-500/5 text-amber-400'
+                          }`}>
+                            <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                            <span className="font-medium">
+                              {job.makerPaid ? 'Pagado: ' : 'Tu ganancia: '}
+                              RD$ {((job.creditsCost ?? 0) * 10).toLocaleString('es-DO', { minimumFractionDigits: 2 })}
+                              <span className="font-normal opacity-70"> ({job.creditsCost} crédito{(job.creditsCost ?? 0) !== 1 ? 's' : ''})</span>
                             </span>
                           </div>
                         )}

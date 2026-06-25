@@ -261,10 +261,14 @@ model PrintJob {
   designVehicleYear   String?
   referenceImageUrls  String?   // JSON array of uploaded reference image URLs
 
-  // Designer payment
+  // Designer payment (set manually by admin)
   designerEarnings    Float?
   designerPaid        Boolean   @default(false)
   designerPaidAt      DateTime?
+
+  // Maker payment (auto-calculated: creditsCost × 10 RD$)
+  makerPaid           Boolean   @default(false)
+  makerPaidAt         DateTime?
 
   // Delivery
   deliveryType      String?   // 'pickup' | 'delivery'
