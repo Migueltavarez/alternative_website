@@ -13,6 +13,7 @@ import {
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { CreditPackages } from '@/components/credit-packages';
+import { CreditGuide } from '@/components/credit-guide';
 import { MyModels } from '@/components/my-models';
 import { Button } from '@/components/ui/button';
 import { BankTransferModal } from '@/components/bank-transfer-modal';
@@ -243,6 +244,12 @@ function DashboardContent() {
       fetchPrintJobs();
       fetchPaymentHistory();
       fetchReferrals();
+
+      const interval = setInterval(() => {
+        fetchPrintJobs();
+        fetchUserData();
+      }, 30_000);
+      return () => clearInterval(interval);
     }
   }, [status]);
 
@@ -768,8 +775,12 @@ function DashboardContent() {
                   onRefresh={fetchPrintJobs}
                   isStudent={(session?.user as any)?.isStudent === true}
                   formOnly
+                  userCredits={currentCredits}
+                  onCreditsUsed={() => { fetchUserData(); fetchPrintJobs(); }}
                 />
               </div>
+
+              <CreditGuide />
 
               <div className="mt-8">
                 <div className="text-center mb-6">
@@ -797,6 +808,8 @@ function DashboardContent() {
                 printJobs={printJobs}
                 onRefresh={fetchPrintJobs}
                 isStudent={(session?.user as any)?.isStudent === true}
+                userCredits={currentCredits}
+                onCreditsUsed={() => { fetchUserData(); fetchPrintJobs(); }}
               />
 
               {/* Payment History */}

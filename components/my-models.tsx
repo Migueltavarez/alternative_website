@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, Scissors, Layers, FileText, Wrench, RefreshCw,
   DollarSign, CheckCircle2, MessageSquare, History, ExternalLink, Copy, Check,
   PenTool, Car, Video, Thermometer, Activity, Timer, Camera, Star, Truck, MapPin,
+  Plus, Coins, Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
@@ -71,6 +72,8 @@ interface MyModelsProps {
   onRefresh: () => void;
   isStudent?: boolean;
   formOnly?: boolean;
+  userCredits?: number;
+  onCreditsUsed?: () => void;
 }
 
 // ── Service icons ─────────────────────────────────────────────────────────────
@@ -137,7 +140,7 @@ function formatSeconds(s: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = false }: MyModelsProps) {
+export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = false, userCredits = 0, onCreditsUsed }: MyModelsProps) {
   const [showForm, setShowForm]           = useState(formOnly);
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
 
@@ -219,6 +222,8 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   // Form state
   const [serviceType, setServiceType]     = useState('');
   const [uploadedFile, setUploadedFile]   = useState<{ fileName: string; fileUrl: string; fileSize?: number } | null>(null);
+  const [additionalFiles, setAdditionalFiles] = useState<{ fileName: string; fileUrl: string; fileSize?: number }[]>([]);
+  const [addingFile, setAddingFile]           = useState(false);
   const [isUploading, setIsUploading]     = useState(false);
   const [notes, setNotes]                 = useState('');
   const [deliveryTime, setDeliveryTime]   = useState('standard');
@@ -252,9 +257,22 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const [uploadingRefImg, setUploadingRefImg]         = useState(false);
   const [showPhotoGuide, setShowPhotoGuide]           = useState(false);
   const refImgInputRef                               = useRef<HTMLInputElement>(null);
+  const addFileInputRef                              = useRef<HTMLInputElement>(null);
 
-  const [error, setError]     = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]       = useState('');
+  const [submitting, setSubmitting]   = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+  const [stlAnalysis, setStlAnalysis] = useState<{
+    dimensions: { x: number; y: number; z: number };
+    estimatedWeightG: number;
+    creditsMin: number;
+    creditsMax: number;
+    precise: boolean;
+  } | null>(null);
+  const [stlAnalyzing, setStlAnalyzing]     = useState(false);
+  const [creditPayLoading, setCreditPayLoading] = useState(false);
+  const [creditPayError, setCreditPayError]     = useState('');
 
   useEffect(() => {
     if (deliveryType === 'delivery' && userAddresses.length === 0) {
@@ -275,6 +293,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const resetForm = () => {
     setServiceType('');
     setUploadedFile(null);
+    setAdditionalFiles([]);
     setIsUploading(false);
     setNotes('');
     setDeliveryTime('standard');
@@ -287,18 +306,73 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
     setDesignMaterial(''); setDesignUse(''); setDesignIsVehicle(false);
     setDesignVehicleMake(''); setDesignVehicleModel(''); setDesignVehicleYear('');
     setDesignColor(''); setReferenceImages([]);
+    setStlAnalysis(null);
+    setSubmitSuccess(false);
+    setCreditPayError('');
     setError('');
   };
 
   const handleServiceChange = (id: string) => {
     setServiceType(id);
     setUploadedFile(null);
+    setAdditionalFiles([]);
+    setStlAnalysis(null);
     setError('');
   };
 
   const handleFileUploaded = (fileName: string, fileUrl: string, fileSize?: number) => {
     setUploadedFile({ fileName, fileUrl, fileSize });
     setIsUploading(false);
+    if (fileUrl.endsWith('.stl') && (serviceType === 'print_3d' || serviceType === 'resin')) {
+      analyzeStl(fileUrl);
+    }
+  };
+
+  const analyzeStl = async (fileUrl: string) => {
+    setStlAnalyzing(true);
+    setStlAnalysis(null);
+    try {
+      const res = await fetch('/api/analyze-stl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileUrl }),
+      });
+      if (res.ok) setStlAnalysis(await res.json());
+    } catch { /* non-fatal */ }
+    setStlAnalyzing(false);
+  };
+
+  const handleAddAnotherFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || additionalFiles.length >= 9) return;
+    setAddingFile(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        setAdditionalFiles((prev) => [...prev, { fileName: data.fileName, fileUrl: data.fileUrl, fileSize: data.fileSize }]);
+      }
+    } catch { /* ignore */ }
+    setAddingFile(false);
+    if (addFileInputRef.current) addFileInputRef.current.value = '';
+  };
+
+  const handleCreditPayment = async (jobId: string) => {
+    setCreditPayLoading(true);
+    setCreditPayError('');
+    try {
+      const res = await fetch(`/api/print-jobs/${jobId}/pay-with-credits`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al pagar');
+      if (onCreditsUsed) onCreditsUsed();
+      onRefresh();
+    } catch (err: any) {
+      setCreditPayError(err.message);
+    } finally {
+      setCreditPayLoading(false);
+    }
   };
 
   const handleReferenceImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -370,52 +444,58 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
       if (addr) deliveryAddressJson = JSON.stringify(addr);
     }
 
-    try {
-      const res = await fetch('/api/print-jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: uploadedFile?.fileName ?? 'solicitud',
-          fileUrl: uploadedFile?.fileUrl ?? '',
-          fileSize: uploadedFile?.fileSize,
-          notes: notes || undefined,
-          deliveryTime,
-          deliveryType,
-          deliveryAddress: deliveryAddressJson,
-          serviceType,
-          color: serviceType === 'print_3d' ? color : (serviceType === 'design' && designColor ? designColor : undefined),
-          filamentType: serviceType === 'print_3d' ? filamentType : undefined,
-          scale: serviceType === 'print_3d' ? finalScale : undefined,
-          realSize: serviceType === 'print_3d' ? realSize.trim() : undefined,
-          laserCutColor: serviceType === 'laser' ? laserCutColor.trim() : undefined,
-          laserEngravColor: serviceType === 'laser' && laserEngravColor.trim() ? laserEngravColor.trim() : undefined,
-          resinColor: serviceType === 'resin' ? resinColor : undefined,
-          resinUse: serviceType === 'resin' ? resinUse : undefined,
-          // Design
-          designDescription: serviceType === 'design' ? designDescription.trim() : undefined,
-          designMeasures: serviceType === 'design' && designMeasures.trim() ? designMeasures.trim() : undefined,
-          designReferenceUrls: serviceType === 'design' && designReferenceUrls.trim() ? designReferenceUrls.trim() : undefined,
-          referenceImageUrls: serviceType === 'design' && referenceImages.length > 0
-            ? JSON.stringify(referenceImages.map((r) => r.url))
-            : undefined,
-          designMaterial: serviceType === 'design' ? designMaterial : undefined,
-          designUse: serviceType === 'design' ? designUse : undefined,
-          designIsVehicle: serviceType === 'design' ? designIsVehicle : undefined,
-          designVehicleMake: serviceType === 'design' && designIsVehicle ? designVehicleMake.trim() : undefined,
-          designVehicleModel: serviceType === 'design' && designIsVehicle ? designVehicleModel.trim() : undefined,
-          designVehicleYear: serviceType === 'design' && designIsVehicle ? designVehicleYear.trim() : undefined,
-        }),
-      });
+    const basePayload = {
+      notes: notes || undefined,
+      deliveryTime,
+      deliveryType,
+      deliveryAddress: deliveryAddressJson,
+      serviceType,
+      color: serviceType === 'print_3d' ? color : (serviceType === 'design' && designColor ? designColor : undefined),
+      filamentType: serviceType === 'print_3d' ? filamentType : undefined,
+      scale: serviceType === 'print_3d' ? finalScale : undefined,
+      realSize: serviceType === 'print_3d' ? realSize.trim() : undefined,
+      laserCutColor: serviceType === 'laser' ? laserCutColor.trim() : undefined,
+      laserEngravColor: serviceType === 'laser' && laserEngravColor.trim() ? laserEngravColor.trim() : undefined,
+      resinColor: serviceType === 'resin' ? resinColor : undefined,
+      resinUse: serviceType === 'resin' ? resinUse : undefined,
+      designDescription: serviceType === 'design' ? designDescription.trim() : undefined,
+      designMeasures: serviceType === 'design' && designMeasures.trim() ? designMeasures.trim() : undefined,
+      designReferenceUrls: serviceType === 'design' && designReferenceUrls.trim() ? designReferenceUrls.trim() : undefined,
+      referenceImageUrls: serviceType === 'design' && referenceImages.length > 0
+        ? JSON.stringify(referenceImages.map((r) => r.url))
+        : undefined,
+      designMaterial: serviceType === 'design' ? designMaterial : undefined,
+      designUse: serviceType === 'design' ? designUse : undefined,
+      designIsVehicle: serviceType === 'design' ? designIsVehicle : undefined,
+      designVehicleMake: serviceType === 'design' && designIsVehicle ? designVehicleMake.trim() : undefined,
+      designVehicleModel: serviceType === 'design' && designIsVehicle ? designVehicleModel.trim() : undefined,
+      designVehicleYear: serviceType === 'design' && designIsVehicle ? designVehicleYear.trim() : undefined,
+    };
 
-      if (!res.ok) throw new Error('Error al guardar el trabajo');
+    const allFiles = uploadedFile
+      ? [uploadedFile, ...additionalFiles]
+      : [{ fileName: 'solicitud', fileUrl: '', fileSize: undefined as number | undefined }];
+
+    try {
+      for (let i = 0; i < allFiles.length; i++) {
+        if (allFiles.length > 1) setBatchProgress({ current: i + 1, total: allFiles.length });
+        const file = allFiles[i];
+        const res = await fetch('/api/print-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...basePayload, fileName: file.fileName, fileUrl: file.fileUrl, fileSize: file.fileSize }),
+        });
+        if (!res.ok) throw new Error(allFiles.length > 1 ? `Error al enviar "${file.fileName}"` : 'Error al guardar el trabajo');
+      }
 
       resetForm();
-      setShowForm(false);
+      setSubmitSuccess(true);
       onRefresh();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setSubmitting(false);
+      setBatchProgress(null);
     }
   };
 
@@ -566,6 +646,26 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
             className="glass rounded-2xl overflow-hidden mb-6"
           >
             <div className="p-6">
+              {submitSuccess ? (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-14 h-14 text-green-400 mx-auto mb-3" />
+                  <h3 className="font-semibold text-lg">¡Trabajo enviado!</h3>
+                  <p className="text-sm text-muted-foreground mt-1 mb-5">
+                    Tu solicitud fue recibida. Te notificaremos cuando sea asignada a un maker.
+                  </p>
+                  <div className="flex gap-3 justify-center flex-wrap">
+                    <Button onClick={() => setSubmitSuccess(false)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Enviar otro trabajo
+                    </Button>
+                    {!formOnly && (
+                      <Button variant="outline" onClick={() => { setShowForm(false); setSubmitSuccess(false); }}>
+                        Ver historial
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (<>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-semibold">Nueva solicitud</h3>
                 {!formOnly && (
@@ -646,12 +746,68 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                                 <p className="text-xs text-muted-foreground">{uploadedFile.fileSize.toFixed(2)} MB</p>
                               )}
                             </div>
-                            <button type="button" onClick={() => setUploadedFile(null)} className="p-2 hover:bg-accent rounded-lg">
+                            <button type="button" onClick={() => { setUploadedFile(null); setStlAnalysis(null); }} className="p-2 hover:bg-accent rounded-lg">
                               <X className="w-4 h-4" />
                             </button>
                           </div>
                         )}
                       </div>
+
+                      {/* STL analysis result */}
+                      {(stlAnalyzing || stlAnalysis) && (serviceType === 'print_3d' || serviceType === 'resin') && (
+                        <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
+                          {stlAnalyzing ? (
+                            <p className="text-xs text-muted-foreground flex items-center gap-2">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Analizando dimensiones del modelo...
+                            </p>
+                          ) : stlAnalysis ? (
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-primary">Análisis del modelo (STL)</p>
+                              <div className="grid grid-cols-3 gap-2 text-xs text-center">
+                                <div><p className="text-muted-foreground">Ancho</p><p className="font-bold">{stlAnalysis.dimensions.x} mm</p></div>
+                                <div><p className="text-muted-foreground">Prof.</p><p className="font-bold">{stlAnalysis.dimensions.y} mm</p></div>
+                                <div><p className="text-muted-foreground">Alto</p><p className="font-bold">{stlAnalysis.dimensions.z} mm</p></div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Peso estimado (PLA 20% infill): ~{stlAnalysis.estimatedWeightG}g
+                                {' · '}Créditos aprox: {stlAnalysis.creditsMin}–{stlAnalysis.creditsMax}
+                                {!stlAnalysis.precise && ' (estimado)'}
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
+                      {/* Additional files (print_3d / resin only) */}
+                      {uploadedFile && (serviceType === 'print_3d' || serviceType === 'resin') && (
+                        <div className="space-y-2">
+                          {additionalFiles.map((f, i) => (
+                            <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-accent border border-border">
+                              <File className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <span className="text-sm flex-1 truncate">{f.fileName}</span>
+                              <button type="button" onClick={() => setAdditionalFiles((prev) => prev.filter((_, idx) => idx !== i))} className="p-1 hover:bg-card rounded-lg">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                          {additionalFiles.length < 9 && (
+                            <>
+                              <input ref={addFileInputRef} type="file" accept={selectedService?.acceptStr} onChange={handleAddAnotherFile} className="hidden" />
+                              <button
+                                type="button"
+                                onClick={() => addFileInputRef.current?.click()}
+                                disabled={addingFile}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-accent/50 transition-all text-sm text-muted-foreground disabled:opacity-50"
+                              >
+                                {addingFile
+                                  ? <><Loader2 className="w-4 h-4 animate-spin" />Subiendo...</>
+                                  : <><Plus className="w-4 h-4" />Agregar otro archivo ({1 + additionalFiles.length}/10 máx.)</>}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
 
                       {/* ── 3D Print ── */}
                       {serviceType === 'print_3d' && (
@@ -1229,18 +1385,23 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                         type="submit"
                         disabled={(!NO_FILE_SERVICES.includes(serviceType) && !uploadedFile) || isUploading || submitting}
                         className="w-full"
-                        isLoading={submitting}
+                        isLoading={submitting && !batchProgress}
                       >
                         {!submitting && <Upload className="w-4 h-4 mr-2" />}
-                        {serviceType === 'design' ? 'Enviar Solicitud de Diseño'
+                        {batchProgress
+                          ? `Enviando ${batchProgress.current}/${batchProgress.total}...`
+                          : serviceType === 'design' ? 'Enviar Solicitud de Diseño'
                           : ['armado_maqueta', 'asesoria'].includes(serviceType) ? 'Enviar Solicitud'
                           : serviceType === 'planimetria' ? 'Enviar Planos'
+                          : additionalFiles.length > 0
+                          ? `Enviar ${1 + additionalFiles.length} archivos a la cola`
                           : 'Enviar a la Cola de Impresión'}
                       </Button>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </form>
+              </>)}
             </div>
           </motion.div>
         )}
@@ -1585,6 +1746,38 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                         </div>
                       ))}
                     </div>
+
+                    {/* Pay with credits option */}
+                    {userCredits > 0 && job.price != null && (() => {
+                      const needed = Math.ceil(job.price / 15);
+                      const canPay = userCredits >= needed;
+                      return (
+                        <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium flex items-center gap-1.5 text-amber-400">
+                              <Coins className="w-3.5 h-3.5" />Pagar con créditos
+                            </span>
+                            <span className="text-muted-foreground">Tienes {userCredits} créd. · Necesitas {needed}</span>
+                          </div>
+                          {creditPayError && (
+                            <p className="text-xs text-red-400 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 shrink-0" />{creditPayError}
+                            </p>
+                          )}
+                          <Button
+                            className="w-full text-sm"
+                            variant={canPay ? 'default' : 'outline'}
+                            disabled={!canPay || creditPayLoading}
+                            isLoading={creditPayLoading}
+                            onClick={() => handleCreditPayment(job.id)}
+                          >
+                            {!creditPayLoading && <Coins className="w-4 h-4 mr-2" />}
+                            {canPay ? `Pagar con ${needed} créditos` : `Créditos insuficientes (faltan ${needed - userCredits})`}
+                          </Button>
+                          <p className="text-xs text-muted-foreground text-center">— o paga por transferencia bancaria abajo —</p>
+                        </div>
+                      );
+                    })()}
 
                     {/* Upload proof */}
                     {paymentJobId !== job.id ? (
