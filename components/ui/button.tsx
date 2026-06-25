@@ -17,7 +17,7 @@ interface ButtonProps {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'md', isLoading, children, disabled, type = 'button', onClick }, ref) => {
     const variants = {
-      default: 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:opacity-90',
+      default: 'bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white hover:opacity-90',
       outline: 'border border-input bg-background hover:bg-accent',
       ghost: 'hover:bg-accent',
       destructive: 'bg-red-500 text-white hover:bg-red-600',

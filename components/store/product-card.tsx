@@ -74,7 +74,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <button
           onClick={handleAddToCart}
           disabled={adding || loading}
-          className="mt-1 w-full py-1.5 text-xs font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-1.5"
+          className="mt-1 w-full py-1.5 text-xs font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-1.5"
         >
           {adding ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />

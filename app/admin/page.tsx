@@ -493,7 +493,7 @@ export default function AdminPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-3 mb-8"
           >
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -1802,7 +1802,7 @@ export default function AdminPage() {
                             <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${
                               w.role === 'DESIGNER'
                                 ? 'border-pink-500/30 bg-pink-500/10 text-pink-400'
-                                : 'border-violet-500/30 bg-violet-500/10 text-violet-400'
+                                : 'border-blue-500/30 bg-blue-500/10 text-blue-400'
                             }`}>
                               {w.role === 'DESIGNER' ? 'Diseñador' : 'Maker'}
                             </span>

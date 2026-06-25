@@ -93,8 +93,8 @@ export default function HomePage() {
 
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="absolute inset-0 bg-hero-pattern opacity-50" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-fuchsia-500/20 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-red-600/10 rounded-full blur-3xl" />
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -110,7 +110,7 @@ export default function HomePage() {
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/#pricing"
-                className="inline-flex items-center justify-center px-8 py-3 text-base font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="inline-flex items-center justify-center px-8 py-3 text-base font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 Ver planes
                 <ChevronRight className="ml-2 w-5 h-5" />
@@ -154,7 +154,7 @@ export default function HomePage() {
                 key={index}
                 className="p-6 rounded-xl glass hover:bg-accent/50 transition-colors"
               >
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
                   <feature.icon className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">{feature.title}</h3>
@@ -195,8 +195,8 @@ export default function HomePage() {
             </div>
 
             <div className="relative">
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 flex items-center justify-center">
-                <div className="w-3/4 h-3/4 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 opacity-80 flex items-center justify-center">
+              <div className="aspect-square rounded-2xl bg-gradient-to-br from-blue-600/15 to-red-600/10 flex items-center justify-center">
+                <div className="w-3/4 h-3/4 rounded-xl bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] opacity-85 flex items-center justify-center">
                   <Box className="w-32 h-32 text-white" />
                 </div>
               </div>
@@ -241,7 +241,7 @@ export default function HomePage() {
                 name: 'Premium', 
                 price: '8,000', 
                 credits: '1800',
-                color: 'violet',
+                color: 'gold',
                 features: ['1800 créditos de impresión', 'Prioridad máxima', 'Diseño 3D incluido', '15% descuento en servicios'],
                 highlighted: false,
                 badge: null
@@ -256,8 +256,8 @@ export default function HomePage() {
                   plan.highlighted 
                     ? plan.color === 'blue' 
                       ? 'bg-gradient-to-b from-blue-600/15 to-blue-500/5 border-2 border-blue-500/40 shadow-2xl shadow-blue-500/20' 
-                      : plan.color === 'violet'
-                        ? 'bg-gradient-to-b from-violet-600/15 to-violet-500/5 border border-violet-500/30'
+                      : plan.color === 'gold'
+                        ? 'bg-gradient-to-b from-amber-600/15 to-amber-500/5 border border-amber-500/30'
                         : 'bg-gradient-to-b from-emerald-600/15 to-emerald-500/5 border border-emerald-500/30'
                     : 'bg-card border border-border hover:border-border/80'
                 } p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
@@ -274,7 +274,7 @@ export default function HomePage() {
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                     plan.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-400' :
                     plan.color === 'blue' ? 'bg-blue-500/30 text-blue-300' :
-                    'bg-violet-500/30 text-violet-300'
+                    'bg-amber-500/30 text-amber-300'
                   }`}>
                     {plan.color === 'emerald' ? '💎' : plan.color === 'blue' ? '⚡' : '👑'}
                   </div>
@@ -297,7 +297,7 @@ export default function HomePage() {
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
                         plan.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-400' :
                         plan.color === 'blue' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-violet-500/20 text-violet-400'
+                        'bg-amber-500/20 text-amber-400'
                       }`}>
                         ✓
                       </div>
@@ -354,7 +354,7 @@ export default function HomePage() {
                 </div>
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">
                   Pon tu máquina<br />
-                  <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-blue-400 to-red-400 bg-clip-text text-transparent">
                     a trabajar
                   </span>
                 </h2>
@@ -381,7 +381,7 @@ export default function HomePage() {
                 {['WORKER', 'DESIGNER', 'ADMIN'].includes((session?.user as any)?.role) ? (
                   <a
                     href="/worker"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
                   >
                     <Printer className="w-4 h-4" />
                     {(session?.user as any)?.role === 'DESIGNER' ? 'Ir a mi Panel de Diseño' : 'Ir a mi Panel de Maker'}
@@ -389,14 +389,14 @@ export default function HomePage() {
                 ) : (
                   <Link
                     href={status === 'unauthenticated' ? '/login' : '/worker/register'}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
                   >
                     Registrarme como Maker
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                 )}
               </div>
-              <div className="bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 p-10 lg:p-14 flex flex-col justify-center gap-6">
+              <div className="bg-gradient-to-br from-blue-600/15 to-red-600/10 p-10 lg:p-14 flex flex-col justify-center gap-6">
                 {[
                   { label: 'Cola de impresión', value: 'Automática', sub: 'Asignación inteligente' },
                   { label: 'Tipos de filamento', value: '10+', sub: 'PLA, ABS, PETG, TPU...' },
@@ -465,7 +465,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
                 <span className="text-white font-bold">A</span>
               </div>
               <span className="font-bold">Alternative 3D Studio</span>

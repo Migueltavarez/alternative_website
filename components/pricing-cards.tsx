@@ -45,11 +45,11 @@ const planColors: Record<string, { bg: string; border: string; icon: string; bad
     button: 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600',
   },
   PREMIUM: {
-    bg: 'from-violet-600/15 to-violet-500/5',
-    border: 'border-violet-500/30',
-    icon: 'bg-violet-500/30 text-violet-300',
-    badge: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-    button: 'bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-600',
+    bg: 'from-amber-600/15 to-amber-500/5',
+    border: 'border-amber-500/30',
+    icon: 'bg-amber-500/30 text-amber-300',
+    badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    button: 'bg-gradient-to-r from-[#D49012] to-[#CC2631] hover:opacity-90',
   },
 };
 

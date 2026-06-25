@@ -35,7 +35,7 @@ export default function EventosPage() {
             {upcomingEvents.map((event, i) => (
               <div key={i} className="glass rounded-2xl p-6 flex flex-col gap-4">
                 <div>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-medium">{event.type}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">{event.type}</span>
                   <h3 className="text-lg font-bold mt-2">{event.title}</h3>
                   <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
                 </div>

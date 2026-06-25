@@ -58,7 +58,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 md:h-20">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
                 <span className="text-white font-bold text-xl">A</span>
               </div>
               <span className="font-bold text-xl hidden sm:block">Alternative 3D</span>
@@ -89,7 +89,7 @@ export function Navbar() {
             >
               <ShoppingBag className="w-5 h-5" />
               {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white rounded-full">
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] text-white rounded-full">
                   {cartCount > 9 ? '9+' : cartCount}
                 </span>
               )}
@@ -107,7 +107,7 @@ export function Navbar() {
             {isWorker && (
               <a
                 href="/worker"
-                className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity"
+                className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
                 <Printer className="w-4 h-4" />
                 {workerPanelLabel}
@@ -120,7 +120,7 @@ export function Navbar() {
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
                   <ChevronDown className="w-4 h-4" />
@@ -201,7 +201,7 @@ export function Navbar() {
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg hover:opacity-90 transition-opacity"
+                  className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
                 >
                   Registrarse
                 </Link>
@@ -248,7 +248,7 @@ export function Navbar() {
                   </Link>
                   <Link
                     href="/register"
-                    className="block px-4 py-2 text-center bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg"
+                    className="block px-4 py-2 text-center bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Registrarse

@@ -182,7 +182,7 @@ export function ProductDetail({ product }: { product: ShopifyProduct }) {
             <button
               onClick={handleAddToCart}
               disabled={adding}
-              className="w-full py-3 flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 text-sm"
+              className="w-full py-3 flex items-center justify-center gap-2 bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 text-sm"
             >
               {adding ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

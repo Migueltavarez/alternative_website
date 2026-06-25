@@ -150,7 +150,7 @@ export function CartDrawer() {
                   href={cart.checkoutUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full py-3 text-center bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-semibold rounded-xl hover:opacity-90 transition-opacity text-sm"
+                  className="block w-full py-3 text-center bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity text-sm"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">

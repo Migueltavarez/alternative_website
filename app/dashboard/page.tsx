@@ -151,13 +151,13 @@ const PLANS = [
 const PLAN_COLOR: Record<string, string> = {
   emerald: 'border-emerald-500/40 bg-emerald-500/5',
   blue:    'border-blue-500/40 bg-blue-500/5',
-  violet:  'border-violet-500/40 bg-violet-500/5',
+  violet:  'border-amber-500/40 bg-amber-500/5',
 };
 
 const PLAN_BADGE: Record<string, string> = {
   emerald: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   blue:    'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  violet:  'bg-violet-500/20 text-violet-400 border-violet-500/30',
+  violet:  'bg-amber-500/20 text-amber-400 border-amber-500/30',
 };
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -197,7 +197,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending:        'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   assigned:       'bg-blue-500/10 text-blue-400 border-blue-500/20',
   accepted:       'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  printing:       'bg-violet-500/10 text-violet-400 border-violet-500/20',
+  printing:       'bg-blue-500/10 text-blue-400 border-blue-500/20',
   needs_revision: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   proof_uploaded: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
   completed:      'bg-green-500/10 text-green-400 border-green-500/20',
@@ -486,7 +486,7 @@ function DashboardContent() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/15 to-red-500/10 flex items-center justify-center">
                     <Printer className="w-6 h-6 text-primary" />
                   </div>
                   <div>
@@ -604,8 +604,8 @@ function DashboardContent() {
                         </button>
                       </div>
                     </div>
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-violet-400" />
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/15 to-red-500/10 flex items-center justify-center">
+                      <TrendingUp className="w-6 h-6 text-primary" />
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">Comparte tu código y gana 10% de descuento</p>
@@ -856,8 +856,8 @@ function DashboardContent() {
                     {paymentHistory?.printPayments.map((pp) => (
                       <div key={pp.id} className="glass rounded-xl p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
-                            <DollarSign className="w-5 h-5 text-violet-400" />
+                          <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                            <DollarSign className="w-5 h-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium truncate max-w-xs">{pp.fileName}</p>
@@ -904,8 +904,8 @@ function DashboardContent() {
                     {referrals.map((r) => (
                       <div key={r.id} className="glass rounded-xl p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
-                            <span className="text-sm font-bold text-violet-400">
+                          <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                            <span className="text-sm font-bold text-primary">
                               {(r.referredUser?.name ?? r.referredUser?.email ?? '?')[0].toUpperCase()}
                             </span>
                           </div>

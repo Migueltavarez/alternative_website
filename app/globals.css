@@ -3,50 +3,54 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Paleta Alt3D Studio: Azul / Rojo / Dorado sobre negro ── */
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --foreground: 220 15% 8%;
+    --card: 220 15% 97%;
+    --card-foreground: 220 15% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 262.1 83.3% 57.8%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262.1 83.3% 57.8%;
+    --popover-foreground: 220 15% 8%;
+    --primary: 211 59% 43%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 14% 20%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 12% 46%;
+    --accent: 220 14% 93%;
+    --accent-foreground: 220 14% 20%;
+    --destructive: 356 69% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 87%;
+    --input: 220 14% 87%;
+    --ring: 211 59% 43%;
     --radius: 0.5rem;
   }
 
   .dark {
     color-scheme: dark;
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 262.1 83.3% 57.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 262.1 83.3% 57.8%;
+    /* Fondo: negro profundo con matiz frío, como la sombra del logo */
+    --background: 220 18% 5%;
+    --foreground: 0 0% 94%;
+    --card: 220 18% 8%;
+    --card-foreground: 0 0% 94%;
+    --popover: 220 18% 8%;
+    --popover-foreground: 0 0% 94%;
+    /* Primario: azul del "3D" del logo, aclarado para contraste en oscuro */
+    --primary: 211 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 18% 13%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 220 18% 13%;
+    --muted-foreground: 220 10% 58%;
+    --accent: 220 18% 13%;
+    --accent-foreground: 0 0% 90%;
+    /* Destructivo: rojo del "ALT" del logo */
+    --destructive: 356 69% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 18% 12%;
+    --input: 220 18% 12%;
+    --ring: 211 70% 55%;
   }
 }
 
@@ -68,20 +72,22 @@
   }
 }
 
+/* Glass morphism sobre fondo negro profundo */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .dark .glass {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Gradiente: azul → rojo (colores del logo) */
 .gradient-text {
-  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  background: linear-gradient(135deg, #2D85D0 0%, #CC2631 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -89,12 +95,12 @@
 
 .gradient-border {
   position: relative;
-  background: linear-gradient(135deg, #8b5cf6, #d946ef);
+  background: linear-gradient(135deg, #2D85D0, #CC2631);
   padding: 1px;
 }
 
 .gradient-border > * {
-  background: var(--background);
+  background: hsl(var(--background));
 }
 
 .animate-gradient {

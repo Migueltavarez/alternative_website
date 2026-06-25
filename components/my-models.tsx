@@ -87,7 +87,7 @@ const SERVICE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const SERVICE_COLORS: Record<string, string> = {
-  print_3d:       'text-violet-400 bg-violet-500/10 border-violet-500/20',
+  print_3d:       'text-blue-400 bg-blue-500/10 border-blue-500/20',
   laser:          'text-orange-400 bg-orange-500/10 border-orange-500/20',
   resin:          'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
   plans:          'text-blue-400 bg-blue-500/10 border-blue-500/20',
@@ -1554,9 +1554,9 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                 )}
 
                 {ps === 'validated' && job.price != null && (
-                  <div className="mt-3 rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 space-y-4">
+                  <div className="mt-3 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-violet-400 flex items-center gap-2">
+                      <span className="text-sm font-semibold text-blue-400 flex items-center gap-2">
                         <DollarSign className="w-4 h-4" />
                         Listo para pagar
                       </span>

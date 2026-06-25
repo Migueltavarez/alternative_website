@@ -230,7 +230,7 @@ export const PRICE_STATUS_LABELS: Record<string, { label: string; color: string 
   quoted:           { label: 'Precio enviado',        color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   accepted:         { label: 'Precio aceptado',       color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   appealed:         { label: 'Precio apelado',        color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  validated:        { label: 'Listo para pagar',      color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+  validated:        { label: 'Listo para pagar',      color: 'bg-primary/20 text-primary border-primary/30' },
   payment_uploaded: { label: 'Comprobante enviado',   color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   confirmed:        { label: 'Pago confirmado',       color: 'bg-green-500/20 text-green-400 border-green-500/30' },
 };

@@ -15,7 +15,7 @@ export type QmsStageKey = typeof QMS_STAGES[number]['key'];
 
 export const QMS_STAGE_LABELS: Record<string, { label: string; color: string }> = {
   file_validation: { label: 'Validación de Archivo', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  print_setup:     { label: 'Preparación de Impresión', color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+  print_setup:     { label: 'Preparación de Impresión', color: 'bg-primary/20 text-primary border-primary/30' },
   in_production:   { label: 'En Producción',          color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
   post_processing: { label: 'Post-Procesado',         color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   quality_check:   { label: 'Control de Calidad',     color: 'bg-green-500/20 text-green-400 border-green-500/30' },
