@@ -36,5 +36,5 @@ export async function GET(request: NextRequest) {
     console.error('Welcome email error:', err)
   );
 
-  return NextResponse.redirect(`${APP_URL}/login?verified=true`);
+  return NextResponse.redirect(`${APP_URL}/verify-email?success=true`);
 }

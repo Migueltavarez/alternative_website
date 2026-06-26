@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { sendJobAssignedToWorkerEmail } from '@/lib/email';
+import { createNotification } from '@/lib/notifications';
 
 export async function PATCH(
   request: NextRequest,
@@ -137,17 +138,29 @@ export async function PATCH(
       },
     });
 
-    // Email worker on manual assignment by admin
-    if (assignWorker && assignWorker !== null && process.env.RESEND_API_KEY) {
+    // Email + notification to worker on manual assignment
+    if (assignWorker && assignWorker !== null) {
       const { workerId } = assignWorker;
       prisma.user.findUnique({ where: { id: workerId }, select: { email: true, name: true } })
-        .then((worker) => {
-          if (worker) {
+        .then(async (worker) => {
+          if (!worker) return;
+          if (process.env.RESEND_API_KEY) {
             sendJobAssignedToWorkerEmail(worker.email, worker.name, printJob.fileName, printJob.serviceType)
               .catch((e) => console.error('Admin assignment email error:', e));
           }
+          createNotification({ userId: workerId, type: 'job_update', title: 'Nuevo trabajo asignado', body: `Se te asignó el trabajo: ${printJob.fileName}`, link: '/worker' }).catch(() => {});
         })
         .catch(() => {});
+    }
+
+    // Notify client on price quote
+    if (setPrice !== undefined) {
+      createNotification({ userId: printJob.userId, type: 'job_update', title: 'Tu trabajo fue cotizado', body: `El trabajo "${printJob.fileName}" recibió una cotización. Revisa y acepta o apela.`, link: '/dashboard?tab=servicios' }).catch(() => {});
+    }
+
+    // Notify client when payment confirmed
+    if (confirmPayment) {
+      createNotification({ userId: printJob.userId, type: 'job_update', title: 'Pago confirmado', body: `El pago de "${printJob.fileName}" fue confirmado. Tu trabajo será procesado.`, link: '/dashboard?tab=servicios' }).catch(() => {});
     }
 
     return NextResponse.json(updated);

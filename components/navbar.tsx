@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from './store/cart-context';
+import { NotificationBell } from './notification-bell';
 
 const navigation = [
   { name: 'Inicio', href: '/' },
@@ -58,7 +59,18 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 md:h-20">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="Alternative 3D Studio"
+                className="h-10 w-auto"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  img.style.display = 'none';
+                  const fallback = img.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] items-center justify-center hidden">
                 <span className="text-white font-bold text-xl">A</span>
               </div>
               <span className="font-bold text-xl hidden sm:block">Alternative 3D</span>
@@ -81,6 +93,7 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-2">
+            <NotificationBell />
             {/* Cart button */}
             <button
               onClick={() => setCartOpen(true)}

@@ -39,7 +39,7 @@ export async function POST(
       prisma.workerProfile.deleteMany({ where: { userId } }),
       prisma.user.update({
         where: { id: userId },
-        data: { role: 'USER', workerApproved: true },
+        data: { role: 'USER', workerApproved: false },
       }),
     ]);
     return NextResponse.json({ success: true, action: 'rejected' });

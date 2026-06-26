@@ -116,14 +116,17 @@ export const DELIVERY_TIMES = [
 ] as const;
 
 export const JOB_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending:          { label: 'En Cola',           color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  assigned:         { label: 'Asignado',          color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  accepted:         { label: 'Aceptado',          color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
-  printing:         { label: 'Imprimiendo',       color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-  completed:        { label: 'Completado',        color: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  cancelled:        { label: 'Cancelado',         color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  needs_revision:        { label: 'Requiere revisión',    color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  correction_requested:  { label: 'Corrección solicitada', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  pending:              { label: 'En Cola',               color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  assigned:             { label: 'Asignado',              color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  accepted:             { label: 'Aceptado',              color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  printing:             { label: 'Imprimiendo',           color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  completed:            { label: 'Listo — confirmar entrega', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
+  ready_to_ship:        { label: 'Listo para envío',      color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+  shipped:              { label: 'En camino',             color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+  delivered:            { label: 'Entregado',             color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  cancelled:            { label: 'Cancelado',             color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  needs_revision:       { label: 'Requiere revisión',     color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  correction_requested: { label: 'Corrección solicitada', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
 };
 
 export const CORRECTION_COST_CREDITS = 50;

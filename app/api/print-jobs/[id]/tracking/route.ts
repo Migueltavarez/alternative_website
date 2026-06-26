@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(
   request: NextRequest,
@@ -36,8 +37,16 @@ export async function POST(
 
     const updated = await prisma.printJob.update({
       where: { id: params.id },
-      data: { trackingUrl },
+      data: { trackingUrl, status: 'shipped' },
     });
+
+    createNotification({
+      userId: job.userId,
+      type: 'job_update',
+      title: 'Tu pedido está en camino',
+      body: `El trabajo "${job.fileName}" fue enviado. Puedes seguir tu pedido con el link de tracking.`,
+      link: '/dashboard?tab=servicios',
+    }).catch(() => {});
 
     return NextResponse.json(updated);
   } catch (error) {

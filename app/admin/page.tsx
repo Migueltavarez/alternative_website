@@ -42,7 +42,12 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones'>('trabajos');
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones' | 'eventos' | 'cursos'>('trabajos');
+  const [adminEvents, setAdminEvents] = useState<any[]>([]);
+  const [adminCourses, setAdminCourses] = useState<any[]>([]);
+  const [eventForm, setEventForm] = useState({ title: '', description: '', date: '', time: '', location: '', type: 'Taller', imageUrl: '' });
+  const [courseForm, setCourseForm] = useState({ title: '', description: '', price: '', isFree: false, isIntro: false, category: '', thumbnailUrl: '', lessons: [{ title: '', videoUrl: '', duration: '', isFree: false }] });
+  const [contentActionLoading, setContentActionLoading] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedConvUserId, setSelectedConvUserId] = useState<string | null>(null);
   const [pendingWorkers, setPendingWorkers] = useState<any[]>([]);
@@ -64,7 +69,7 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [statsRes, usersRes, subsRes, printJobsRes, workersRes, creditPurchasesRes, pendingWorkersRes] = await Promise.all([
+      const [statsRes, usersRes, subsRes, printJobsRes, workersRes, creditPurchasesRes, pendingWorkersRes, eventsRes, coursesRes] = await Promise.all([
         fetch('/api/stats'),
         fetch('/api/users'),
         fetch('/api/subscriptions'),
@@ -72,9 +77,11 @@ export default function AdminPage() {
         fetch('/api/workers/all'),
         fetch('/api/credits/purchases'),
         fetch('/api/admin/workers/pending'),
+        fetch('/api/events'),
+        fetch('/api/courses'),
       ]);
 
-      const [statsData, usersData, subsData, printJobsData, workersData, creditPurchasesData, pendingWorkersData] = await Promise.all([
+      const [statsData, usersData, subsData, printJobsData, workersData, creditPurchasesData, pendingWorkersData, eventsData, coursesData] = await Promise.all([
         statsRes.json(),
         usersRes.json(),
         subsRes.json(),
@@ -82,6 +89,8 @@ export default function AdminPage() {
         workersRes.json(),
         creditPurchasesRes.json(),
         pendingWorkersRes.json(),
+        eventsRes.json(),
+        coursesRes.json(),
       ]);
 
       setStats(statsData);
@@ -91,6 +100,8 @@ export default function AdminPage() {
       setWorkers(Array.isArray(workersData) ? workersData : []);
       setCreditPurchases(Array.isArray(creditPurchasesData) ? creditPurchasesData : []);
       setPendingWorkers(Array.isArray(pendingWorkersData) ? pendingWorkersData : []);
+      setAdminEvents(Array.isArray(eventsData) ? eventsData : []);
+      setAdminCourses(Array.isArray(coursesData) ? coursesData : []);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     } finally {
@@ -573,13 +584,15 @@ export default function AdminPage() {
           </div>
 
           {/* ── Tabs ─────────────────────────────────────────────────── */}
-          <div className="flex gap-1 mb-8 p-1 glass rounded-xl w-fit">
+          <div className="flex flex-wrap gap-1 mb-8 p-1 glass rounded-xl w-fit">
             {([
               { key: 'trabajos', label: 'Trabajos', icon: ListChecks },
               { key: 'aprobaciones', label: 'Aprobaciones', icon: UserCheck },
               { key: 'usuarios', label: 'Usuarios', icon: Users },
               { key: 'suscripciones', label: 'Suscripciones', icon: CreditCard },
               { key: 'mensajes', label: 'Mensajes', icon: MessageSquare },
+              { key: 'eventos', label: 'Eventos', icon: CalendarClock },
+              { key: 'cursos', label: 'Cursos', icon: PenTool },
               { key: 'metricas', label: 'Métricas', icon: TrendingUp },
               { key: 'qms', label: 'Control QC', icon: Shield },
             ] as const).map(({ key, label, icon: Icon }) => (
@@ -1855,6 +1868,248 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* ══════════════════ TAB: EVENTOS ══════════════════ */}
+          {activeTab === 'eventos' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <h2 className="text-2xl font-bold mb-6">Gestión de Eventos</h2>
+              <div className="grid lg:grid-cols-[400px_1fr] gap-6">
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4">Crear evento</h3>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setContentActionLoading('event-create');
+                      try {
+                        const res = await fetch('/api/events', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(eventForm),
+                        });
+                        if (res.ok) {
+                          const ev = await res.json();
+                          setAdminEvents(prev => [ev, ...prev]);
+                          setEventForm({ title: '', description: '', date: '', time: '', location: '', type: 'Taller', imageUrl: '' });
+                        } else {
+                          const d = await res.json();
+                          alert(d.error || 'Error al crear evento');
+                        }
+                      } catch { alert('Error'); }
+                      finally { setContentActionLoading(null); }
+                    }}
+                    className="space-y-3"
+                  >
+                    <input required placeholder="Título" value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    <textarea required placeholder="Descripción" value={eventForm.description} onChange={e => setEventForm(f => ({ ...f, description: e.target.value }))}
+                      rows={3} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary resize-none" />
+                    <input required type="date" value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    <input required placeholder="Hora (ej: 10:00 AM)" value={eventForm.time} onChange={e => setEventForm(f => ({ ...f, time: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    <input required placeholder="Lugar / Dirección" value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    <select value={eventForm.type} onChange={e => setEventForm(f => ({ ...f, type: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary">
+                      {['Taller', 'Feria', 'Exhibición', 'Encuentro', 'Conferencia'].map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <input placeholder="URL de imagen (opcional)" value={eventForm.imageUrl} onChange={e => setEventForm(f => ({ ...f, imageUrl: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    <Button type="submit" className="w-full" isLoading={contentActionLoading === 'event-create'}>
+                      Crear evento
+                    </Button>
+                  </form>
+                </div>
+
+                <div className="space-y-3">
+                  {adminEvents.length === 0 ? (
+                    <div className="glass rounded-2xl p-12 text-center text-muted-foreground">No hay eventos creados.</div>
+                  ) : adminEvents.map((ev) => (
+                    <div key={ev.id} className="glass rounded-xl p-4 flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary">{ev.type}</span>
+                          {!ev.published && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Borrador</span>}
+                        </div>
+                        <p className="font-semibold">{ev.title}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(ev.date).toLocaleDateString('es-DO')} · {ev.time} · {ev.location}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          if (!confirm('¿Eliminar este evento?')) return;
+                          await fetch(`/api/events/${ev.id}`, { method: 'DELETE' });
+                          setAdminEvents(prev => prev.filter(e => e.id !== ev.id));
+                        }}
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ══════════════════ TAB: CURSOS ══════════════════ */}
+          {activeTab === 'cursos' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <h2 className="text-2xl font-bold mb-6">Gestión de Cursos</h2>
+              <div className="grid lg:grid-cols-[420px_1fr] gap-6">
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4">Crear curso</h3>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setContentActionLoading('course-create');
+                      try {
+                        const payload = {
+                          ...courseForm,
+                          price: parseFloat(courseForm.price || '0'),
+                          lessons: courseForm.lessons.filter(l => l.title.trim()),
+                        };
+                        const res = await fetch('/api/courses', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(payload),
+                        });
+                        if (res.ok) {
+                          const course = await res.json();
+                          setAdminCourses(prev => [course, ...prev]);
+                          setCourseForm({ title: '', description: '', price: '', isFree: false, isIntro: false, category: '', thumbnailUrl: '', lessons: [{ title: '', videoUrl: '', duration: '', isFree: false }] });
+                        } else {
+                          const d = await res.json();
+                          alert(d.error || 'Error al crear curso');
+                        }
+                      } catch { alert('Error'); }
+                      finally { setContentActionLoading(null); }
+                    }}
+                    className="space-y-3"
+                  >
+                    <input required placeholder="Título del curso" value={courseForm.title} onChange={e => setCourseForm(f => ({ ...f, title: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    <textarea required placeholder="Descripción" value={courseForm.description} onChange={e => setCourseForm(f => ({ ...f, description: e.target.value }))}
+                      rows={3} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary resize-none" />
+                    <input placeholder="Categoría (ej: Impresión 3D, Diseño)" value={courseForm.category} onChange={e => setCourseForm(f => ({ ...f, category: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    <div className="flex gap-3">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" checked={courseForm.isFree} onChange={e => setCourseForm(f => ({ ...f, isFree: e.target.checked }))} className="rounded" />
+                        Gratuito
+                      </label>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" checked={courseForm.isIntro} onChange={e => setCourseForm(f => ({ ...f, isIntro: e.target.checked }))} className="rounded" />
+                        Es intro
+                      </label>
+                    </div>
+                    {!courseForm.isFree && (
+                      <input type="number" placeholder="Precio (RD$)" value={courseForm.price} onChange={e => setCourseForm(f => ({ ...f, price: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+                    )}
+                    <input placeholder="URL de miniatura (opcional)" value={courseForm.thumbnailUrl} onChange={e => setCourseForm(f => ({ ...f, thumbnailUrl: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
+
+                    <div className="border-t border-border pt-3">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Lecciones</p>
+                      {courseForm.lessons.map((lesson, i) => (
+                        <div key={i} className="mb-2 p-2 rounded-lg bg-accent/20 space-y-1.5">
+                          <input
+                            required={i === 0}
+                            placeholder={`Lección ${i + 1} — título`}
+                            value={lesson.title}
+                            onChange={e => setCourseForm(f => { const l = [...f.lessons]; l[i] = { ...l[i], title: e.target.value }; return { ...f, lessons: l }; })}
+                            className="w-full px-2 py-1.5 rounded bg-background border border-input text-xs outline-none"
+                          />
+                          <input
+                            placeholder="URL del video (YouTube embed o directo)"
+                            value={lesson.videoUrl}
+                            onChange={e => setCourseForm(f => { const l = [...f.lessons]; l[i] = { ...l[i], videoUrl: e.target.value }; return { ...f, lessons: l }; })}
+                            className="w-full px-2 py-1.5 rounded bg-background border border-input text-xs outline-none"
+                          />
+                          <div className="flex gap-2 items-center">
+                            <input
+                              placeholder="Duración (ej: 15 min)"
+                              value={lesson.duration}
+                              onChange={e => setCourseForm(f => { const l = [...f.lessons]; l[i] = { ...l[i], duration: e.target.value }; return { ...f, lessons: l }; })}
+                              className="flex-1 px-2 py-1.5 rounded bg-background border border-input text-xs outline-none"
+                            />
+                            <label className="flex items-center gap-1 text-xs cursor-pointer whitespace-nowrap">
+                              <input type="checkbox" checked={lesson.isFree} onChange={e => setCourseForm(f => { const l = [...f.lessons]; l[i] = { ...l[i], isFree: e.target.checked }; return { ...f, lessons: l }; })} />
+                              Preview
+                            </label>
+                            {courseForm.lessons.length > 1 && (
+                              <button type="button" onClick={() => setCourseForm(f => ({ ...f, lessons: f.lessons.filter((_, idx) => idx !== i) }))}
+                                className="text-red-400 hover:text-red-300 text-xs">✕</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => setCourseForm(f => ({ ...f, lessons: [...f.lessons, { title: '', videoUrl: '', duration: '', isFree: false }] }))}
+                        className="text-xs text-primary hover:underline">+ Agregar lección</button>
+                    </div>
+
+                    <Button type="submit" className="w-full" isLoading={contentActionLoading === 'course-create'}>
+                      Crear curso
+                    </Button>
+                  </form>
+                </div>
+
+                <div className="space-y-3">
+                  {adminCourses.length === 0 ? (
+                    <div className="glass rounded-2xl p-12 text-center text-muted-foreground">No hay cursos creados.</div>
+                  ) : adminCourses.map((course) => (
+                    <div key={course.id} className="glass rounded-xl p-4 flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {course.isFree ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">Gratis</span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">RD${course.price?.toLocaleString()}</span>
+                          )}
+                          {course.isIntro && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">Intro</span>}
+                          {!course.published && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Borrador</span>}
+                          {course.category && <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary">{course.category}</span>}
+                        </div>
+                        <p className="font-semibold">{course.title}</p>
+                        <p className="text-xs text-muted-foreground">{course.lessons?.length ?? 0} lecciones</p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            const res = await fetch(`/api/courses/${course.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ published: !course.published }),
+                            });
+                            if (res.ok) setAdminCourses(prev => prev.map(c => c.id === course.id ? { ...c, published: !c.published } : c));
+                          }}
+                          className="text-xs"
+                        >
+                          {course.published ? 'Ocultar' : 'Publicar'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            if (!confirm('¿Eliminar este curso?')) return;
+                            await fetch(`/api/courses/${course.id}`, { method: 'DELETE' });
+                            setAdminCourses(prev => prev.filter(c => c.id !== course.id));
+                          }}
+                          className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           )}
         </div>

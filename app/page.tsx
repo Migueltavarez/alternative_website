@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Box, Layers, Zap, Shield, Users, TrendingUp,
-  Clock, Headphones, Globe, ChevronRight, Loader2, Printer, DollarSign, Settings
+  Clock, Headphones, Globe, ChevronRight, Loader2, Printer, DollarSign, Settings,
+  X, Send
 } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
@@ -49,6 +50,21 @@ export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [ctaOpen, setCtaOpen] = useState(false);
+  const [ctaForm, setCtaForm] = useState({ name: '', email: '', service: '', description: '' });
+
+  const handleCotiza = () => {
+    if (session) {
+      router.push('/dashboard?tab=servicios');
+    } else {
+      setCtaOpen(true);
+    }
+  };
+
+  const handleCtaSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.push(`/register?name=${encodeURIComponent(ctaForm.name)}&email=${encodeURIComponent(ctaForm.email)}&from=cta`);
+  };
 
   const planNameToId: Record<string, string> = {
     'Básico': 'BASIC',
@@ -108,18 +124,18 @@ export default function HomePage() {
               Lleva tus proyectos al siguiente nivel con nuestra tecnología de vanguardia.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/#pricing"
+              <button
+                onClick={handleCotiza}
                 className="inline-flex items-center justify-center px-8 py-3 text-base font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
               >
-                Ver planes
+                Cotiza ahora
                 <ChevronRight className="ml-2 w-5 h-5" />
-              </Link>
+              </button>
               <Link
-                href="/#contact"
+                href="/#pricing"
                 className="inline-flex items-center justify-center px-8 py-3 text-base font-medium border border-input bg-background hover:bg-accent rounded-lg transition-colors"
               >
-                Contactar ventas
+                Ver planes
               </Link>
             </div>
           </div>
@@ -460,6 +476,80 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {ctaOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass rounded-2xl p-6 w-full max-w-md relative"
+          >
+            <button
+              onClick={() => setCtaOpen(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-accent"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold mb-1">Cotiza tu proyecto</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              Completa los datos y crea tu cuenta para enviar tu solicitud.
+            </p>
+            <form onSubmit={handleCtaSubmit} className="space-y-3">
+              <input
+                required
+                placeholder="Tu nombre"
+                value={ctaForm.name}
+                onChange={e => setCtaForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary"
+              />
+              <input
+                required
+                type="email"
+                placeholder="Tu email"
+                value={ctaForm.email}
+                onChange={e => setCtaForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary"
+              />
+              <select
+                required
+                value={ctaForm.service}
+                onChange={e => setCtaForm(f => ({ ...f, service: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary"
+              >
+                <option value="">Selecciona un servicio</option>
+                <option value="print_3d">Impresión 3D (FDM)</option>
+                <option value="resin">Impresión en Resina</option>
+                <option value="laser">Corte / Grabado Láser</option>
+                <option value="design">Diseño 3D</option>
+              </select>
+              <textarea
+                placeholder="Describe brevemente tu proyecto (opcional)"
+                value={ctaForm.description}
+                onChange={e => setCtaForm(f => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="w-full px-4 py-2.5 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary resize-none"
+              />
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              >
+                <Send className="w-4 h-4" />
+                Crear cuenta y cotizar
+              </button>
+              <p className="text-center text-xs text-muted-foreground">
+                ¿Ya tienes cuenta?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setCtaOpen(false); router.push('/login?callbackUrl=/dashboard?tab=servicios'); }}
+                  className="text-primary hover:underline"
+                >
+                  Inicia sesión
+                </button>
+              </p>
+            </form>
+          </motion.div>
+        </div>
+      )}
 
       <footer className="py-12 border-t border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

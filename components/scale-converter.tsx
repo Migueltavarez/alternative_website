@@ -160,8 +160,8 @@ export function ScaleConverter() {
           </div>
 
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row items-center gap-4">
-              <div className="flex-1 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-end gap-4">
+              <div className="min-w-0">
                 <label className="block text-sm font-medium mb-2">Longitud Real</label>
                 <div className="flex gap-2">
                   <input
@@ -169,12 +169,12 @@ export function ScaleConverter() {
                     value={realLength}
                     onChange={(e) => handleRealLengthChange(e.target.value)}
                     placeholder="0.00"
-                    className="flex-1 px-4 py-3 rounded-lg bg-background border border-input focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="min-w-0 flex-1 px-3 py-3 rounded-lg bg-background border border-input focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   />
                   <select
                     value={realUnit}
                     onChange={(e) => handleUnitChange('real', e.target.value)}
-                    className="px-3 py-3 rounded-lg bg-background border border-input focus:border-primary outline-none cursor-pointer min-w-[110px]"
+                    className="w-[90px] shrink-0 px-2 py-3 rounded-lg bg-background border border-input focus:border-primary outline-none cursor-pointer text-sm"
                   >
                     {UNITS.map((unit) => (
                       <option key={unit.value} value={unit.value}>
@@ -185,15 +185,17 @@ export function ScaleConverter() {
                 </div>
               </div>
 
-              <button
-                onClick={swapUnits}
-                className="p-3 rounded-full bg-secondary hover:bg-secondary/80 transition-colors md:mt-6"
-                title="Intercambiar"
-              >
-                <ArrowRightLeft className="w-5 h-5 text-muted-foreground" />
-              </button>
+              <div className="flex justify-center">
+                <button
+                  onClick={swapUnits}
+                  className="p-3 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
+                  title="Intercambiar"
+                >
+                  <ArrowRightLeft className="w-5 h-5 text-muted-foreground" />
+                </button>
+              </div>
 
-              <div className="flex-1 w-full">
+              <div className="min-w-0">
                 <label className="block text-sm font-medium mb-2">Longitud en Escala</label>
                 <div className="flex gap-2">
                   <input
@@ -201,12 +203,12 @@ export function ScaleConverter() {
                     value={scaledLength}
                     onChange={(e) => handleScaledLengthChange(e.target.value)}
                     placeholder="0.00"
-                    className="flex-1 px-4 py-3 rounded-lg bg-background border border-input focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="min-w-0 flex-1 px-3 py-3 rounded-lg bg-background border border-input focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   />
                   <select
                     value={scaledUnit}
                     onChange={(e) => handleUnitChange('scaled', e.target.value)}
-                    className="px-3 py-3 rounded-lg bg-background border border-input focus:border-primary outline-none cursor-pointer min-w-[110px]"
+                    className="w-[90px] shrink-0 px-2 py-3 rounded-lg bg-background border border-input focus:border-primary outline-none cursor-pointer text-sm"
                   >
                     {UNITS.map((unit) => (
                       <option key={unit.value} value={unit.value}>

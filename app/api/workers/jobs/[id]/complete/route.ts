@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { sendJobStatusUpdateEmail } from '@/lib/email';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -38,14 +39,23 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const [updated] = await prisma.$transaction(updates);
 
-    if (job.user && process.env.RESEND_API_KEY) {
-      sendJobStatusUpdateEmail(
-        job.user.email,
-        job.user.name,
-        job.fileName,
-        '¡Tu trabajo ha sido completado!',
-        '¡Excelentes noticias! Tu trabajo ha sido completado exitosamente. Accede a tu panel para ver los detalles y coordinar la entrega.',
-      ).catch((e) => console.error('Complete email error:', e));
+    if (job.user) {
+      if (process.env.RESEND_API_KEY) {
+        sendJobStatusUpdateEmail(
+          job.user.email,
+          job.user.name,
+          job.fileName,
+          '¡Tu trabajo ha sido completado!',
+          '¡Excelentes noticias! Tu trabajo ha sido completado exitosamente. Accede a tu panel para ver los detalles y coordinar la entrega.',
+        ).catch((e) => console.error('Complete email error:', e));
+      }
+      createNotification({
+        userId: job.userId,
+        type: 'job_update',
+        title: '¡Tu trabajo está listo!',
+        body: `El trabajo "${job.fileName}" fue completado. Coordina la entrega en tu panel.`,
+        link: '/dashboard?tab=servicios',
+      }).catch(() => {});
     }
 
     return NextResponse.json(updated);

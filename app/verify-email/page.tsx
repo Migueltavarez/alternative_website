@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, AlertCircle } from 'lucide-react';
+import { Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
 
@@ -67,7 +67,25 @@ function ResendButton({ email }: { email?: string }) {
 function VerifyEmailContent() {
   const params = useSearchParams();
   const error = params.get('error');
+  const success = params.get('success');
   const email = params.get('email') || undefined;
+
+  if (success) {
+    return (
+      <div className="glass rounded-2xl p-8 text-center max-w-md mx-auto">
+        <div className="flex justify-center mb-4">
+          <CheckCircle2 className="w-14 h-14 text-green-500" />
+        </div>
+        <h1 className="text-2xl font-bold mb-3">¡Cuenta verificada!</h1>
+        <p className="text-muted-foreground mb-6">
+          Tu correo fue verificado exitosamente. Ya puedes iniciar sesión en tu cuenta.
+        </p>
+        <Link href="/login">
+          <Button className="w-full">Iniciar sesión</Button>
+        </Link>
+      </div>
+    );
+  }
 
   if (error) {
     return (
