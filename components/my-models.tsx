@@ -770,7 +770,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                                 <div><p className="text-muted-foreground">Alto</p><p className="font-bold">{stlAnalysis.dimensions.z} mm</p></div>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Peso estimado (PLA 20% infill): ~{stlAnalysis.estimatedWeightG}g
+                                Peso estimado (PLA): ~{stlAnalysis.estimatedWeightG}g
                                 {' · '}Créditos aprox: {stlAnalysis.creditsMin}–{stlAnalysis.creditsMax}
                                 {!stlAnalysis.precise && ' (estimado)'}
                               </p>

@@ -110,9 +110,9 @@ export const NOZZLE_SIZES = [
 ] as const;
 
 export const DELIVERY_TIMES = [
-  { value: 'standard', label: 'Estándar (7-10 días hábiles)', price: 0,   priceLabel: 'Gratis' },
-  { value: 'express',  label: 'Express (3-5 días hábiles)',   price: 100, priceLabel: 'RD$100' },
-  { value: 'urgent',   label: 'Urgente (1-2 días hábiles)',   price: 200, priceLabel: 'RD$200' },
+  { value: 'standard', label: 'Estándar (2-7 días)',   price: 0,   priceLabel: 'Gratis' },
+  { value: 'express',  label: 'Express (1-3 días)',    price: 100, priceLabel: 'RD$100' },
+  { value: 'urgent',   label: 'Urgente (1-24 horas)', price: 200, priceLabel: 'RD$200' },
 ] as const;
 
 export const JOB_STATUS_LABELS: Record<string, { label: string; color: string }> = {

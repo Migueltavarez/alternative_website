@@ -114,17 +114,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se pudo analizar el archivo' }, { status: 422 });
     }
 
-    // Estimate weight: PLA density 1.24 g/cm³, 20% infill → effective 0.248 g/cm³
-    // volume is in mm³, convert to cm³ (÷1000), multiply by density and infill
-    const PLA_INFILL_DENSITY = 1.24 * 0.20; // g/cm³
-    const volumeCm3 = result.volume / 1000;
-    const estimatedWeightG = Math.max(1, Math.round(volumeCm3 * PLA_INFILL_DENSITY));
+    // Improved weight estimate: flat/thin models have shells dominating over infill.
+    // thinness = minDim/maxDim; for pancake shapes this is small, meaning top/bottom
+    // solid layers make up the bulk of material (not the 20% infill).
+    const { x, y, z } = result.dimensions;
+    const minDim = Math.min(x, y, z);
+    const maxDim = Math.max(x, y, z);
+    const thinness = maxDim > 0 ? minDim / maxDim : 1;
 
-    // Rough credit estimate: assume ~RD$3 per gram production cost, so ~0.2 credits/gram
-    // But since credits = RD$15 each, 1g ≈ 0.2 credits.
-    // Let's use a broader range to account for variability.
-    const creditsMin = Math.max(5, Math.round(estimatedWeightG * 0.15));
-    const creditsMax = Math.round(estimatedWeightG * 0.5);
+    // Effective material fraction of the mesh solid volume at ~20% infill:
+    //   < 0.12 (very flat plate)  → ~75%  (shells dominate almost entirely)
+    //   0.12–0.25 (flat)          → ~55%
+    //   0.25–0.45 (medium)        → ~40%
+    //   > 0.45 (chunky)           → ~30%
+    const effectiveFraction =
+      thinness < 0.12 ? 0.75 :
+      thinness < 0.25 ? 0.55 :
+      thinness < 0.45 ? 0.40 : 0.30;
+
+    const PLA_DENSITY = 1.24; // g/cm³
+    const volumeCm3 = result.volume / 1000;
+    const estimatedWeightG = Math.max(1, Math.round(volumeCm3 * PLA_DENSITY * effectiveFraction));
+
+    // Credit estimate: 1 credit = RD$15. Production cost ≈ RD$2–7/g depending on complexity.
+    const creditsMin = Math.max(2, Math.round(estimatedWeightG * 0.15));
+    const creditsMax = Math.max(creditsMin + 1, Math.round(estimatedWeightG * 0.50));
 
     return NextResponse.json({
       dimensions: result.dimensions,
