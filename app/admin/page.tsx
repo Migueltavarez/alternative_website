@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
@@ -52,7 +52,7 @@ export default function AdminPage() {
   const [selectedConvUserId, setSelectedConvUserId] = useState<string | null>(null);
   const [pendingWorkers, setPendingWorkers] = useState<any[]>([]);
   const [earningsInputs, setEarningsInputs] = useState<Record<string, string>>({});
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({ realizado: true });
+  const [jobsTab, setJobsTab] = useState<'cotizacion' | 'asignar' | 'proceso' | 'realizado'>('cotizacion');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -151,7 +151,7 @@ export default function AdminPage() {
   };
 
   const handleCancelSubscription = async (userId: string) => {
-    if (!confirm('Â¿EstÃ¡s seguro de cancelar esta suscripciÃ³n?')) return;
+    if (!confirm('¿Estás seguro de cancelar esta suscripción?')) return;
     
     setActionLoading(userId);
     try {
@@ -170,7 +170,7 @@ export default function AdminPage() {
   };
 
   const handlePauseSubscription = async (userId: string) => {
-    if (!confirm('Â¿Pausar esta suscripciÃ³n?')) return;
+    if (!confirm('¿Pausar esta suscripción?')) return;
     
     setActionLoading(userId);
     try {
@@ -191,7 +191,7 @@ export default function AdminPage() {
   };
 
   const handleRestoreSubscription = async (userId: string) => {
-    if (!confirm('Â¿Restaurar esta suscripciÃ³n?')) return;
+    if (!confirm('¿Restaurar esta suscripción?')) return;
     
     setActionLoading(userId);
     try {
@@ -234,7 +234,7 @@ export default function AdminPage() {
     const job = printJobs.find(j => j.id === jobId);
     if (!job) return;
     
-    if (!confirm(`Â¿Descontar ${job.creditsCost} crÃ©ditos de ${job.user?.name || 'este usuario'}?`)) return;
+    if (!confirm(`¿Descontar ${job.creditsCost} créditos de ${job.user?.name || 'este usuario'}?`)) return;
     
     setActionLoading(jobId);
     try {
@@ -248,7 +248,7 @@ export default function AdminPage() {
         fetchData();
       } else {
         const data = await res.json();
-        alert(data.error || 'Error al descontar crÃ©ditos');
+        alert(data.error || 'Error al descontar créditos');
       }
     } catch (error) {
       console.error('Error deducting credits:', error);
@@ -301,7 +301,7 @@ export default function AdminPage() {
   };
 
   const handleDeletePrintJob = async (jobId: string) => {
-    if (!confirm('Â¿Eliminar este trabajo de impresiÃ³n?')) return;
+    if (!confirm('¿Eliminar este trabajo de impresión?')) return;
     
     setActionLoading(jobId);
     try {
@@ -322,7 +322,7 @@ export default function AdminPage() {
   const handleSetPrice = async (jobId: string) => {
     const price = priceInputs[jobId];
     if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
-      alert('Ingresa un precio vÃ¡lido');
+      alert('Ingresa un precio válido');
       return;
     }
     setActionLoading(jobId);
@@ -354,7 +354,7 @@ export default function AdminPage() {
   };
 
   const handleConfirmPayment = async (jobId: string) => {
-    if (!confirm('Â¿Confirmar el pago de este trabajo?')) return;
+    if (!confirm('¿Confirmar el pago de este trabajo?')) return;
     setActionLoading(jobId);
     try {
       await fetch(`/api/print-jobs/${jobId}`, {
@@ -368,7 +368,7 @@ export default function AdminPage() {
   };
 
   const handleConfirmCreditPurchase = async (purchaseId: string) => {
-    if (!confirm('Â¿Confirmar esta compra de crÃ©ditos y agregarlos al usuario?')) return;
+    if (!confirm('¿Confirmar esta compra de créditos y agregarlos al usuario?')) return;
     setActionLoading(purchaseId);
     try {
       const res = await fetch(`/api/credits/${purchaseId}/confirm`, { method: 'PATCH' });
@@ -383,7 +383,7 @@ export default function AdminPage() {
   };
 
   const handleConfirmSubscription = async (subscriptionId: string) => {
-    if (!confirm('Â¿Confirmar esta suscripciÃ³n y activarla?')) return;
+    if (!confirm('¿Confirmar esta suscripción y activarla?')) return;
     setActionLoading(subscriptionId);
     try {
       const res = await fetch(`/api/subscriptions/${subscriptionId}/confirm`, { method: 'PATCH' });
@@ -414,7 +414,7 @@ export default function AdminPage() {
 
   const handleSetDesignerEarnings = async (jobId: string) => {
     const amount = parseFloat(earningsInputs[jobId] ?? '');
-    if (isNaN(amount) || amount < 0) return alert('Ingresa un monto vÃ¡lido');
+    if (isNaN(amount) || amount < 0) return alert('Ingresa un monto válido');
     setActionLoading(`earnings-${jobId}`);
     try {
       const res = await fetch(`/api/print-jobs/${jobId}/designer-earnings`, {
@@ -433,7 +433,7 @@ export default function AdminPage() {
   };
 
   const handleMarkDesignerPaid = async (jobId: string) => {
-    if (!confirm('Â¿Confirmar que se pagÃ³ al diseÃ±ador por este trabajo?')) return;
+    if (!confirm('¿Confirmar que se pagó al diseñador por este trabajo?')) return;
     setActionLoading(`paid-${jobId}`);
     try {
       const res = await fetch(`/api/print-jobs/${jobId}/designer-paid`, { method: 'POST' });
@@ -448,7 +448,7 @@ export default function AdminPage() {
   };
 
   const handleMarkMakerPaid = async (jobId: string, credits: number) => {
-    if (!confirm(`Â¿Confirmar pago al maker por ${credits} crÃ©dito(s) = RD$ ${(credits * 10).toLocaleString('es-DO')}?`)) return;
+    if (!confirm(`¿Confirmar pago al maker por ${credits} crédito(s) = RD$ ${(credits * 10).toLocaleString('es-DO')}?`)) return;
     setActionLoading(`makerpaid-${jobId}`);
     try {
       const res = await fetch(`/api/print-jobs/${jobId}/maker-paid`, { method: 'POST' });
@@ -476,7 +476,7 @@ export default function AdminPage() {
       publicUrl = `${appUrl}/api/print-file/${fileUrl}`;
     }
 
-    // Bambu Studio expects a plain URL in the protocol â€” do not encodeURIComponent
+    // Bambu Studio expects a plain URL in the protocol �?" do not encodeURIComponent
     // the full URL because that converts :// and / into %3A%2F%2F etc., which
     // Bambu Studio cannot decode, causing "download failed: unknown file format".
     window.location.href = `bambustudio://open?file=${publicUrl}`;
@@ -500,7 +500,7 @@ export default function AdminPage() {
         <div className="font-medium">{job.user?.name || 'Usuario'}</div>
         <div className="text-sm text-muted-foreground">{job.user?.email}</div>
         <div className="text-xs text-muted-foreground">
-          CrÃ©ditos disponibles: {job.user?.credits || 0}
+          Créditos disponibles: {job.user?.credits || 0}
         </div>
       </td>
       <td className="px-6 py-4">
@@ -525,22 +525,22 @@ export default function AdminPage() {
         <div className="flex flex-wrap gap-1 mt-1">
           {job.color && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              ðŸŽ¨ {job.color}
+              �YZ� {job.color}
             </span>
           )}
           {job.filamentType && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              ðŸ§µ {job.filamentType}
+              �Y�� {job.filamentType}
             </span>
           )}
           {job.designMaterial && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              ðŸ”§ {job.designMaterial}
+              �Y"� {job.designMaterial}
             </span>
           )}
           {job.designIsVehicle && job.designVehicleMake && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              ðŸš— {job.designVehicleMake} {job.designVehicleModel} {job.designVehicleYear}
+              �Ys- {job.designVehicleMake} {job.designVehicleModel} {job.designVehicleYear}
             </span>
           )}
         </div>
@@ -696,7 +696,7 @@ export default function AdminPage() {
                         ?.filter((m: any) => m.isActive && (!requiredTypes || requiredTypes.includes(m.machineType ?? 'printer_3d')))
                         .map((m: any) => (
                           <option key={`${w.userId}:${m.id}`} value={`${w.userId}:${m.id}`}>
-                            {w.user?.name || w.user?.email} â€” {m.name}
+                            {w.user?.name || w.user?.email} �?" {m.name}
                           </option>
                         ))
                     )}
@@ -857,7 +857,7 @@ export default function AdminPage() {
               </div>
             );
           }
-          return <span className="text-xs text-muted-foreground">â€”</span>;
+          return <span className="text-xs text-muted-foreground">�?"</span>;
         })()}
       </td>
       <td className="px-6 py-4">
@@ -877,7 +877,7 @@ export default function AdminPage() {
         {job.cameraUrl && (
           <a href={job.cameraUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs text-green-400 hover:underline mt-1">
-            <Play className="w-3 h-3" />CÃ¡mara en vivo
+            <Play className="w-3 h-3" />Cámara en vivo
           </a>
         )}
       </td>
@@ -909,8 +909,8 @@ export default function AdminPage() {
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Panel de AdministraciÃ³n</h1>
-              <p className="text-muted-foreground">Gestiona usuarios, suscripciones y mÃ¡s</p>
+              <h1 className="text-3xl font-bold">Panel de Administración</h1>
+              <p className="text-muted-foreground">Gestiona usuarios, suscripciones y más</p>
             </div>
           </motion.div>
 
@@ -984,7 +984,7 @@ export default function AdminPage() {
             </motion.div>
           </div>
 
-          {/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* �"?�"? Tabs �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"? */}
           <div className="flex flex-wrap gap-1 mb-8 p-1 glass rounded-xl w-fit">
             {([
               { key: 'trabajos', label: 'Trabajos', icon: ListChecks },
@@ -994,7 +994,7 @@ export default function AdminPage() {
               { key: 'mensajes', label: 'Mensajes', icon: MessageSquare },
               { key: 'eventos', label: 'Eventos', icon: CalendarClock },
               { key: 'cursos', label: 'Cursos', icon: PenTool },
-              { key: 'metricas', label: 'MÃ©tricas', icon: TrendingUp },
+              { key: 'metricas', label: 'Métricas', icon: TrendingUp },
               { key: 'qms', label: 'Control QC', icon: Shield },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
@@ -1022,7 +1022,7 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: TRABAJOS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: TRABAJOS �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'trabajos' && (<>
 
           {/* Pending credit purchases */}
@@ -1035,7 +1035,7 @@ export default function AdminPage() {
             >
               <div className="flex items-center gap-3 mb-4">
                 <Coins className="w-6 h-6 text-amber-400" />
-                <h2 className="text-2xl font-bold">Compras de CrÃ©ditos Pendientes</h2>
+                <h2 className="text-2xl font-bold">Compras de Créditos Pendientes</h2>
                 <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20 text-amber-400 font-semibold">
                   {creditPurchases.filter((p: any) => p.status === 'proof_uploaded').length}
                 </span>
@@ -1046,12 +1046,12 @@ export default function AdminPage() {
                     <thead className="bg-accent/50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">CrÃ©ditos</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Créditos</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Monto</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Banco</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Comprobante</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">AcciÃ³n</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
@@ -1065,7 +1065,7 @@ export default function AdminPage() {
                             </td>
                             <td className="px-6 py-4 font-semibold text-amber-400">{p.credits}</td>
                             <td className="px-6 py-4 text-sm">${p.amount?.toFixed(2)}</td>
-                            <td className="px-6 py-4 text-sm">{p.paymentMethod || 'â€”'}</td>
+                            <td className="px-6 py-4 text-sm">{p.paymentMethod || '�?"'}</td>
                             <td className="px-6 py-4">
                               {p.paymentProofUrl ? (
                                 <a
@@ -1077,7 +1077,7 @@ export default function AdminPage() {
                                   <ExternalLink className="w-3 h-3" />
                                   Ver
                                 </a>
-                              ) : 'â€”'}
+                              ) : '�?"'}
                             </td>
                             <td className="px-6 py-4 text-sm text-muted-foreground">
                               {new Date(p.createdAt).toLocaleDateString('es-DO')}
@@ -1105,7 +1105,7 @@ export default function AdminPage() {
 
           </>)}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: USUARIOS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: USUARIOS �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'usuarios' && (<>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1143,7 +1143,7 @@ export default function AdminPage() {
                             className="bg-transparent border border-input rounded px-2 py-1 text-sm"
                           >
                             <option value="USER">USER</option>
-                            <option value="WORKER">WORKER (Printeo/LÃ¡ser)</option>
+                            <option value="WORKER">WORKER (Printeo/Láser)</option>
                             <option value="DESIGNER">DESIGNER</option>
                             <option value="ADMIN">ADMIN</option>
                           </select>
@@ -1226,7 +1226,7 @@ export default function AdminPage() {
 
           </>)}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: SUSCRIPCIONES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: SUSCRIPCIONES �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'suscripciones' && (<>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1235,7 +1235,7 @@ export default function AdminPage() {
             className="mb-8"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">DistribuciÃ³n por plan</h2>
+              <h2 className="text-2xl font-bold">Distribución por plan</h2>
               <Button variant="outline" size="sm" onClick={fetchData}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Actualizar
@@ -1265,7 +1265,7 @@ export default function AdminPage() {
           >
             <div className="flex items-center gap-3 mb-6">
               <CalendarClock className="w-6 h-6 text-blue-500" />
-              <h2 className="text-2xl font-bold">PrÃ³ximos Cobros del Mes</h2>
+              <h2 className="text-2xl font-bold">Próximos Cobros del Mes</h2>
             </div>
             <div className="glass rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
@@ -1275,7 +1275,7 @@ export default function AdminPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Monto</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">PrÃ³ximo Cobro</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Próximo Cobro</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
                     </tr>
                   </thead>
@@ -1299,12 +1299,12 @@ export default function AdminPage() {
                           <td className="px-6 py-4">
                             <div className="text-sm font-medium">{formatDate(sub.currentPeriodEnd)}</div>
                             <div className="text-xs text-muted-foreground">
-                              {Math.ceil((new Date(sub.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} dÃ­as
+                              {Math.ceil((new Date(sub.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             {sub.cancelAtPeriodEnd ? (
-                              <span className="flex items-center gap-1 text-yellow-500 text-sm"><AlertCircle className="w-4 h-4" />CancelarÃ¡</span>
+                              <span className="flex items-center gap-1 text-yellow-500 text-sm"><AlertCircle className="w-4 h-4" />Cancelará</span>
                             ) : (
                               <span className="flex items-center gap-1 text-green-500 text-sm"><CreditCard className="w-4 h-4" />Activo</span>
                             )}
@@ -1344,7 +1344,7 @@ export default function AdminPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Banco</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Comprobante</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">AcciÃ³n</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
@@ -1364,14 +1364,14 @@ export default function AdminPage() {
                                 {s.status === 'proof_uploaded' ? 'Comprobante enviado' : 'Esperando pago'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-sm">{s.paymentMethod || 'â€”'}</td>
+                            <td className="px-6 py-4 text-sm">{s.paymentMethod || '�?"'}</td>
                             <td className="px-6 py-4">
                               {s.paymentProofUrl ? (
                                 <a href={s.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')} target="_blank" rel="noopener noreferrer"
                                   className="flex items-center gap-1 text-sm text-blue-400 hover:underline">
                                   <ExternalLink className="w-3 h-3" />Ver
                                 </a>
-                              ) : 'â€”'}
+                              ) : '�?"'}
                             </td>
                             <td className="px-6 py-4">
                               {s.status === 'proof_uploaded' && (
@@ -1406,7 +1406,7 @@ export default function AdminPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Usuario</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Plan</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">RenovaciÃ³n</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Renovación</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -1439,7 +1439,7 @@ export default function AdminPage() {
 
           </>)}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: TRABAJOS (Makers + Cola) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: TRABAJOS (Makers + Cola) �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'trabajos' && (<>
 
           {/* Workers section */}
@@ -1458,7 +1458,7 @@ export default function AdminPage() {
             </div>
             {workers.filter((w: any) => w.user?.role !== 'DESIGNER').length === 0 ? (
               <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
-                No hay makers registrados aÃºn
+                No hay makers registrados aún
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1478,7 +1478,7 @@ export default function AdminPage() {
                             {activeWorkerJobs > 0 && (
                               <span className="text-xs font-medium text-amber-400">{activeWorkerJobs} activo{activeWorkerJobs !== 1 ? 's' : ''}</span>
                             )}
-                            <span className="text-xs text-muted-foreground">Â· {w.machines?.length ?? 0} mÃ¡quinas</span>
+                            <span className="text-xs text-muted-foreground">· {w.machines?.length ?? 0} máquinas</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1528,7 +1528,7 @@ export default function AdminPage() {
                                   </div>
                                 </div>
                                 <p className="text-muted-foreground truncate">
-                                  {mType === 'laser' ? `${m.laserType ?? ''} Â· ${m.dimensions ?? ''}` : m.supportedFilaments.join(', ')}
+                                  {mType === 'laser' ? `${m.laserType ?? ''} · ${m.dimensions ?? ''}` : m.supportedFilaments.join(', ')}
                                 </p>
                               </div>
                             );
@@ -1552,13 +1552,13 @@ export default function AdminPage() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <PenTool className="w-6 h-6 text-pink-400" />
-                DiseÃ±adores
+                Diseñadores
                 <span className="text-base font-normal text-muted-foreground">({workers.filter((w: any) => w.user?.role === 'DESIGNER').length})</span>
               </h2>
             </div>
             {workers.filter((w: any) => w.user?.role === 'DESIGNER').length === 0 ? (
               <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
-                No hay diseÃ±adores asignados aÃºn. AsÃ­gnalos desde la pestaÃ±a Usuarios.
+                No hay diseñadores asignados aún. Asígnalos desde la pestaña Usuarios.
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1632,106 +1632,82 @@ export default function AdminPage() {
               </Button>
             </div>
 
-            <div className="space-y-4">
-              {[
-                {
-                  key: 'cotizacion',
-                  label: 'Pendiente de cotizaciÃ³n',
-                  desc: 'Sin cotizar, esperando pago',
-                  color: 'amber',
-                  jobs: printJobs.filter((j: any) =>
-                    ['unpaid','quoted','appealed','validated','payment_uploaded'].includes(j.priceStatus ?? 'unpaid') &&
-                    !['delivered','cancelled'].includes(j.status)
-                  ),
-                },
-                {
-                  key: 'asignar',
-                  label: 'Pendiente de asignar',
-                  desc: 'Pago confirmado, en cola',
-                  color: 'blue',
-                  jobs: printJobs.filter((j: any) => j.priceStatus === 'confirmed' && j.status === 'pending'),
-                },
-                {
-                  key: 'proceso',
-                  label: 'En proceso',
-                  desc: 'Asignado o en producciÃ³n',
-                  color: 'purple',
-                  jobs: printJobs.filter((j: any) =>
-                    ['assigned','accepted','printing','needs_revision','correction_requested','completed','ready_to_ship','shipped'].includes(j.status)
-                  ),
-                },
-                {
-                  key: 'realizado',
-                  label: 'Realizado',
-                  desc: 'Entregado o cancelado',
-                  color: 'green',
-                  jobs: printJobs.filter((j: any) => ['delivered','cancelled'].includes(j.status)),
-                },
-              ].map((section) => {
-                const colorMap: Record<string, { text: string; bg: string; border: string; dot: string }> = {
-                  amber:  { text: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  dot: 'bg-amber-400'  },
-                  blue:   { text: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   dot: 'bg-blue-400'   },
-                  purple: { text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', dot: 'bg-purple-400' },
-                  green:  { text: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  dot: 'bg-green-400'  },
-                };
-                const c = colorMap[section.color];
-                const collapsed = !!collapsedSections[section.key];
-                return (
-                  <div key={section.key} className={`rounded-2xl border ${c.border} overflow-hidden`}>
-                    <button
-                      onClick={() => setCollapsedSections((prev) => ({ ...prev, [section.key]: !prev[section.key] }))}
-                      className={`w-full flex items-center justify-between px-6 py-4 ${c.bg} hover:opacity-80 transition-opacity`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`} />
-                        <span className={`font-semibold ${c.text}`}>{section.label}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.bg} ${c.text} border ${c.border}`}>
-                          {section.jobs.length}
+            {/* Sub-tabs */}
+            {(() => {
+              const jobSections = {
+                cotizacion: printJobs.filter((j: any) =>
+                  ['unpaid','quoted','appealed','validated','payment_uploaded'].includes(j.priceStatus ?? 'unpaid') &&
+                  !['delivered','cancelled'].includes(j.status)
+                ),
+                asignar: printJobs.filter((j: any) => j.priceStatus === 'confirmed' && j.status === 'pending'),
+                proceso: printJobs.filter((j: any) =>
+                  ['assigned','accepted','printing','needs_revision','correction_requested','completed','ready_to_ship','shipped'].includes(j.status)
+                ),
+                realizado: printJobs.filter((j: any) => ['delivered','cancelled'].includes(j.status)),
+              };
+              const tabs: { key: keyof typeof jobSections; label: string }[] = [
+                { key: 'cotizacion', label: 'Pendiente de cotización' },
+                { key: 'asignar',    label: 'Pendiente de asignar'    },
+                { key: 'proceso',    label: 'En proceso'              },
+                { key: 'realizado',  label: 'Realizado'               },
+              ];
+              const activeJobs = jobSections[jobsTab] ?? [];
+              return (
+                <>
+                  <div className="flex gap-2 mb-6 flex-wrap">
+                    {tabs.map((tab) => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setJobsTab(tab.key)}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          jobsTab === tab.key
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        }`}
+                      >
+                        {tab.label}
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${jobsTab === tab.key ? 'bg-white/20' : 'bg-accent'}`}>
+                          {jobSections[tab.key].length}
                         </span>
-                        <span className="text-xs text-muted-foreground hidden sm:block">{section.desc}</span>
-                      </div>
-                      {collapsed
-                        ? <ChevronDown className={`w-4 h-4 ${c.text}`} />
-                        : <ChevronUp className={`w-4 h-4 ${c.text}`} />}
-                    </button>
-                    {!collapsed && (
-                      <div className="glass overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead className="bg-accent/50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Cliente</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Archivo / Specs</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Worker</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">CrÃ©ditos</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Precio / Pago</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acciones</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/50">
-                              {section.jobs.map(renderJobRow)}
-                            </tbody>
-                          </table>
-                          {section.jobs.length === 0 && (
-                            <div className="p-8 text-center text-muted-foreground">
-                              No hay trabajos en esta categorÃ­a
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                      </button>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="glass rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-accent/50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Cliente</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Archivo / Specs</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Worker</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Créditos</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Precio / Pago</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/50">
+                          {activeJobs.map(renderJobRow)}
+                        </tbody>
+                      </table>
+                      {activeJobs.length === 0 && (
+                        <div className="p-8 text-center text-muted-foreground">
+                          No hay trabajos en esta categoría
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
 
           </>)}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: MENSAJES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: MENSAJES �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'mensajes' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
               <h2 className="text-2xl font-bold mb-6">Mensajes de Soporte</h2>
@@ -1739,7 +1715,7 @@ export default function AdminPage() {
                 <div className="border-r border-border max-h-[70vh] overflow-y-auto">
                   {conversations.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground text-sm">
-                      No hay conversaciones aÃºn
+                      No hay conversaciones aún
                     </div>
                   ) : (
                     conversations
@@ -1762,7 +1738,7 @@ export default function AdminPage() {
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {c.lastMessage.sender === 'ADMIN' ? 'TÃº: ' : ''}{c.lastMessage.content}
+                            {c.lastMessage.sender === 'ADMIN' ? 'Tú: ' : ''}{c.lastMessage.content}
                           </p>
                         </button>
                       ))
@@ -1775,26 +1751,26 @@ export default function AdminPage() {
                       fetchUrl={`/api/admin/chat/${selectedConvUserId}`}
                       postUrl={`/api/admin/chat/${selectedConvUserId}`}
                       mySender="ADMIN"
-                      emptyLabel="AÃºn no hay mensajes en esta conversaciÃ³n."
+                      emptyLabel="Aún no hay mensajes en esta conversación."
                     />
                   ) : (
                     <div className="flex items-center justify-center h-[50vh] text-muted-foreground text-sm">
-                      Selecciona una conversaciÃ³n
+                      Selecciona una conversación
                     </div>
                   )}
                 </div>
               </div>
             </motion.div>
           )}
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: MÃ‰TRICAS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: M�?TRICAS �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'metricas' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-              <h2 className="text-2xl font-bold mb-6">MÃ©tricas de la plataforma</h2>
+              <h2 className="text-2xl font-bold mb-6">Métricas de la plataforma</h2>
               <AdminMetrics />
             </motion.div>
           )}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: QMS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: QMS �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'qms' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
               <div className="flex items-center justify-between mb-6">
@@ -1805,7 +1781,7 @@ export default function AdminPage() {
             </motion.div>
           )}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: APROBACIONES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: APROBACIONES �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'aprobaciones' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
               <div className="flex items-center gap-3 mb-6">
@@ -1819,7 +1795,7 @@ export default function AdminPage() {
               {pendingWorkers.length === 0 ? (
                 <div className="glass rounded-2xl p-10 text-center">
                   <UserCheck className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">No hay solicitudes pendientes de aprobaciÃ³n.</p>
+                  <p className="text-muted-foreground">No hay solicitudes pendientes de aprobación.</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
@@ -1833,10 +1809,10 @@ export default function AdminPage() {
                                 ? 'border-pink-500/30 bg-pink-500/10 text-pink-400'
                                 : 'border-blue-500/30 bg-blue-500/10 text-blue-400'
                             }`}>
-                              {w.role === 'DESIGNER' ? 'DiseÃ±ador' : 'Maker'}
+                              {w.role === 'DESIGNER' ? 'Diseñador' : 'Maker'}
                             </span>
                           </div>
-                          <p className="font-semibold">{w.name ?? 'â€”'}</p>
+                          <p className="font-semibold">{w.name ?? '�?"'}</p>
                           <p className="text-sm text-muted-foreground">{w.email}</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Solicitud: {new Date(w.workerProfile?.createdAt ?? w.createdAt).toLocaleDateString('es-ES')}
@@ -1849,9 +1825,9 @@ export default function AdminPage() {
                                 <div key={m.id} className="text-xs text-muted-foreground flex items-center gap-2">
                                   <Printer className="w-3 h-3 shrink-0" />
                                   <span className="font-medium text-foreground">{m.name}</span>
-                                  <span>Â·</span>
-                                  <span>{m.machineType === 'laser' ? `LÃ¡ser ${m.laserType ?? ''}` : m.machineType === 'resin' ? 'Resina' : 'Impresora 3D'}</span>
-                                  {m.dimensions && <span>Â· {m.dimensions}</span>}
+                                  <span>·</span>
+                                  <span>{m.machineType === 'laser' ? `Láser ${m.laserType ?? ''}` : m.machineType === 'resin' ? 'Resina' : 'Impresora 3D'}</span>
+                                  {m.dimensions && <span>· {m.dimensions}</span>}
                                 </div>
                               ))}
                             </div>
@@ -1887,10 +1863,10 @@ export default function AdminPage() {
             </motion.div>
           )}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: EVENTOS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: EVENTOS �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'eventos' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <h2 className="text-2xl font-bold mb-6">GestiÃ³n de Eventos</h2>
+              <h2 className="text-2xl font-bold mb-6">Gestión de Eventos</h2>
               <div className="grid lg:grid-cols-[400px_1fr] gap-6">
                 <div className="glass rounded-2xl p-6">
                   <h3 className="font-semibold mb-4">Crear evento</h3>
@@ -1917,19 +1893,19 @@ export default function AdminPage() {
                     }}
                     className="space-y-3"
                   >
-                    <input required placeholder="TÃ­tulo" value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))}
+                    <input required placeholder="Título" value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
-                    <textarea required placeholder="DescripciÃ³n" value={eventForm.description} onChange={e => setEventForm(f => ({ ...f, description: e.target.value }))}
+                    <textarea required placeholder="Descripción" value={eventForm.description} onChange={e => setEventForm(f => ({ ...f, description: e.target.value }))}
                       rows={3} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary resize-none" />
                     <input required type="date" value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
                     <input required placeholder="Hora (ej: 10:00 AM)" value={eventForm.time} onChange={e => setEventForm(f => ({ ...f, time: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
-                    <input required placeholder="Lugar / DirecciÃ³n" value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))}
+                    <input required placeholder="Lugar / Dirección" value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
                     <select value={eventForm.type} onChange={e => setEventForm(f => ({ ...f, type: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary">
-                      {['Taller', 'Feria', 'ExhibiciÃ³n', 'Encuentro', 'Conferencia'].map(t => <option key={t} value={t}>{t}</option>)}
+                      {['Taller', 'Feria', 'Exhibición', 'Encuentro', 'Conferencia'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                     <input placeholder="URL de imagen (opcional)" value={eventForm.imageUrl} onChange={e => setEventForm(f => ({ ...f, imageUrl: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
@@ -1950,13 +1926,13 @@ export default function AdminPage() {
                           {!ev.published && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Borrador</span>}
                         </div>
                         <p className="font-semibold">{ev.title}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(ev.date).toLocaleDateString('es-DO')} Â· {ev.time} Â· {ev.location}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(ev.date).toLocaleDateString('es-DO')} · {ev.time} · {ev.location}</p>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={async () => {
-                          if (!confirm('Â¿Eliminar este evento?')) return;
+                          if (!confirm('¿Eliminar este evento?')) return;
                           await fetch(`/api/events/${ev.id}`, { method: 'DELETE' });
                           setAdminEvents(prev => prev.filter(e => e.id !== ev.id));
                         }}
@@ -1971,10 +1947,10 @@ export default function AdminPage() {
             </motion.div>
           )}
 
-          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TAB: CURSOS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� TAB: CURSOS �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.� */}
           {activeTab === 'cursos' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <h2 className="text-2xl font-bold mb-6">GestiÃ³n de Cursos</h2>
+              <h2 className="text-2xl font-bold mb-6">Gestión de Cursos</h2>
               <div className="grid lg:grid-cols-[420px_1fr] gap-6">
                 <div className="glass rounded-2xl p-6">
                   <h3 className="font-semibold mb-4">Crear curso</h3>
@@ -2006,11 +1982,11 @@ export default function AdminPage() {
                     }}
                     className="space-y-3"
                   >
-                    <input required placeholder="TÃ­tulo del curso" value={courseForm.title} onChange={e => setCourseForm(f => ({ ...f, title: e.target.value }))}
+                    <input required placeholder="Título del curso" value={courseForm.title} onChange={e => setCourseForm(f => ({ ...f, title: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
-                    <textarea required placeholder="DescripciÃ³n" value={courseForm.description} onChange={e => setCourseForm(f => ({ ...f, description: e.target.value }))}
+                    <textarea required placeholder="Descripción" value={courseForm.description} onChange={e => setCourseForm(f => ({ ...f, description: e.target.value }))}
                       rows={3} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary resize-none" />
-                    <input placeholder="CategorÃ­a (ej: ImpresiÃ³n 3D, DiseÃ±o)" value={courseForm.category} onChange={e => setCourseForm(f => ({ ...f, category: e.target.value }))}
+                    <input placeholder="Categoría (ej: Impresión 3D, Diseño)" value={courseForm.category} onChange={e => setCourseForm(f => ({ ...f, category: e.target.value }))}
                       className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm outline-none focus:border-primary" />
                     <div className="flex gap-3">
                       <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -2035,7 +2011,7 @@ export default function AdminPage() {
                         <div key={i} className="mb-2 p-2 rounded-lg bg-accent/20 space-y-1.5">
                           <input
                             required={i === 0}
-                            placeholder={`LecciÃ³n ${i + 1} â€” tÃ­tulo`}
+                            placeholder={`Lección ${i + 1} �?" título`}
                             value={lesson.title}
                             onChange={e => setCourseForm(f => { const l = [...f.lessons]; l[i] = { ...l[i], title: e.target.value }; return { ...f, lessons: l }; })}
                             className="w-full px-2 py-1.5 rounded bg-background border border-input text-xs outline-none"
@@ -2048,7 +2024,7 @@ export default function AdminPage() {
                           />
                           <div className="flex gap-2 items-center">
                             <input
-                              placeholder="DuraciÃ³n (ej: 15 min)"
+                              placeholder="Duración (ej: 15 min)"
                               value={lesson.duration}
                               onChange={e => setCourseForm(f => { const l = [...f.lessons]; l[i] = { ...l[i], duration: e.target.value }; return { ...f, lessons: l }; })}
                               className="flex-1 px-2 py-1.5 rounded bg-background border border-input text-xs outline-none"
@@ -2059,13 +2035,13 @@ export default function AdminPage() {
                             </label>
                             {courseForm.lessons.length > 1 && (
                               <button type="button" onClick={() => setCourseForm(f => ({ ...f, lessons: f.lessons.filter((_, idx) => idx !== i) }))}
-                                className="text-red-400 hover:text-red-300 text-xs">âœ•</button>
+                                className="text-red-400 hover:text-red-300 text-xs">�o.</button>
                             )}
                           </div>
                         </div>
                       ))}
                       <button type="button" onClick={() => setCourseForm(f => ({ ...f, lessons: [...f.lessons, { title: '', videoUrl: '', duration: '', isFree: false }] }))}
-                        className="text-xs text-primary hover:underline">+ Agregar lecciÃ³n</button>
+                        className="text-xs text-primary hover:underline">+ Agregar lección</button>
                     </div>
 
                     <Button type="submit" className="w-full" isLoading={contentActionLoading === 'course-create'}>
@@ -2113,7 +2089,7 @@ export default function AdminPage() {
                           size="sm"
                           variant="outline"
                           onClick={async () => {
-                            if (!confirm('Â¿Eliminar este curso?')) return;
+                            if (!confirm('¿Eliminar este curso?')) return;
                             await fetch(`/api/courses/${course.id}`, { method: 'DELETE' });
                             setAdminCourses(prev => prev.filter(c => c.id !== course.id));
                           }}
