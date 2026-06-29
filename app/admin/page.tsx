@@ -476,7 +476,7 @@ export default function AdminPage() {
       publicUrl = `${appUrl}/api/print-file/${fileUrl}`;
     }
 
-    // Bambu Studio expects a plain URL in the protocol �?" do not encodeURIComponent
+    // Bambu Studio expects a plain URL in the protocol — do not encodeURIComponent
     // the full URL because that converts :// and / into %3A%2F%2F etc., which
     // Bambu Studio cannot decode, causing "download failed: unknown file format".
     window.location.href = `bambustudio://open?file=${publicUrl}`;
@@ -525,22 +525,22 @@ export default function AdminPage() {
         <div className="flex flex-wrap gap-1 mt-1">
           {job.color && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              �YZ� {job.color}
+              Color: {job.color}
             </span>
           )}
           {job.filamentType && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              �Y�� {job.filamentType}
+              Mat: {job.filamentType}
             </span>
           )}
           {job.designMaterial && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              �Y"� {job.designMaterial}
+              Mat: {job.designMaterial}
             </span>
           )}
           {job.designIsVehicle && job.designVehicleMake && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
-              �Ys- {job.designVehicleMake} {job.designVehicleModel} {job.designVehicleYear}
+              Auto: {job.designVehicleMake} {job.designVehicleModel} {job.designVehicleYear}
             </span>
           )}
         </div>
@@ -696,7 +696,7 @@ export default function AdminPage() {
                         ?.filter((m: any) => m.isActive && (!requiredTypes || requiredTypes.includes(m.machineType ?? 'printer_3d')))
                         .map((m: any) => (
                           <option key={`${w.userId}:${m.id}`} value={`${w.userId}:${m.id}`}>
-                            {w.user?.name || w.user?.email} �?" {m.name}
+                            {w.user?.name || w.user?.email} — {m.name}
                           </option>
                         ))
                     )}
@@ -857,7 +857,7 @@ export default function AdminPage() {
               </div>
             );
           }
-          return <span className="text-xs text-muted-foreground">�?"</span>;
+          return <span className="text-xs text-muted-foreground">—</span>;
         })()}
       </td>
       <td className="px-6 py-4">
@@ -1065,7 +1065,7 @@ export default function AdminPage() {
                             </td>
                             <td className="px-6 py-4 font-semibold text-amber-400">{p.credits}</td>
                             <td className="px-6 py-4 text-sm">${p.amount?.toFixed(2)}</td>
-                            <td className="px-6 py-4 text-sm">{p.paymentMethod || '�?"'}</td>
+                            <td className="px-6 py-4 text-sm">{p.paymentMethod || '—'}</td>
                             <td className="px-6 py-4">
                               {p.paymentProofUrl ? (
                                 <a
@@ -1077,7 +1077,7 @@ export default function AdminPage() {
                                   <ExternalLink className="w-3 h-3" />
                                   Ver
                                 </a>
-                              ) : '�?"'}
+                              ) : '—'}
                             </td>
                             <td className="px-6 py-4 text-sm text-muted-foreground">
                               {new Date(p.createdAt).toLocaleDateString('es-DO')}
@@ -1364,14 +1364,14 @@ export default function AdminPage() {
                                 {s.status === 'proof_uploaded' ? 'Comprobante enviado' : 'Esperando pago'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-sm">{s.paymentMethod || '�?"'}</td>
+                            <td className="px-6 py-4 text-sm">{s.paymentMethod || '—'}</td>
                             <td className="px-6 py-4">
                               {s.paymentProofUrl ? (
                                 <a href={s.paymentProofUrl.replace('/uploads/', '/api/download/uploads/')} target="_blank" rel="noopener noreferrer"
                                   className="flex items-center gap-1 text-sm text-blue-400 hover:underline">
                                   <ExternalLink className="w-3 h-3" />Ver
                                 </a>
-                              ) : '�?"'}
+                              ) : '—'}
                             </td>
                             <td className="px-6 py-4">
                               {s.status === 'proof_uploaded' && (
@@ -1812,7 +1812,7 @@ export default function AdminPage() {
                               {w.role === 'DESIGNER' ? 'Diseñador' : 'Maker'}
                             </span>
                           </div>
-                          <p className="font-semibold">{w.name ?? '�?"'}</p>
+                          <p className="font-semibold">{w.name ?? '—'}</p>
                           <p className="text-sm text-muted-foreground">{w.email}</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Solicitud: {new Date(w.workerProfile?.createdAt ?? w.createdAt).toLocaleDateString('es-ES')}
@@ -2011,7 +2011,7 @@ export default function AdminPage() {
                         <div key={i} className="mb-2 p-2 rounded-lg bg-accent/20 space-y-1.5">
                           <input
                             required={i === 0}
-                            placeholder={`Lección ${i + 1} �?" título`}
+                            placeholder={`Lección ${i + 1} — título`}
                             value={lesson.title}
                             onChange={e => setCourseForm(f => { const l = [...f.lessons]; l[i] = { ...l[i], title: e.target.value }; return { ...f, lessons: l }; })}
                             className="w-full px-2 py-1.5 rounded bg-background border border-input text-xs outline-none"
@@ -2035,7 +2035,7 @@ export default function AdminPage() {
                             </label>
                             {courseForm.lessons.length > 1 && (
                               <button type="button" onClick={() => setCourseForm(f => ({ ...f, lessons: f.lessons.filter((_, idx) => idx !== i) }))}
-                                className="text-red-400 hover:text-red-300 text-xs">�o.</button>
+                                className="text-red-400 hover:text-red-300 text-xs">✕</button>
                             )}
                           </div>
                         </div>
