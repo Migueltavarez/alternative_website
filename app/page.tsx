@@ -13,6 +13,7 @@ import {
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { ContactForm } from '@/components/contact-form';
+import { QuoteModal } from '@/components/quote-modal';
 
 const HOW_IT_WORKS = [
   {
@@ -130,13 +131,13 @@ export default function HomePage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [ctaOpen, setCtaOpen] = useState(false);
   const [ctaForm, setCtaForm] = useState({ name: '', email: '', service: '', description: '' });
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quoteFile, setQuoteFile] = useState<File | null>(null);
+  const [heroDragging, setHeroDragging] = useState(false);
 
-  const handleCotiza = () => {
-    if (session) {
-      router.push('/dashboard?tab=servicios');
-    } else {
-      setCtaOpen(true);
-    }
+  const openQuote = (file?: File) => {
+    setQuoteFile(file ?? null);
+    setQuoteOpen(true);
   };
 
   const handleCtaSubmit = (e: React.FormEvent) => {
@@ -201,7 +202,7 @@ export default function HomePage() {
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <button
-                  onClick={handleCotiza}
+                  onClick={() => openQuote()}
                   className="inline-flex items-center justify-center px-8 py-3 text-base font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
                 >
                   Empezar ahora
@@ -216,18 +217,34 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Upload zone placeholder */}
+            {/* Upload zone — drag & drop funcional */}
             <button
-              onClick={handleCotiza}
-              className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-all duration-300 bg-card/50 flex flex-col items-center justify-center gap-4 cursor-pointer group"
+              onClick={() => openQuote()}
+              onDragOver={e => { e.preventDefault(); setHeroDragging(true); }}
+              onDragLeave={() => setHeroDragging(false)}
+              onDrop={e => {
+                e.preventDefault();
+                setHeroDragging(false);
+                const f = e.dataTransfer.files[0];
+                if (f) openQuote(f);
+              }}
+              className={`w-full aspect-[4/3] rounded-2xl border-2 border-dashed transition-all duration-300 bg-card/50 flex flex-col items-center justify-center gap-4 cursor-pointer group ${
+                heroDragging
+                  ? 'border-primary bg-primary/5 scale-[1.01]'
+                  : 'border-border hover:border-primary/50'
+              }`}
             >
-              <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <div className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-colors ${
+                heroDragging ? 'bg-primary/20' : 'bg-primary/10 group-hover:bg-primary/20'
+              }`}>
                 <Upload className="w-10 h-10 text-primary" />
               </div>
               <div className="text-center px-6">
-                <p className="font-semibold text-lg">Arrastra tu archivo aquí</p>
+                <p className="font-semibold text-lg">
+                  {heroDragging ? 'Suelta el archivo' : 'Arrastra tu archivo aquí'}
+                </p>
                 <p className="text-sm text-muted-foreground mt-1">o haz clic para seleccionarlo</p>
-                <p className="text-xs text-muted-foreground mt-3 font-medium">STL · OBJ · 3MF — hasta 100 MB</p>
+                <p className="text-xs text-muted-foreground mt-3 font-medium">STL — hasta 100 MB</p>
               </div>
             </button>
           </div>
@@ -346,7 +363,7 @@ export default function HomePage() {
           </div>
           <div className="text-center mt-8">
             <button
-              onClick={handleCotiza}
+              onClick={() => openQuote()}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity font-medium text-sm"
             >
               Cotizar mi pieza ahora
@@ -617,7 +634,16 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* ── CTA Modal ── */}
+      {/* ── Quote Modal ── */}
+      <QuoteModal
+        isOpen={quoteOpen}
+        onClose={() => { setQuoteOpen(false); setQuoteFile(null); }}
+        isLoggedIn={!!session}
+        initialFile={quoteFile}
+        onOrderAsGuest={() => setCtaOpen(true)}
+      />
+
+      {/* ── CTA Modal (registro para ordenar) ── */}
       {ctaOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <motion.div
