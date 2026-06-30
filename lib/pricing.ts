@@ -124,26 +124,29 @@ export function parsePricingConfig(raw: {
   makerSplit: number;
   extrusionRateByQuality: string;
 }): PricingConfigData {
-  const rollCost: Record<string, number> = raw.materialRollCost ? JSON.parse(raw.materialRollCost) : {};
-  const rollWeightG: Record<string, number> = raw.materialRollWeightG ? JSON.parse(raw.materialRollWeightG) : {};
+  const rawRollCost: Record<string, number> = raw.materialRollCost ? JSON.parse(raw.materialRollCost) : {};
+  const rawRollWeightG: Record<string, number> = raw.materialRollWeightG ? JSON.parse(raw.materialRollWeightG) : {};
   const storedPricePerGram: Record<string, number> = JSON.parse(raw.materialPricePerGram);
 
-  // Derive cost/g from roll data when available; fall back to stored value
-  const materialPricePerGram: Record<string, number> = Object.fromEntries(
-    Object.keys(storedPricePerGram).map(mat => {
-      const cost = rollCost[mat];
-      const weight = rollWeightG[mat];
-      const derived = cost != null && weight != null && weight > 0 ? cost / weight : storedPricePerGram[mat];
-      return [mat, derived];
-    })
-  );
+  // When roll data is missing for a material, derive from stored price/gram (assume 1000g roll)
+  const materialRollWeightG: Record<string, number> = {};
+  const materialRollCost: Record<string, number> = {};
+  const materialPricePerGram: Record<string, number> = {};
+
+  for (const mat of Object.keys(storedPricePerGram)) {
+    const weight = rawRollWeightG[mat] ?? 1000;
+    const cost = rawRollCost[mat] ?? storedPricePerGram[mat] * weight;
+    materialRollWeightG[mat] = weight;
+    materialRollCost[mat] = cost;
+    materialPricePerGram[mat] = weight > 0 ? cost / weight : storedPricePerGram[mat];
+  }
 
   return {
     materialDensity: JSON.parse(raw.materialDensity),
     materialPricePerGram,
     materialMarginPercent: raw.materialMarginPercent ? JSON.parse(raw.materialMarginPercent) : {},
-    materialRollCost: rollCost,
-    materialRollWeightG: rollWeightG,
+    materialRollCost,
+    materialRollWeightG,
     machineRatePerHour: raw.machineRatePerHour,
     platformMargin: raw.platformMargin,
     makerSplit: raw.makerSplit,
