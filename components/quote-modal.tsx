@@ -6,9 +6,9 @@ import {
   X, Upload, Loader2, ChevronRight, RotateCcw,
   Package, Clock, Layers, AlertCircle,
 } from 'lucide-react';
-import { FILAMENT_TYPES, FILAMENT_INFO } from '@/lib/print-constants';
+import { FILAMENT_TYPES, FILAMENT_INFO, FILAMENT_COLORS } from '@/lib/print-constants';
 
-type Step = 'upload' | 'options' | 'loading' | 'result' | 'error';
+type Step = 'upload' | 'options' | 'loading' | 'result' | 'confirm' | 'submitting' | 'error';
 type Quality = 'draft' | 'standard' | 'fine';
 
 interface STLData {
@@ -52,11 +52,16 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
   const [stl, setStl] = useState<STLData | null>(null);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [error, setError] = useState('');
+  const [color, setColor] = useState('Blanco');
+  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
+  const [confirmNotes, setConfirmNotes] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
     setResult(null);
     setError('');
+    setSubmitError('');
     if (initialFile) {
       setFile(initialFile);
       setStep('options');
@@ -108,11 +113,56 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
   };
 
   const handleOrder = () => {
-    onClose();
-    if (isLoggedIn) {
-      window.location.href = '/dashboard?tab=servicios';
-    } else {
+    if (!isLoggedIn) {
+      onClose();
       onOrderAsGuest();
+      return;
+    }
+    setSubmitError('');
+    setStep('confirm');
+  };
+
+  const submitOrder = async () => {
+    if (!file || !quote || !stl) return;
+    setStep('submitting');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || uploadData.error) throw new Error(uploadData.error ?? 'Error al subir archivo');
+
+      const jobRes = await fetch('/api/print-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileUrl: uploadData.fileUrl,
+          fileSize: uploadData.fileSize,
+          serviceType: 'print_3d',
+          color,
+          filamentType: material,
+          deliveryType,
+          deliveryTime: 'standard',
+          notes: confirmNotes || null,
+          autoQuoted: true,
+          quotedPrice: quote.priceClient,
+          infill,
+          qualityLevel: quality,
+          quoteVolumeCm3: stl.volumeCm3,
+          quoteBboxX: stl.bbox.x,
+          quoteBboxY: stl.bbox.y,
+          quoteBboxZ: stl.bbox.z,
+        }),
+      });
+      const jobData = await jobRes.json();
+      if (!jobRes.ok || jobData.error) throw new Error(jobData.error ?? 'Error al crear pedido');
+
+      onClose();
+      window.location.href = '/dashboard?tab=servicios';
+    } catch (err: any) {
+      setSubmitError(err.message ?? 'Error al crear el pedido');
+      setStep('confirm');
     }
   };
 
@@ -140,11 +190,13 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
             <div>
               <h2 className="font-bold text-lg">Cotizador instantáneo</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {step === 'upload'  && 'Sube tu archivo STL'}
-                {step === 'options' && `${file?.name} · ${((file?.size ?? 0) / 1024 / 1024).toFixed(1)} MB`}
-                {step === 'loading' && 'Analizando tu archivo...'}
-                {step === 'result'  && `${stl?.volumeCm3.toFixed(1)} cm³ · ${stl?.bbox.x.toFixed(0)}×${stl?.bbox.y.toFixed(0)}×${stl?.bbox.z.toFixed(0)} mm`}
-                {step === 'error'   && 'Algo salió mal'}
+                {step === 'upload'     && 'Sube tu archivo STL'}
+                {step === 'options'    && `${file?.name} · ${((file?.size ?? 0) / 1024 / 1024).toFixed(1)} MB`}
+                {step === 'loading'    && 'Analizando tu archivo...'}
+                {step === 'result'     && `${stl?.volumeCm3.toFixed(1)} cm³ · ${stl?.bbox.x.toFixed(0)}×${stl?.bbox.y.toFixed(0)}×${stl?.bbox.z.toFixed(0)} mm`}
+                {step === 'confirm'    && 'Detalles del pedido'}
+                {step === 'submitting' && 'Creando tu pedido...'}
+                {step === 'error'      && 'Algo salió mal'}
               </p>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent transition-colors">
@@ -333,6 +385,102 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* ── CONFIRM ── */}
+            {step === 'confirm' && (
+              <div className="space-y-5">
+                {/* Color */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Color del filamento</label>
+                  <select
+                    value={color}
+                    onChange={e => setColor(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  >
+                    {FILAMENT_COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                {/* Delivery type */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Tipo de entrega</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: 'pickup',   label: 'Recoger',     sub: 'Sin costo adicional' },
+                      { value: 'delivery', label: 'Envío',       sub: 'Coordinar con Maker' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setDeliveryType(opt.value)}
+                        className={`p-3 rounded-lg text-left transition-colors border ${
+                          deliveryType === opt.value
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border hover:border-primary/40'
+                        }`}
+                      >
+                        <p className="text-sm font-medium">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{opt.sub}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    Notas <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </label>
+                  <textarea
+                    value={confirmNotes}
+                    onChange={e => setConfirmNotes(e.target.value)}
+                    placeholder="Ej: terminado liso, sin soportes visibles..."
+                    rows={2}
+                    className="w-full px-4 py-2.5 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm resize-none"
+                  />
+                </div>
+
+                {/* Quote summary */}
+                <div className="rounded-xl bg-card border border-border p-3 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-foreground font-medium">{material}</span>
+                    {' · '}Infill {infill}%
+                    {' · '}{QUALITY_OPTIONS.find(q => q.value === quality)?.label}
+                  </p>
+                  <p className="text-sm font-bold gradient-text">RD${quote?.priceClient.toLocaleString()}</p>
+                </div>
+
+                {submitError && (
+                  <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {submitError}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setStep('result')}
+                    className="px-4 py-2.5 rounded-lg border border-border text-sm hover:bg-accent transition-colors"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    onClick={submitOrder}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Enviar pedido
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── SUBMITTING ── */}
+            {step === 'submitting' && (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <p className="text-sm text-muted-foreground">Creando tu pedido...</p>
               </div>
             )}
 

@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
       serviceType,
       // 3D print
       color, filamentType, scale, realSize,
+      // Auto-quote fields
+      autoQuoted, quotedPrice, infill, qualityLevel,
+      quoteVolumeCm3, quoteBboxX, quoteBboxY, quoteBboxZ,
       // Laser
       laserCutColor, laserEngravColor,
       // Resin
@@ -88,6 +91,16 @@ export async function POST(request: NextRequest) {
         filamentType: filamentType || null,
         scale: scale || null,
         realSize: realSize || null,
+        // Auto-quote fields
+        autoQuoted: autoQuoted ?? false,
+        quotedPrice: quotedPrice ?? null,
+        quotedAt: autoQuoted ? new Date() : null,
+        infill: infill ?? null,
+        qualityLevel: qualityLevel ?? null,
+        quoteVolumeCm3: quoteVolumeCm3 ?? null,
+        quoteBboxX: quoteBboxX ?? null,
+        quoteBboxY: quoteBboxY ?? null,
+        quoteBboxZ: quoteBboxZ ?? null,
         // Laser
         laserCutColor: laserCutColor || null,
         laserEngravColor: laserEngravColor || null,
