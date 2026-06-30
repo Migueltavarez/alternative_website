@@ -485,7 +485,7 @@ export default function HomePage() {
           <div className="text-center mt-10">
             <p className="text-muted-foreground text-sm">
               ¿Prefieres pagar por pedido?{' '}
-              <button onClick={handleCotiza} className="text-primary hover:underline">
+              <button onClick={() => openQuote()} className="text-primary hover:underline font-medium">
                 Cotiza tu pieza ahora
               </button>
             </p>
