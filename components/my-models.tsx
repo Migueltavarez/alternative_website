@@ -56,6 +56,11 @@ interface PrintJob {
   trackingUrl?: string | null;
   price?: number | null;
   priceStatus?: string;
+  autoQuoted?: boolean;
+  quotedPrice?: number | null;
+  quoteVolumeCm3?: number | null;
+  infill?: number | null;
+  qualityLevel?: string | null;
   appealNote?: string | null;
   paymentProofUrl?: string | null;
   paymentMethod?: string | null;
@@ -1473,6 +1478,13 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
 
                 {/* Spec tags */}
                 <div className="flex flex-wrap gap-1.5 mt-3">
+                  {job.autoQuoted && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                      Auto-cotizado
+                    </span>
+                  )}
+                  {job.infill != null && <Spec label={`Infill ${job.infill}%`} />}
+                  {job.qualityLevel && <Spec label={{ draft: 'Borrador', standard: 'Estándar', fine: 'Fino' }[job.qualityLevel] ?? job.qualityLevel} />}
                   {job.color        && <Spec label={`🎨 ${job.color}`} />}
                   {job.filamentType && <Spec label={`🧵 ${job.filamentType}`} />}
                   {job.scale        && <Spec label={`📐 ${job.scale}`} />}
@@ -1726,6 +1738,11 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                       </span>
                       <span className="text-xl font-bold">{formatDOP(job.price)}</span>
                     </div>
+                    {job.autoQuoted && (
+                      <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">
+                        Precio calculado automáticamente a partir de tu modelo STL.
+                      </p>
+                    )}
 
                     {/* Bank accounts */}
                     <div className="space-y-2">

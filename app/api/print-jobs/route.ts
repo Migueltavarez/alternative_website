@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
         serviceType: serviceType || 'print_3d',
         status: 'pending',
         creditsCost: 0,
+        priceStatus: autoQuoted ? 'validated' : 'unpaid',
+        price: autoQuoted && quotedPrice != null ? quotedPrice : null,
         // 3D print
         color: color || null,
         filamentType: filamentType || null,
