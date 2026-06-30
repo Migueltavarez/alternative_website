@@ -8,7 +8,8 @@ export function parseSTL(buffer: ArrayBuffer): STLResult {
   const bytes = new Uint8Array(buffer);
 
   // Detect ASCII vs binary by checking if it starts with "solid"
-  const header = String.fromCharCode(...bytes.slice(0, 5));
+  let header = '';
+  for (let i = 0; i < 5; i++) header += String.fromCharCode(bytes[i]);
   return header === 'solid' && isASCII(bytes)
     ? parseASCII(buffer)
     : parseBinary(buffer);
