@@ -627,7 +627,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
       {/* Header */}
       {!formOnly && (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
           <h2 className="text-2xl font-bold">Mis Trabajos de Impresión</h2>
           <Button onClick={() => { setShowForm(!showForm); if (showForm) resetForm(); }}>
             <Upload className="w-4 h-4 mr-2" />
@@ -1126,7 +1126,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                             </label>
 
                             {designIsVehicle && (
-                              <div className="grid grid-cols-3 gap-3 mt-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                                 <div>
                                   <label className="block text-xs font-medium mb-1">
                                     Marca <span className="text-red-400">*</span>

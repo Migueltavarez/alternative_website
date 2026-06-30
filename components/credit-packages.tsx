@@ -72,7 +72,7 @@ export function CreditPackages({ onSelectPackage, isLoading, discountBalance, us
         </div>
       )}
       
-      <div className="grid md:grid-cols-4 gap-4 max-w-6xl mx-auto">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-6xl mx-auto">
         {CREDIT_PACKAGES.map((pkg, index) => {
           const Icon = packageIcons[pkg.id] || Sparkles;
           const colors = packageColors[pkg.id] || packageColors.credits_100;

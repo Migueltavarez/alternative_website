@@ -545,21 +545,23 @@ function DashboardContent() {
           )}
 
           {/* ── Tab nav ───────────────────────────────────────────────────── */}
-          <div className="flex gap-1 p-1 rounded-xl bg-card border border-border mb-8 w-fit">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-primary text-primary-foreground shadow'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-8">
+            <div className="flex gap-1 p-1 rounded-xl bg-card border border-border w-fit min-w-full sm:min-w-0">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-primary text-primary-foreground shadow'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── INICIO ───────────────────────────────────────────────────── */}

@@ -904,7 +904,7 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
             <DollarSign className="w-5 h-5 text-primary" />
             Mis Ganancias
           </h3>
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
               <p className="text-xs text-muted-foreground mb-1">Créditos totales</p>
               <p className="text-2xl font-black text-primary">{earnings.totalCredits ?? 0}</p>

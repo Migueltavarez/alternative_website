@@ -302,7 +302,7 @@ export default function HomePage() {
 
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold">RD${plan.price}</span>
+                    <span className="text-3xl sm:text-4xl font-bold">RD${plan.price}</span>
                     <span className="text-muted-foreground">/mes</span>
                   </div>
                 </div>
@@ -363,7 +363,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="glass rounded-3xl overflow-hidden">
             <div className="grid lg:grid-cols-2 gap-0">
-              <div className="p-10 lg:p-14">
+              <div className="p-6 sm:p-10 lg:p-14">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
                   <Printer className="w-4 h-4" />
                   Para dueños de impresoras 3D
@@ -412,7 +412,7 @@ export default function HomePage() {
                   </Link>
                 )}
               </div>
-              <div className="bg-gradient-to-br from-blue-600/15 to-red-600/10 p-10 lg:p-14 flex flex-col justify-center gap-6">
+              <div className="bg-gradient-to-br from-blue-600/15 to-red-600/10 p-6 sm:p-10 lg:p-14 flex flex-col justify-center gap-6">
                 {[
                   { label: 'Cola de impresión', value: 'Automática', sub: 'Asignación inteligente' },
                   { label: 'Tipos de filamento', value: '10+', sub: 'PLA, ABS, PETG, TPU...' },
