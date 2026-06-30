@@ -767,7 +767,7 @@ export function QmsDashboard() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [initiating, setInitiating] = useState<string | null>(null);
   const [allJobs, setAllJobs] = useState<QmsJob[]>([]);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -824,16 +824,16 @@ export function QmsDashboard() {
     if (selectedJobId) fetchDetail(selectedJobId);
   };
 
-  const pendingJobs = allJobs.filter(j => !j.qmsStage);
+  const pendingJobs = allJobs.filter(j => !j.qmsStage && j.status === 'completed');
 
   return (
     <div className="space-y-4">
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
+          { label: 'Pendientes revisión', value: pendingJobs.length, color: pendingJobs.length > 0 ? 'text-amber-400' : 'text-muted-foreground' },
           { label: 'En QMS', value: jobs.length, color: 'text-primary' },
           { label: 'Listo para entrega', value: totalByStage['ready'] ?? 0, color: 'text-emerald-400' },
-          { label: 'Entregados', value: totalByStage['delivered'] ?? 0, color: 'text-purple-400' },
           { label: 'Rehacer', value: totalByStage['redo'] ?? 0, color: 'text-red-400' },
         ].map(s => (
           <div key={s.label} className="glass rounded-xl p-3">
@@ -893,28 +893,41 @@ export function QmsDashboard() {
             )}
           </div>
 
-          {/* Non-QMS jobs section */}
+          {/* Completed jobs pending QMS */}
           <div className="border-t border-border pt-3">
-            <button onClick={() => setShowAll(!showAll)} className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition">
-              <span>Pedidos sin QMS ({pendingJobs.length})</span>
-              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showAll ? 'rotate-90' : ''}`} />
+            <button onClick={() => setShowAll(!showAll)} className="w-full flex items-center justify-between text-xs hover:text-foreground transition">
+              <span className={`font-semibold ${pendingJobs.length > 0 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                Listos para revisar ({pendingJobs.length})
+              </span>
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform text-muted-foreground ${showAll ? 'rotate-90' : ''}`} />
             </button>
             <AnimatePresence>
               {showAll && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden mt-2 space-y-1">
-                  {pendingJobs.slice(0, 10).map(job => (
-                    <div key={job.id} className="flex items-center justify-between gap-2 p-2 rounded-lg border border-border">
-                      <p className="text-xs truncate flex-1">{job.fileName}</p>
-                      <Button variant="outline" className="text-[10px] px-2 py-1 h-auto shrink-0"
-                        onClick={() => initiateQms(job.id)}
-                        isLoading={initiating === job.id}
-                        disabled={!!initiating}>
-                        Iniciar QMS
-                      </Button>
+                  className="overflow-hidden mt-2 space-y-2">
+                  {pendingJobs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">Sin trabajos completados pendientes de revisión</p>
+                  ) : pendingJobs.slice(0, 15).map(job => (
+                    <div key={job.id} className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-1.5">
+                      <p className="text-xs font-semibold truncate">{job.fileName}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {job.assignedWorker?.name ?? 'Sin maker'} · {serviceLabel(job.serviceType)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(job.createdAt).toLocaleDateString('es-ES')}
+                          </p>
+                        </div>
+                        <Button variant="outline" className="text-[10px] px-2 py-1 h-auto shrink-0 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                          onClick={() => initiateQms(job.id)}
+                          isLoading={initiating === job.id}
+                          disabled={!!initiating}>
+                          Iniciar QC
+                        </Button>
+                      </div>
                     </div>
                   ))}
-                  {pendingJobs.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Todos los pedidos tienen QMS activo</p>}
                 </motion.div>
               )}
             </AnimatePresence>
