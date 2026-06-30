@@ -1,8 +1,9 @@
 export interface PricingConfigData {
   materialDensity: Record<string, number>;        // g/cm3 by material name
-  materialPricePerGram: Record<string, number>;   // RD$/gram by material name
+  materialPricePerGram: Record<string, number>;   // RD$/gram by material name (our cost)
+  materialMarginPercent: Record<string, number>;  // % margin per material (e.g. 30 = 30%), overrides platformMargin
   machineRatePerHour: number;                     // RD$/hour
-  platformMargin: number;                         // e.g. 0.30
+  platformMargin: number;                         // fallback margin (0.30 = 30%)
   makerSplit: number;                             // e.g. 0.70
   extrusionRateByQuality: Record<string, number>; // g/hour: { draft, standard, fine }
 }
@@ -52,7 +53,9 @@ export function calculateQuote(input: QuoteInput, config: PricingConfigData): Qu
   const costMachine = printTimeHours * config.machineRatePerHour;
   const costBase = costMaterial + costMachine;
 
-  const priceClient = Math.ceil(costBase * (1 + config.platformMargin) / 10) * 10; // round up to nearest RD$10
+  const matMarginPct = config.materialMarginPercent?.[input.material];
+  const effectiveMargin = matMarginPct != null ? matMarginPct / 100 : config.platformMargin;
+  const priceClient = Math.ceil(costBase * (1 + effectiveMargin) / 10) * 10; // round up to nearest RD$10
   const makerEarning = Math.floor(costBase * config.makerSplit);
   const platformEarning = priceClient - makerEarning;
 
@@ -77,6 +80,11 @@ export function calculateQuote(input: QuoteInput, config: PricingConfigData): Qu
 }
 
 export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
+  materialMarginPercent: {
+    'PLA': 30, 'PLA+': 30, 'SILK PLA': 35, 'ABS': 30,
+    'PETG': 30, 'TPU (Flexible)': 35, 'ASA': 35, 'Nylon': 35,
+    'Resina (SLA)': 40, 'WOOD PLA': 30,
+  },
   materialDensity: {
     'PLA': 1.24,
     'PLA+': 1.24,
@@ -114,6 +122,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
 export function parsePricingConfig(raw: {
   materialDensity: string;
   materialPricePerGram: string;
+  materialMarginPercent?: string;
   machineRatePerHour: number;
   platformMargin: number;
   makerSplit: number;
@@ -122,6 +131,7 @@ export function parsePricingConfig(raw: {
   return {
     materialDensity: JSON.parse(raw.materialDensity),
     materialPricePerGram: JSON.parse(raw.materialPricePerGram),
+    materialMarginPercent: raw.materialMarginPercent ? JSON.parse(raw.materialMarginPercent) : {},
     machineRatePerHour: raw.machineRatePerHour,
     platformMargin: raw.platformMargin,
     makerSplit: raw.makerSplit,

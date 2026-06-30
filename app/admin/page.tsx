@@ -59,6 +59,7 @@ export default function AdminPage() {
   const [pricingError, setPricingError] = useState('');
   const [pricingSuccess, setPricingSuccess] = useState(false);
   const [editPricePerGram, setEditPricePerGram] = useState<Record<string, string>>({});
+  const [editMarginPercent, setEditMarginPercent] = useState<Record<string, string>>({});
   const [editDensity, setEditDensity] = useState<Record<string, string>>({});
   const [editMachineRate, setEditMachineRate] = useState('');
   const [editPlatformMargin, setEditPlatformMargin] = useState('');
@@ -148,6 +149,7 @@ export default function AdminPage() {
       .then(data => {
         setPricingConfig(data);
         setEditPricePerGram(Object.fromEntries(Object.entries(data.materialPricePerGram as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        setEditMarginPercent(Object.fromEntries(Object.entries(data.materialMarginPercent as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditDensity(Object.fromEntries(Object.entries(data.materialDensity as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditMachineRate(String(data.machineRatePerHour));
         setEditPlatformMargin(String(Math.round(data.platformMargin * 100)));
@@ -165,6 +167,7 @@ export default function AdminPage() {
     try {
       const payload = {
         materialPricePerGram: Object.fromEntries(Object.entries(editPricePerGram).map(([k, v]) => [k, parseFloat(v)])),
+        materialMarginPercent: Object.fromEntries(Object.entries(editMarginPercent).map(([k, v]) => [k, parseFloat(v)])),
         materialDensity: Object.fromEntries(Object.entries(editDensity).map(([k, v]) => [k, parseFloat(v)])),
         machineRatePerHour: parseFloat(editMachineRate),
         platformMargin: parseFloat(editPlatformMargin) / 100,
@@ -2207,37 +2210,58 @@ export default function AdminPage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-border">
-                            <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Material</th>
-                            <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Precio / g (RD$)</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Material</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Costo / g (RD$)</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Margen %</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Precio / g (RD$)</th>
                             <th className="text-left py-2 font-medium text-muted-foreground">Densidad (g/cm³)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                          {Object.keys(editPricePerGram).map(mat => (
-                            <tr key={mat}>
-                              <td className="py-2.5 pr-6 font-medium">{mat}</td>
-                              <td className="py-2.5 pr-6">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={editPricePerGram[mat] ?? ''}
-                                  onChange={e => setEditPricePerGram(p => ({ ...p, [mat]: e.target.value }))}
-                                  className="w-28 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
-                                />
-                              </td>
-                              <td className="py-2.5">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={editDensity[mat] ?? ''}
-                                  onChange={e => setEditDensity(p => ({ ...p, [mat]: e.target.value }))}
-                                  className="w-28 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
-                                />
-                              </td>
-                            </tr>
-                          ))}
+                          {Object.keys(editPricePerGram).map(mat => {
+                            const costo = parseFloat(editPricePerGram[mat] ?? '0') || 0;
+                            const margen = parseFloat(editMarginPercent[mat] ?? editPlatformMargin) || 0;
+                            const precio = (costo * (1 + margen / 100)).toFixed(2);
+                            return (
+                              <tr key={mat}>
+                                <td className="py-2.5 pr-4 font-medium">{mat}</td>
+                                <td className="py-2.5 pr-4">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={editPricePerGram[mat] ?? ''}
+                                    onChange={e => setEditPricePerGram(p => ({ ...p, [mat]: e.target.value }))}
+                                    className="w-24 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                  />
+                                </td>
+                                <td className="py-2.5 pr-4">
+                                  <input
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    max="200"
+                                    value={editMarginPercent[mat] ?? ''}
+                                    onChange={e => setEditMarginPercent(p => ({ ...p, [mat]: e.target.value }))}
+                                    className="w-20 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                  />
+                                </td>
+                                <td className="py-2.5 pr-4">
+                                  <span className="text-sm font-semibold text-primary">{precio}</span>
+                                </td>
+                                <td className="py-2.5">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={editDensity[mat] ?? ''}
+                                    onChange={e => setEditDensity(p => ({ ...p, [mat]: e.target.value }))}
+                                    className="w-24 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

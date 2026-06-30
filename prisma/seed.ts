@@ -50,6 +50,11 @@ async function main() {
         'PETG': 0.50, 'TPU (Flexible)': 0.65, 'ASA': 0.55, 'Nylon': 0.70,
         'Resina (SLA)': 0.90, 'WOOD PLA': 0.45,
       }),
+      materialMarginPercent: JSON.stringify({
+        'PLA': 30, 'PLA+': 30, 'SILK PLA': 35, 'ABS': 30,
+        'PETG': 30, 'TPU (Flexible)': 35, 'ASA': 35, 'Nylon': 35,
+        'Resina (SLA)': 40, 'WOOD PLA': 30,
+      }),
       machineRatePerHour: 100,
       platformMargin: 0.30,
       makerSplit: 0.70,

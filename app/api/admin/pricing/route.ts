@@ -27,6 +27,7 @@ export async function PUT(req: NextRequest) {
   const {
     materialDensity,
     materialPricePerGram,
+    materialMarginPercent,
     machineRatePerHour,
     platformMargin,
     makerSplit,
@@ -51,6 +52,7 @@ export async function PUT(req: NextRequest) {
     update: {
       materialDensity: JSON.stringify(materialDensity),
       materialPricePerGram: JSON.stringify(materialPricePerGram),
+      materialMarginPercent: JSON.stringify(materialMarginPercent ?? {}),
       machineRatePerHour,
       platformMargin,
       makerSplit,
@@ -60,6 +62,7 @@ export async function PUT(req: NextRequest) {
       id: 1,
       materialDensity: JSON.stringify(materialDensity),
       materialPricePerGram: JSON.stringify(materialPricePerGram),
+      materialMarginPercent: JSON.stringify(materialMarginPercent ?? {}),
       machineRatePerHour,
       platformMargin,
       makerSplit,
