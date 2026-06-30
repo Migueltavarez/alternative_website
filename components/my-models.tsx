@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { FileUpload } from './file-upload';
 import {
-  FILAMENT_COLORS, FILAMENT_TYPES, DELIVERY_TIMES, JOB_STATUS_LABELS, MODEL_ISSUES,
+  FILAMENT_COLORS, FILAMENT_TYPES, FILAMENT_INFO, DELIVERY_TIMES, JOB_STATUS_LABELS, MODEL_ISSUES,
   SERVICE_TYPES, PRINT_SCALES, RESIN_COLORS, RESIN_USES, CORRECTION_COST_CREDITS,
   PRICE_STATUS_LABELS, BANK_ACCOUNTS, DESIGN_MATERIALS, DESIGN_USES,
 } from '@/lib/print-constants';
@@ -842,6 +842,9 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                                   <option key={f} value={f}>{f}</option>
                                 ))}
                               </select>
+                              {filamentType && FILAMENT_INFO[filamentType] && (
+                                <p className="text-xs text-muted-foreground mt-1">{FILAMENT_INFO[filamentType]}</p>
+                              )}
                             </div>
                           </div>
 
