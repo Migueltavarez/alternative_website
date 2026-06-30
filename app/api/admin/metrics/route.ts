@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import os from 'os';
 
 function getWeekLabel(d: Date): string {
   const start = new Date(d);
@@ -17,10 +18,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 
-  const twelveWeeksAgo = new Date();
-  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+  const now = new Date();
+  const twelveWeeksAgo = new Date(now); twelveWeeksAgo.setDate(now.getDate() - 84);
+  const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
+  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
 
-  const [recentJobs, workers, allPaidJobs, totalJobs, activeWorkers, ratedJobs] = await Promise.all([
+  const [
+    recentJobs,
+    workers,
+    allPaidJobs,
+    totalJobs,
+    activeWorkers,
+    ratedJobs,
+    // Users
+    totalUsers,
+    usersByRole,
+    newUsersWeek,
+    newUsersMonth,
+    pendingWorkerCount,
+    // Jobs extended
+    jobsByStatus,
+    jobsByPriceStatus,
+    autoQuotedCount,
+    avgPriceResult,
+    // Subscriptions
+    activeSubscriptions,
+    subscriptionsByPlan,
+    // Credits
+    creditTotals,
+    totalCreditPurchases,
+    // Notifications
+    totalNotifications,
+    unreadNotifications,
+  ] = await Promise.all([
     prisma.printJob.findMany({
       where: { createdAt: { gte: twelveWeeksAgo } },
       select: { id: true, createdAt: true, serviceType: true, status: true },
@@ -37,6 +67,26 @@ export async function GET(request: NextRequest) {
     prisma.printJob.count(),
     prisma.workerProfile.count({ where: { isActive: true } }),
     prisma.printJob.findMany({ where: { rating: { not: null } }, select: { rating: true } }),
+    // Users
+    prisma.user.count(),
+    prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+    prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+    prisma.user.count({ where: { role: { in: ['WORKER', 'DESIGNER'] }, workerApproved: false } }),
+    // Jobs extended
+    prisma.printJob.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.printJob.groupBy({ by: ['priceStatus'], _count: { _all: true } }),
+    prisma.printJob.count({ where: { autoQuoted: true } }),
+    prisma.printJob.aggregate({ where: { price: { not: null } }, _avg: { price: true } }),
+    // Subscriptions
+    prisma.subscription.count({ where: { status: 'active' } }),
+    prisma.subscription.groupBy({ by: ['plan'], _count: { _all: true }, where: { status: 'active' } }),
+    // Credits
+    prisma.creditPurchase.aggregate({ _sum: { credits: true, amount: true }, where: { status: 'completed' } }),
+    prisma.creditPurchase.count({ where: { status: 'pending' } }),
+    // Notifications
+    prisma.notification.count(),
+    prisma.notification.count({ where: { read: false } }),
   ]);
 
   // Jobs per week (last 8)
@@ -81,6 +131,14 @@ export async function GET(request: NextRequest) {
     ? ratedJobs.reduce((sum, j) => sum + (j.rating ?? 0), 0) / ratedJobs.length
     : 0;
 
+  // Server resources
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const cpus = os.cpus();
+  const loadAvg = os.loadavg();
+  const proc = process.memoryUsage();
+
   return NextResponse.json({
     jobsPerWeek,
     byServiceType,
@@ -92,6 +150,56 @@ export async function GET(request: NextRequest) {
       activeWorkers,
       avgRating: Math.round(avgRating * 10) / 10,
       totalRatings: ratedJobs.length,
+    },
+    users: {
+      total: totalUsers,
+      byRole: Object.fromEntries(usersByRole.map(r => [r.role, r._count._all])),
+      newThisWeek: newUsersWeek,
+      newThisMonth: newUsersMonth,
+      pendingApproval: pendingWorkerCount,
+    },
+    jobs: {
+      byStatus: Object.fromEntries(jobsByStatus.map(s => [s.status, s._count._all])),
+      byPriceStatus: Object.fromEntries(jobsByPriceStatus.map(s => [s.priceStatus, s._count._all])),
+      autoQuoted: autoQuotedCount,
+      manuallyQuoted: totalJobs - autoQuotedCount,
+      avgPrice: Math.round((avgPriceResult._avg.price ?? 0) * 100) / 100,
+    },
+    subscriptions: {
+      active: activeSubscriptions,
+      byPlan: Object.fromEntries(subscriptionsByPlan.map(s => [s.plan, s._count._all])),
+    },
+    credits: {
+      totalIssued: creditTotals._sum.credits ?? 0,
+      totalRevenue: Math.round((creditTotals._sum.amount ?? 0) * 100) / 100,
+      pendingPurchases: totalCreditPurchases,
+    },
+    notifications: {
+      total: totalNotifications,
+      unread: unreadNotifications,
+    },
+    server: {
+      memory: {
+        totalMB: Math.round(totalMem / 1024 / 1024),
+        usedMB: Math.round(usedMem / 1024 / 1024),
+        freeMB: Math.round(freeMem / 1024 / 1024),
+        usedPct: Math.round((usedMem / totalMem) * 100),
+      },
+      process: {
+        heapUsedMB: Math.round(proc.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(proc.heapTotal / 1024 / 1024),
+        rssMB: Math.round(proc.rss / 1024 / 1024),
+      },
+      cpu: {
+        count: cpus.length,
+        model: cpus[0]?.model ?? 'N/A',
+        loadAvg1: Math.round(loadAvg[0] * 100) / 100,
+        loadAvg5: Math.round(loadAvg[1] * 100) / 100,
+        loadAvg15: Math.round(loadAvg[2] * 100) / 100,
+      },
+      uptimeHours: Math.round(os.uptime() / 3600 * 10) / 10,
+      nodeVersion: process.version,
+      platform: os.platform(),
     },
   });
 }
