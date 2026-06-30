@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { parsePricingConfig } from '@/lib/pricing';
+import { parsePricingConfig, DEFAULT_PRICING_CONFIG } from '@/lib/pricing';
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -14,8 +14,22 @@ async function requireAdmin() {
 export async function GET() {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const raw = await prisma.pricingConfig.findUnique({ where: { id: 1 } });
-  if (!raw) return NextResponse.json({ error: 'No config found' }, { status: 404 });
+  let raw = await prisma.pricingConfig.findUnique({ where: { id: 1 } });
+  if (!raw) {
+    const d = DEFAULT_PRICING_CONFIG;
+    raw = await prisma.pricingConfig.create({
+      data: {
+        id: 1,
+        materialDensity: JSON.stringify(d.materialDensity),
+        materialPricePerGram: JSON.stringify(d.materialPricePerGram),
+        materialMarginPercent: JSON.stringify(d.materialMarginPercent),
+        machineRatePerHour: d.machineRatePerHour,
+        platformMargin: d.platformMargin,
+        makerSplit: d.makerSplit,
+        extrusionRateByQuality: JSON.stringify(d.extrusionRateByQuality),
+      },
+    });
+  }
 
   return NextResponse.json(parsePricingConfig(raw));
 }

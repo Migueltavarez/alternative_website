@@ -145,18 +145,22 @@ export default function AdminPage() {
     if (activeTab !== 'precios' || pricingConfig) return;
     setPricingLoading(true);
     fetch('/api/admin/pricing')
-      .then(r => r.json())
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+        return data;
+      })
       .then(data => {
         setPricingConfig(data);
         setEditPricePerGram(Object.fromEntries(Object.entries(data.materialPricePerGram as Record<string, number>).map(([k, v]) => [k, String(v)])));
-        setEditMarginPercent(Object.fromEntries(Object.entries(data.materialMarginPercent as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        setEditMarginPercent(Object.fromEntries(Object.entries((data.materialMarginPercent ?? {}) as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditDensity(Object.fromEntries(Object.entries(data.materialDensity as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditMachineRate(String(data.machineRatePerHour));
         setEditPlatformMargin(String(Math.round(data.platformMargin * 100)));
         setEditMakerSplit(String(Math.round(data.makerSplit * 100)));
         setEditExtrusionRates(Object.fromEntries(Object.entries(data.extrusionRateByQuality as Record<string, number>).map(([k, v]) => [k, String(v)])));
       })
-      .catch(() => setPricingError('Error al cargar la configuración'))
+      .catch((err: any) => setPricingError(err.message ?? 'Error al cargar la configuración'))
       .finally(() => setPricingLoading(false));
   }, [activeTab, pricingConfig]);
 
