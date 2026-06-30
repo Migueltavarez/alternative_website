@@ -466,6 +466,16 @@ export default function AdminPage() {
     finally { setActionLoading(null); }
   };
 
+  const reloadPendingWorkers = async () => {
+    try {
+      const res = await fetch('/api/admin/workers/pending');
+      if (res.ok) {
+        const data = await res.json();
+        setPendingWorkers(Array.isArray(data) ? data : []);
+      }
+    } catch { console.error('Reload pending workers error'); }
+  };
+
   const handleWorkerAction = async (userId: string, action: 'approve' | 'reject') => {
     setActionLoading(`worker-${userId}-${action}`);
     try {
@@ -474,10 +484,13 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
+      const data = await res.json();
       if (res.ok) {
-        setPendingWorkers((prev) => prev.filter((w) => w.id !== userId));
+        await reloadPendingWorkers();
+      } else {
+        alert(`Error: ${data.error ?? 'No se pudo procesar la acción'}`);
       }
-    } catch { console.error('Worker action error'); }
+    } catch { alert('Error de red al procesar la aprobación'); }
     finally { setActionLoading(null); }
   };
 
@@ -1860,6 +1873,13 @@ export default function AdminPage() {
                 {pendingWorkers.length > 0 && (
                   <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20 text-amber-400 font-semibold">{pendingWorkers.length}</span>
                 )}
+                <button
+                  onClick={reloadPendingWorkers}
+                  className="ml-auto p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                  title="Recargar lista"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
               </div>
 
               {pendingWorkers.length === 0 ? (
