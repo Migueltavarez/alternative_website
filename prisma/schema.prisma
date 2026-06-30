@@ -297,6 +297,17 @@ model PrintJob {
   // Maker feedback
   makerFeedback     String?   // JSON: { issues[], notes, suggestion }
 
+  // Auto-quote (from STL parser + pricing engine)
+  quoteVolumeCm3    Float?
+  quoteBboxX        Float?
+  quoteBboxY        Float?
+  quoteBboxZ        Float?
+  quotedPrice       Float?
+  quotedAt          DateTime?
+  autoQuoted        Boolean   @default(false)
+  infill            Int?      // percentage: 15, 20, 30, 50, 100
+  qualityLevel      String?   // draft | standard | fine
+
   // Pricing & Payment
   price             Float?
   priceStatus       String    @default("unpaid")
@@ -398,6 +409,20 @@ model CourseLesson {
   order     Int      @default(0)
   isFree    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model PricingConfig {
+  id                     Int      @id @default(1)
+  // JSON: { PLA: 1.24, 'PLA+': 1.24, PETG: 1.27, ABS: 1.05, 'TPU (Flexible)': 1.21, ASA: 1.07, Nylon: 1.14, 'SILK PLA': 1.24, 'WOOD PLA': 1.15, 'Resina (SLA)': 1.18 }
+  materialDensity        String
+  // JSON: { PLA: 0.40, 'PLA+': 0.45, PETG: 0.50, ABS: 0.48, 'TPU (Flexible)': 0.65, ASA: 0.55, Nylon: 0.70, 'SILK PLA': 0.50, 'WOOD PLA': 0.45, 'Resina (SLA)': 0.90 } RD$/gram
+  materialPricePerGram   String
+  machineRatePerHour     Float    @default(100)   // RD$/hour
+  platformMargin         Float    @default(0.30)  // 30%
+  makerSplit             Float    @default(0.70)  // 70% of base cost to maker
+  // JSON: { draft: 25, standard: 15, fine: 8 } grams/hour extrusion rate
+  extrusionRateByQuality String
+  updatedAt              DateTime @updatedAt
 }
 
 model Notification {

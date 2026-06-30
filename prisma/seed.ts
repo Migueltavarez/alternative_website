@@ -34,6 +34,30 @@ async function main() {
     console.log('Admin user already exists');
   }
 
+  // PricingConfig singleton (upsert so re-runs don't fail)
+  await prisma.pricingConfig.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      materialDensity: JSON.stringify({
+        'PLA': 1.24, 'PLA+': 1.24, 'SILK PLA': 1.24, 'ABS': 1.05,
+        'PETG': 1.27, 'TPU (Flexible)': 1.21, 'ASA': 1.07, 'Nylon': 1.14,
+        'Resina (SLA)': 1.18, 'WOOD PLA': 1.15,
+      }),
+      materialPricePerGram: JSON.stringify({
+        'PLA': 0.40, 'PLA+': 0.45, 'SILK PLA': 0.55, 'ABS': 0.48,
+        'PETG': 0.50, 'TPU (Flexible)': 0.65, 'ASA': 0.55, 'Nylon': 0.70,
+        'Resina (SLA)': 0.90, 'WOOD PLA': 0.45,
+      }),
+      machineRatePerHour: 100,
+      platformMargin: 0.30,
+      makerSplit: 0.70,
+      extrusionRateByQuality: JSON.stringify({ draft: 25, standard: 15, fine: 8 }),
+    },
+  });
+  console.log('PricingConfig seeded');
+
   console.log('Seeding completed!');
 }
 

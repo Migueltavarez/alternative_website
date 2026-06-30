@@ -6,44 +6,122 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Box, Layers, Zap, Shield, Users, TrendingUp,
-  Clock, Headphones, Globe, ChevronRight, Loader2, Printer, DollarSign, Settings,
-  X, Send
+  Upload, Printer, Zap, Clock, Headphones, Globe,
+  ChevronRight, Loader2, DollarSign, Settings, X, Send,
+  Package, Users, Layers, Pen,
 } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { ContactForm } from '@/components/contact-form';
-import { ScaleConverter } from '@/components/scale-converter';
-import { PLANS } from '@/lib/stripe';
 
-const features = [
+const HOW_IT_WORKS = [
   {
-    icon: Box,
-    title: 'Modelado 3D Profesional',
-    description: 'Creamos modelos 3D detallados para arquitectura, productos, personajes y más.',
-  },
-  {
-    icon: Layers,
-    title: 'Rendering de Alta Calidad',
-    description: 'Imágenes y animaciones fotorrealistas que impresionan a tus clientes.',
+    icon: Upload,
+    title: 'Sube tu archivo',
+    desc: 'Arrastra tu STL, OBJ o 3MF. Lo analizamos al instante.',
   },
   {
     icon: Zap,
-    title: 'Entrega Rápida',
-    description: 'Proyectos entregados en tiempo récord sin sacrificar calidad.',
+    title: 'Cotización instantánea',
+    desc: 'Precio calculado en segundos según material, tamaño e infill.',
   },
   {
-    icon: Shield,
-    title: 'Datos Seguros',
-    description: 'Tu información y proyectos están protegidos con encriptación de grado militar.',
+    icon: Printer,
+    title: 'Un Maker lo fabrica',
+    desc: 'Asignación automática al Maker disponible con el equipo adecuado.',
+  },
+  {
+    icon: Package,
+    title: 'Lo recibes',
+    desc: 'Pickup en punto o delivery puerta a puerta en República Dominicana.',
   },
 ];
 
-const stats = [
-  { value: '500+', label: 'Proyectos completados' },
-  { value: '98%', label: 'Clientes satisfechos' },
-  { value: '24h', label: 'Tiempo de respuesta' },
-  { value: '50+', label: 'Países alcanzados' },
+const STATS = [
+  { value: 'Instantánea', label: 'Cotización automática' },
+  { value: '10+', label: 'Materiales disponibles' },
+  { value: '2–7', label: 'Días de entrega estándar' },
+  { value: '100%', label: 'Makers verificados' },
+];
+
+const SERVICES = [
+  {
+    icon: Printer,
+    title: 'Impresión 3D (FDM)',
+    desc: 'PLA, PETG, ABS, TPU, ASA, Nylon y más. Desde prototipos hasta piezas funcionales de uso rudo.',
+    gradient: 'from-blue-600/20 to-blue-500/5',
+    border: 'border-blue-500/20',
+    iconBg: 'bg-blue-500/20 text-blue-400',
+  },
+  {
+    icon: Layers,
+    title: 'Impresión en Resina (SLA)',
+    desc: 'Máximo detalle y superficies ultra lisas. Ideal para miniaturas, joyería y piezas de precisión.',
+    gradient: 'from-purple-600/20 to-purple-500/5',
+    border: 'border-purple-500/20',
+    iconBg: 'bg-purple-500/20 text-purple-400',
+  },
+  {
+    icon: Zap,
+    title: 'Corte y Grabado Láser',
+    desc: 'Madera, acrílico, cuero y más. Corte de precisión o grabado personalizado en tu diseño.',
+    gradient: 'from-amber-600/20 to-amber-500/5',
+    border: 'border-amber-500/20',
+    iconBg: 'bg-amber-500/20 text-amber-400',
+  },
+  {
+    icon: Pen,
+    title: 'Diseño 3D',
+    desc: '¿No tienes archivo? Nuestros diseñadores lo crean para ti a partir de tus medidas e imágenes de referencia.',
+    gradient: 'from-emerald-600/20 to-emerald-500/5',
+    border: 'border-emerald-500/20',
+    iconBg: 'bg-emerald-500/20 text-emerald-400',
+  },
+];
+
+const MATERIALS = [
+  {
+    name: 'PLA',
+    uses: 'Figuras, prototipos, decoración',
+    specs: ['Fácil de imprimir', 'Gran variedad de colores', 'Ideal para interiores'],
+    badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    border: 'border-emerald-500/20',
+  },
+  {
+    name: 'PLA+',
+    uses: 'Piezas funcionales, organizadores',
+    specs: ['Más resistente que PLA', 'Menos frágil', 'Uso general en interior'],
+    badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    border: 'border-emerald-500/20',
+  },
+  {
+    name: 'PETG',
+    uses: 'Contenedores, piezas mecánicas',
+    specs: ['Resistente a humedad', 'Apto para alimentos (sin recubrimiento)', 'Semitransparente'],
+    badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    border: 'border-blue-500/20',
+  },
+  {
+    name: 'ABS',
+    uses: 'Carcasas, piezas de alta temperatura',
+    specs: ['Resistente hasta ~100°C', 'Apto para exteriores', 'Muy sólido'],
+    badge: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+    border: 'border-orange-500/20',
+  },
+  {
+    name: 'TPU (Flexible)',
+    uses: 'Fundas, juntas, protectores',
+    specs: ['Elástico', 'Absorbe impactos', 'Gran durabilidad'],
+    badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+    border: 'border-violet-500/20',
+  },
+  {
+    name: 'Resina (SLA)',
+    uses: 'Miniaturas, joyería, piezas de precisión',
+    specs: ['Máximo nivel de detalle', 'Superficie ultra lisa', 'Postcurado UV'],
+    badge: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
+    border: 'border-pink-500/20',
+  },
 ];
 
 export default function HomePage() {
@@ -74,12 +152,10 @@ export default function HomePage() {
 
   const handleSubscribe = async (planName: string) => {
     const planId = planNameToId[planName] || planName;
-
     if (status === 'unauthenticated') {
       router.push('/login?callbackUrl=/#pricing');
       return;
     }
-
     setLoadingPlan(planId);
     try {
       const res = await fetch('/api/stripe/checkout', {
@@ -87,15 +163,10 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId }),
       });
-
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else if (data.error) {
-        alert(data.error);
-      }
-    } catch (error) {
-      console.error('Error:', error);
+      if (data.url) window.location.href = data.url;
+      else if (data.error) alert(data.error);
+    } catch {
       alert('Error al iniciar la suscripción');
     } finally {
       setLoadingPlan(null);
@@ -107,46 +178,100 @@ export default function HomePage() {
       <Navbar />
       <WhatsAppButton />
 
+      {/* ── Hero ── */}
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="absolute inset-0 bg-hero-pattern opacity-50" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-red-600/10 rounded-full blur-3xl" />
-        
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-              <span className="gradient-text">Transformamos</span> tus ideas
-              <br />
-              en experiencias <span className="gradient-text">3D</span>
-            </h1>
-            <p className="mt-6 text-xl text-muted-foreground max-w-2xl mx-auto">
-              Studio profesional de modelado, rendering y animación 3D. 
-              Lleva tus proyectos al siguiente nivel con nuestra tecnología de vanguardia.
-            </p>
-            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={handleCotiza}
-                className="inline-flex items-center justify-center px-8 py-3 text-base font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
-              >
-                Cotiza ahora
-                <ChevronRight className="ml-2 w-5 h-5" />
-              </button>
-              <Link
-                href="/#pricing"
-                className="inline-flex items-center justify-center px-8 py-3 text-base font-medium border border-input bg-background hover:bg-accent rounded-lg transition-colors"
-              >
-                Ver planes
-              </Link>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
+                <Printer className="w-4 h-4" />
+                Impresión 3D bajo demanda — República Dominicana
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
+                Sube tu diseño.<br />
+                <span className="gradient-text">Cotiza al instante.</span><br />
+                Recíbelo fabricado.
+              </h1>
+              <p className="mt-6 text-lg text-muted-foreground max-w-lg">
+                Makers verificados, precios transparentes y entrega puerta a puerta en República Dominicana.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={handleCotiza}
+                  className="inline-flex items-center justify-center px-8 py-3 text-base font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  Empezar ahora
+                  <ChevronRight className="ml-2 w-5 h-5" />
+                </button>
+                <a
+                  href="#como-funciona"
+                  className="inline-flex items-center justify-center px-8 py-3 text-base font-medium border border-input bg-background hover:bg-accent rounded-lg transition-colors"
+                >
+                  Cómo funciona
+                </a>
+              </div>
             </div>
+
+            {/* Upload zone placeholder */}
+            <button
+              onClick={handleCotiza}
+              className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-all duration-300 bg-card/50 flex flex-col items-center justify-center gap-4 cursor-pointer group"
+            >
+              <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <Upload className="w-10 h-10 text-primary" />
+              </div>
+              <div className="text-center px-6">
+                <p className="font-semibold text-lg">Arrastra tu archivo aquí</p>
+                <p className="text-sm text-muted-foreground mt-1">o haz clic para seleccionarlo</p>
+                <p className="text-xs text-muted-foreground mt-3 font-medium">STL · OBJ · 3MF — hasta 100 MB</p>
+              </div>
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="py-20 border-y border-border/50">
+      {/* ── Cómo funciona ── */}
+      <section id="como-funciona" className="py-20 border-y border-border/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold">Cómo funciona</h2>
+            <p className="mt-3 text-muted-foreground">Del archivo a tus manos en 4 pasos</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {HOW_IT_WORKS.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="text-center"
+              >
+                <div className="relative inline-flex">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
+                    <item.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-card border border-border text-xs font-bold flex items-center justify-center">
+                    {i + 1}
+                  </span>
+                </div>
+                <h3 className="mt-4 font-semibold text-lg">{item.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats ── */}
+      <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
+            {STATS.map((stat, i) => (
+              <div key={i} className="text-center">
                 <div className="text-3xl md:text-4xl font-bold gradient-text">{stat.value}</div>
                 <div className="mt-2 text-sm text-muted-foreground">{stat.label}</div>
               </div>
@@ -155,112 +280,121 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="features" className="py-20">
+      {/* ── Servicios ── */}
+      <section id="servicios" className="py-20 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold">¿Por qué elegirnos?</h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              Ofrecemos soluciones 3D de clase mundial con atención personalizada
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold">Nuestros servicios</h2>
+            <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+              Fabricación digital bajo demanda. Tú subes el archivo, nosotros nos encargamos del resto.
             </p>
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="p-6 rounded-xl glass hover:bg-accent/50 transition-colors"
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {SERVICES.map((svc, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className={`rounded-2xl bg-gradient-to-b ${svc.gradient} border ${svc.border} p-6 hover:scale-[1.02] transition-all duration-300`}
               >
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
-                  <feature.icon className="w-6 h-6 text-white" />
+                <div className={`w-12 h-12 rounded-xl ${svc.iconBg} flex items-center justify-center mb-4`}>
+                  <svc.icon className="w-6 h-6" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">{feature.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
-              </div>
+                <h3 className="font-semibold text-lg mb-2">{svc.title}</h3>
+                <p className="text-sm text-muted-foreground">{svc.desc}</p>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="services" className="py-20 bg-secondary/30">
+      {/* ── Materiales ── */}
+      <section id="materiales" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold">Servicios integrales</h2>
-              <p className="mt-4 text-muted-foreground">
-                Desde el concepto hasta la entrega final, manejamos cada detalle de tu proyecto 3D.
-              </p>
-              
-              <div className="mt-8 space-y-4">
-                {[
-                  { icon: Box, title: 'Modelado 3D', desc: 'Productos, arquitectura, personajes' },
-                  { icon: Layers, title: 'Rendering', desc: 'Fotorrealismo y estilo artístico' },
-                  { icon: Users, title: 'Animación', desc: 'Personajes, productos, explicaciones' },
-                  { icon: TrendingUp, title: 'Visualización', desc: 'Tour virtuales, AR/VR' },
-                ].map((service, index) => (
-                  <div key={index} className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent/50 transition-colors">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <service.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">{service.title}</h4>
-                      <p className="text-sm text-muted-foreground">{service.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-blue-600/15 to-red-600/10 flex items-center justify-center">
-                <div className="w-3/4 h-3/4 rounded-xl bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] opacity-85 flex items-center justify-center">
-                  <Box className="w-32 h-32 text-white" />
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold">Materiales disponibles</h2>
+            <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+              Elige el material correcto para tu proyecto. Si tienes dudas, nuestro cotizador te lo sugiere automáticamente.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {MATERIALS.map((mat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className={`rounded-xl border ${mat.border} bg-card p-5`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${mat.badge}`}>
+                    {mat.name}
+                  </span>
                 </div>
-              </div>
-            </div>
+                <p className="text-sm font-medium mb-2">{mat.uses}</p>
+                <ul className="space-y-1">
+                  {mat.specs.map((spec, j) => (
+                    <li key={j} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                      <span className="mt-0.5 text-primary">·</span>
+                      {spec}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            ))}
+          </div>
+          <div className="text-center mt-8">
+            <button
+              onClick={handleCotiza}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity font-medium text-sm"
+            >
+              Cotizar mi pieza ahora
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </section>
 
-      <ScaleConverter />
-
-      <section id="pricing" className="py-20">
+      {/* ── Planes ── */}
+      <section id="pricing" className="py-20 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="text-blue-500 font-semibold text-sm uppercase tracking-wider">Planes de Suscripción</span>
-            <h2 className="text-3xl md:text-4xl font-bold mt-3">Elige tu plan de impresión 3D</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mt-3">Para clientes frecuentes</h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              Sin contratos ni compromisos. Cancela cuando quieras. Todos los planes incluyen acceso completo a nuestra plataforma.
+              Si imprimes regularmente, los planes de suscripción te dan créditos mensuales con descuento. Sin contratos. Cancela cuando quieras.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {[
-              { 
-                name: 'Básico', 
-                price: '2,000', 
+              {
+                name: 'Básico',
+                price: '2,000',
                 credits: '300',
                 color: 'emerald',
-                features: ['300 créditos de impresión', '5% descuento en servicios', 'Acceso básico', 'Soporte por email'],
+                features: ['300 créditos de impresión', '5% descuento en servicios', 'Acceso completo a la plataforma', 'Soporte por email'],
                 highlighted: false,
-                badge: null
+                badge: null,
               },
-              { 
-                name: 'Pro', 
-                price: '5,000', 
+              {
+                name: 'Pro',
+                price: '5,000',
                 credits: '900',
                 color: 'blue',
-                features: ['900 créditos de impresión', 'Prioridad en producción', 'Soporte en diseño', '10% descuento en servicios'],
+                features: ['900 créditos de impresión', 'Prioridad en la cola de producción', 'Soporte en diseño', '10% descuento en servicios'],
                 highlighted: true,
-                badge: '⭐ Más Popular'
+                badge: 'Más Popular',
               },
-              { 
-                name: 'Premium', 
-                price: '8,000', 
+              {
+                name: 'Premium',
+                price: '8,000',
                 credits: '1800',
                 color: 'gold',
                 features: ['1800 créditos de impresión', 'Prioridad máxima', 'Diseño 3D incluido', '15% descuento en servicios'],
                 highlighted: false,
-                badge: null
+                badge: null,
               },
             ].map((plan, index) => (
               <motion.div
@@ -269,28 +403,23 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`relative rounded-2xl ${
-                  plan.highlighted 
-                    ? plan.color === 'blue' 
-                      ? 'bg-gradient-to-b from-blue-600/15 to-blue-500/5 border-2 border-blue-500/40 shadow-2xl shadow-blue-500/20' 
-                      : plan.color === 'gold'
-                        ? 'bg-gradient-to-b from-amber-600/15 to-amber-500/5 border border-amber-500/30'
-                        : 'bg-gradient-to-b from-emerald-600/15 to-emerald-500/5 border border-emerald-500/30'
+                  plan.highlighted
+                    ? 'bg-gradient-to-b from-blue-600/15 to-blue-500/5 border-2 border-blue-500/40 shadow-2xl shadow-blue-500/20'
                     : 'bg-card border border-border hover:border-border/80'
                 } p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl`}
               >
                 {plan.badge && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className={`${plan.color === 'blue' ? 'bg-gradient-to-r from-blue-600 to-blue-500' : ''} text-white text-sm font-semibold px-4 py-1.5 rounded-full shadow-lg`}>
+                    <span className="bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm font-semibold px-4 py-1.5 rounded-full shadow-lg">
                       {plan.badge}
                     </span>
                   </div>
                 )}
-
                 <div className="flex items-center gap-3 mb-4 mt-2">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    plan.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-400' :
-                    plan.color === 'blue' ? 'bg-blue-500/30 text-blue-300' :
-                    'bg-amber-500/30 text-amber-300'
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${
+                    plan.color === 'emerald' ? 'bg-emerald-500/20' :
+                    plan.color === 'blue' ? 'bg-blue-500/30' :
+                    'bg-amber-500/30'
                   }`}>
                     {plan.color === 'emerald' ? '💎' : plan.color === 'blue' ? '⚡' : '👑'}
                   </div>
@@ -299,29 +428,24 @@ export default function HomePage() {
                     <p className="text-sm text-muted-foreground">{parseInt(plan.credits).toLocaleString()} créditos/mes</p>
                   </div>
                 </div>
-
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl sm:text-4xl font-bold">RD${plan.price}</span>
                     <span className="text-muted-foreground">/mes</span>
                   </div>
                 </div>
-
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs ${
                         plan.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-400' :
                         plan.color === 'blue' ? 'bg-blue-500/20 text-blue-400' :
                         'bg-amber-500/20 text-amber-400'
-                      }`}>
-                        ✓
-                      </div>
+                      }`}>✓</div>
                       <span className="text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
-
                 <button
                   onClick={() => handleSubscribe(plan.name)}
                   disabled={loadingPlan === plan.name.toUpperCase()}
@@ -336,29 +460,23 @@ export default function HomePage() {
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Procesando...
                     </span>
-                  ) : (
-                    'Suscribirme'
-                  )}
+                  ) : 'Suscribirme'}
                 </button>
-
-                {plan.highlighted && (
-                  <p className="text-center text-xs text-muted-foreground mt-4">
-                    ✓ Mejor relación calidad-precio
-                  </p>
-                )}
               </motion.div>
             ))}
           </div>
-
-          <div className="text-center mt-12">
-            <p className="text-muted-foreground">
-              ¿Necesitas más créditos? <Link href="/#contact" className="text-primary hover:underline">Contáctanos</Link> para un plan personalizado.
+          <div className="text-center mt-10">
+            <p className="text-muted-foreground text-sm">
+              ¿Prefieres pagar por pedido?{' '}
+              <button onClick={handleCotiza} className="text-primary hover:underline">
+                Cotiza tu pieza ahora
+              </button>
             </p>
           </div>
         </div>
       </section>
 
-      {/* Makers CTA section */}
+      {/* ── Makers CTA ── */}
       <section id="makers" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="glass rounded-3xl overflow-hidden">
@@ -384,7 +502,7 @@ export default function HomePage() {
                     { icon: DollarSign, text: 'Recibe trabajos automáticamente según tu disponibilidad' },
                     { icon: Settings, text: 'Configura los colores, filamentos y nozzles de tu máquina' },
                     { icon: Clock, text: '10 minutos para aceptar cada trabajo asignado' },
-                    { icon: Users, text: 'Carga distribuida equitativamente entre todos los makers' },
+                    { icon: Users, text: 'Carga distribuida equitativamente entre todos los Makers' },
                   ].map(({ icon: Icon, text }) => (
                     <div key={text} className="flex items-start gap-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -415,7 +533,7 @@ export default function HomePage() {
               <div className="bg-gradient-to-br from-blue-600/15 to-red-600/10 p-6 sm:p-10 lg:p-14 flex flex-col justify-center gap-6">
                 {[
                   { label: 'Cola de impresión', value: 'Automática', sub: 'Asignación inteligente' },
-                  { label: 'Tipos de filamento', value: '10+', sub: 'PLA, ABS, PETG, TPU...' },
+                  { label: 'Tipos de filamento', value: '10+', sub: 'PLA, ABS, PETG, TPU y más' },
                   { label: 'Timeout de aceptación', value: '10 min', sub: 'Se reasigna si no respondes' },
                 ].map((item) => (
                   <div key={item.label} className="glass rounded-xl p-4">
@@ -430,23 +548,23 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Contacto ── */}
       <section id="contact" className="py-20 bg-secondary/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold">¿Tienes preguntas?</h2>
               <p className="mt-4 text-muted-foreground">
-                Estamos aquí para ayudarte. Contáctanos y te responderemos lo antes posible.
+                Estamos aquí para ayudarte. Contáctanos y te respondemos lo antes posible.
               </p>
-
               <div className="mt-8 space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Headphones className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <div className="font-medium">Soporte 24/7</div>
-                    <div className="text-sm text-muted-foreground">support@alternative3d.com</div>
+                    <div className="font-medium">Soporte</div>
+                    <div className="text-sm text-muted-foreground">soporte@alt3dstudio.com</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -464,12 +582,11 @@ export default function HomePage() {
                   </div>
                   <div>
                     <div className="font-medium">Horario</div>
-                    <div className="text-sm text-muted-foreground">Lun - Vie: 9:00 - 18:00</div>
+                    <div className="text-sm text-muted-foreground">Lun–Vie: 9:00–18:00</div>
                   </div>
                 </div>
               </div>
             </div>
-
             <div className="glass rounded-2xl p-8">
               <ContactForm />
             </div>
@@ -477,6 +594,30 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Footer ── */}
+      <footer className="py-12 border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
+                <span className="text-white font-bold">A</span>
+              </div>
+              <span className="font-bold">ALT 3D Studio</span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
+              <Link href="/herramientas" className="hover:text-foreground transition-colors">Herramientas</Link>
+              <Link href="/legal/terminos" className="hover:text-foreground transition-colors">Términos y Condiciones</Link>
+              <Link href="/legal/privacidad" className="hover:text-foreground transition-colors">Política de Privacidad</Link>
+              <Link href="/legal/confidencialidad" className="hover:text-foreground transition-colors">Confidencialidad</Link>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              © 2025 ALT 3D Studio. Todos los derechos reservados.
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* ── CTA Modal ── */}
       {ctaOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <motion.div
@@ -490,9 +631,9 @@ export default function HomePage() {
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-xl font-bold mb-1">Cotiza tu proyecto</h2>
+            <h2 className="text-xl font-bold mb-1">Cotiza tu pieza</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              Completa los datos y crea tu cuenta para enviar tu solicitud.
+              Crea tu cuenta para enviar tu solicitud y recibir una cotización.
             </p>
             <form onSubmit={handleCtaSubmit} className="space-y-3">
               <input
@@ -518,7 +659,7 @@ export default function HomePage() {
               >
                 <option value="">Selecciona un servicio</option>
                 <option value="print_3d">Impresión 3D (FDM)</option>
-                <option value="resin">Impresión en Resina</option>
+                <option value="resin">Impresión en Resina (SLA)</option>
                 <option value="laser">Corte / Grabado Láser</option>
                 <option value="design">Diseño 3D</option>
               </select>
@@ -550,27 +691,6 @@ export default function HomePage() {
           </motion.div>
         </div>
       )}
-
-      <footer className="py-12 border-t border-border/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2D6CB0] to-[#CC2631] flex items-center justify-center">
-                <span className="text-white font-bold">A</span>
-              </div>
-              <span className="font-bold">Alternative 3D Studio</span>
-            </div>
-            <div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
-              <Link href="/legal/terminos" className="hover:text-foreground transition-colors">Términos y Condiciones</Link>
-              <Link href="/legal/privacidad" className="hover:text-foreground transition-colors">Política de Privacidad</Link>
-              <Link href="/legal/confidencialidad" className="hover:text-foreground transition-colors">Confidencialidad</Link>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              © 2025 Alternative 3D Studio. Todos los derechos reservados.
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
