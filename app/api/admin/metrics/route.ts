@@ -23,9 +23,13 @@ export async function GET(request: NextRequest) {
   const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
   const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
 
+  // Step 1: get valid user IDs to filter out orphaned records (SQLite doesn't enforce FKs)
+  const allUsers = await prisma.user.findMany({ select: { id: true } });
+  const validUserIds = allUsers.map(u => u.id);
+
   const [
     recentJobs,
-    workers,
+    workerProfiles,
     allPaidJobs,
     totalJobs,
     activeWorkers,
@@ -52,22 +56,22 @@ export async function GET(request: NextRequest) {
     unreadNotifications,
   ] = await Promise.all([
     prisma.printJob.findMany({
-      where: { createdAt: { gte: twelveWeeksAgo }, user: {} },
+      where: { createdAt: { gte: twelveWeeksAgo }, userId: { in: validUserIds } },
       select: { id: true, createdAt: true, serviceType: true, status: true },
     }),
     prisma.workerProfile.findMany({
-      where: { user: {} },
+      where: { userId: { in: validUserIds } },
       include: { user: { select: { name: true } } },
       orderBy: { completedJobs: 'desc' },
       take: 5,
     }),
     prisma.printJob.findMany({
-      where: { paidAt: { not: null }, user: {} },
+      where: { paidAt: { not: null }, userId: { in: validUserIds } },
       select: { price: true, paidAt: true },
     }),
-    prisma.printJob.count({ where: { user: {} } }),
-    prisma.workerProfile.count({ where: { isActive: true, user: {} } }),
-    prisma.printJob.findMany({ where: { rating: { not: null }, user: {} }, select: { rating: true } }),
+    prisma.printJob.count({ where: { userId: { in: validUserIds } } }),
+    prisma.workerProfile.count({ where: { isActive: true, userId: { in: validUserIds } } }),
+    prisma.printJob.findMany({ where: { rating: { not: null }, userId: { in: validUserIds } }, select: { rating: true } }),
     // Users
     prisma.user.count(),
     prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
@@ -122,8 +126,8 @@ export async function GET(request: NextRequest) {
     .slice(-6)
     .map(([month, revenue]) => ({ month, revenue: Math.round(revenue * 100) / 100 }));
 
-  const topMakers = workers.map(w => ({
-    name: w.user.name ?? 'Sin nombre',
+  const topMakers = workerProfiles.map(w => ({
+    name: w.user?.name ?? 'Sin nombre',
     completedJobs: w.completedJobs,
   }));
 
