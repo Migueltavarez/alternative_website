@@ -14,7 +14,12 @@ export async function GET(request: NextRequest) {
   const stage = searchParams.get('stage'); // filter by qmsStage
   const all = searchParams.get('all') === '1'; // include non-QMS jobs
 
-  const where = all ? {} : { qmsStage: stage ? stage : { not: null } };
+  // SQLite doesn't enforce FKs, so filter out jobs pointing at deleted users
+  const validUserIds = (await prisma.user.findMany({ select: { id: true } })).map(u => u.id);
+
+  const where = all
+    ? { userId: { in: validUserIds } }
+    : { qmsStage: stage ? stage : { not: null }, userId: { in: validUserIds } };
 
   const jobs = await prisma.printJob.findMany({
     where: where as any,
