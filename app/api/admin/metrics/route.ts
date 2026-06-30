@@ -52,21 +52,22 @@ export async function GET(request: NextRequest) {
     unreadNotifications,
   ] = await Promise.all([
     prisma.printJob.findMany({
-      where: { createdAt: { gte: twelveWeeksAgo } },
+      where: { createdAt: { gte: twelveWeeksAgo }, user: {} },
       select: { id: true, createdAt: true, serviceType: true, status: true },
     }),
     prisma.workerProfile.findMany({
+      where: { user: {} },
       include: { user: { select: { name: true } } },
       orderBy: { completedJobs: 'desc' },
       take: 5,
     }),
     prisma.printJob.findMany({
-      where: { paidAt: { not: null } },
+      where: { paidAt: { not: null }, user: {} },
       select: { price: true, paidAt: true },
     }),
-    prisma.printJob.count(),
-    prisma.workerProfile.count({ where: { isActive: true } }),
-    prisma.printJob.findMany({ where: { rating: { not: null } }, select: { rating: true } }),
+    prisma.printJob.count({ where: { user: {} } }),
+    prisma.workerProfile.count({ where: { isActive: true, user: {} } }),
+    prisma.printJob.findMany({ where: { rating: { not: null }, user: {} }, select: { rating: true } }),
     // Users
     prisma.user.count(),
     prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
