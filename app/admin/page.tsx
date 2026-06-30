@@ -8,7 +8,7 @@ import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
   CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
-  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool,
+  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool, Sliders,
 } from 'lucide-react';
 import { PRICE_STATUS_LABELS, SERVICE_MACHINE_TYPES, MACHINE_TYPES } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones' | 'eventos' | 'cursos'>('trabajos');
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones' | 'eventos' | 'cursos' | 'precios'>('trabajos');
   const [adminEvents, setAdminEvents] = useState<any[]>([]);
   const [adminCourses, setAdminCourses] = useState<any[]>([]);
   const [eventForm, setEventForm] = useState({ title: '', description: '', date: '', time: '', location: '', type: 'Taller', imageUrl: '' });
@@ -53,6 +53,17 @@ export default function AdminPage() {
   const [pendingWorkers, setPendingWorkers] = useState<any[]>([]);
   const [earningsInputs, setEarningsInputs] = useState<Record<string, string>>({});
   const [jobsTab, setJobsTab] = useState<'cotizacion' | 'asignar' | 'proceso' | 'realizado'>('cotizacion');
+  const [pricingConfig, setPricingConfig] = useState<any | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingError, setPricingError] = useState('');
+  const [pricingSuccess, setPricingSuccess] = useState(false);
+  const [editPricePerGram, setEditPricePerGram] = useState<Record<string, string>>({});
+  const [editDensity, setEditDensity] = useState<Record<string, string>>({});
+  const [editMachineRate, setEditMachineRate] = useState('');
+  const [editPlatformMargin, setEditPlatformMargin] = useState('');
+  const [editMakerSplit, setEditMakerSplit] = useState('');
+  const [editExtrusionRates, setEditExtrusionRates] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -128,6 +139,54 @@ export default function AdminPage() {
     const interval = setInterval(fetchConversations, 7000);
     return () => clearInterval(interval);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'precios' || pricingConfig) return;
+    setPricingLoading(true);
+    fetch('/api/admin/pricing')
+      .then(r => r.json())
+      .then(data => {
+        setPricingConfig(data);
+        setEditPricePerGram(Object.fromEntries(Object.entries(data.materialPricePerGram as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        setEditDensity(Object.fromEntries(Object.entries(data.materialDensity as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        setEditMachineRate(String(data.machineRatePerHour));
+        setEditPlatformMargin(String(Math.round(data.platformMargin * 100)));
+        setEditMakerSplit(String(Math.round(data.makerSplit * 100)));
+        setEditExtrusionRates(Object.fromEntries(Object.entries(data.extrusionRateByQuality as Record<string, number>).map(([k, v]) => [k, String(v)])));
+      })
+      .catch(() => setPricingError('Error al cargar la configuración'))
+      .finally(() => setPricingLoading(false));
+  }, [activeTab, pricingConfig]);
+
+  const savePricingConfig = async () => {
+    setPricingSaving(true);
+    setPricingError('');
+    setPricingSuccess(false);
+    try {
+      const payload = {
+        materialPricePerGram: Object.fromEntries(Object.entries(editPricePerGram).map(([k, v]) => [k, parseFloat(v)])),
+        materialDensity: Object.fromEntries(Object.entries(editDensity).map(([k, v]) => [k, parseFloat(v)])),
+        machineRatePerHour: parseFloat(editMachineRate),
+        platformMargin: parseFloat(editPlatformMargin) / 100,
+        makerSplit: parseFloat(editMakerSplit) / 100,
+        extrusionRateByQuality: Object.fromEntries(Object.entries(editExtrusionRates).map(([k, v]) => [k, parseFloat(v)])),
+      };
+      const res = await fetch('/api/admin/pricing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al guardar');
+      setPricingConfig(data);
+      setPricingSuccess(true);
+      setTimeout(() => setPricingSuccess(false), 3000);
+    } catch (err: any) {
+      setPricingError(err.message ?? 'Error al guardar');
+    } finally {
+      setPricingSaving(false);
+    }
+  };
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     setActionLoading(userId);
@@ -996,6 +1055,7 @@ export default function AdminPage() {
               { key: 'cursos', label: 'Cursos', icon: PenTool },
               { key: 'metricas', label: 'Métricas', icon: TrendingUp },
               { key: 'qms', label: 'Control QC', icon: Shield },
+              { key: 'precios', label: 'Precios', icon: Sliders },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -2104,6 +2164,158 @@ export default function AdminPage() {
               </div>
             </motion.div>
           )}
+          {/* ── TAB: PRECIOS ── */}
+          {activeTab === 'precios' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Configuración de Precios</h2>
+                <Button
+                  onClick={savePricingConfig}
+                  disabled={pricingSaving || pricingLoading || !pricingConfig}
+                  isLoading={pricingSaving}
+                >
+                  {!pricingSaving && <CheckCircle2 className="w-4 h-4 mr-2" />}
+                  Guardar cambios
+                </Button>
+              </div>
+
+              {pricingLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Cargando configuración...
+                </div>
+              )}
+
+              {pricingError && (
+                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />{pricingError}
+                </div>
+              )}
+
+              {pricingSuccess && (
+                <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />Cambios guardados correctamente.
+                </div>
+              )}
+
+              {!pricingLoading && pricingConfig && (
+                <div className="space-y-6">
+                  {/* Materials table */}
+                  <div className="glass rounded-2xl p-6">
+                    <h3 className="font-semibold mb-4">Precio por material</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Material</th>
+                            <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Precio / g (RD$)</th>
+                            <th className="text-left py-2 font-medium text-muted-foreground">Densidad (g/cm³)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {Object.keys(editPricePerGram).map(mat => (
+                            <tr key={mat}>
+                              <td className="py-2.5 pr-6 font-medium">{mat}</td>
+                              <td className="py-2.5 pr-6">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={editPricePerGram[mat] ?? ''}
+                                  onChange={e => setEditPricePerGram(p => ({ ...p, [mat]: e.target.value }))}
+                                  className="w-28 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                />
+                              </td>
+                              <td className="py-2.5">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={editDensity[mat] ?? ''}
+                                  onChange={e => setEditDensity(p => ({ ...p, [mat]: e.target.value }))}
+                                  className="w-28 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Global config */}
+                  <div className="glass rounded-2xl p-6">
+                    <h3 className="font-semibold mb-4">Configuración global</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Tarifa máquina (RD$/hora)</label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          value={editMachineRate}
+                          onChange={e => setEditMachineRate(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Margen plataforma (%)</label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={editPlatformMargin}
+                          onChange={e => setEditPlatformMargin(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Se suma al costo base antes de mostrar el precio al cliente</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Split maker (%)</label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={editMakerSplit}
+                          onChange={e => setEditMakerSplit(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Porcentaje del costo base que recibe el maker</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Extrusion rates */}
+                  <div className="glass rounded-2xl p-6">
+                    <h3 className="font-semibold mb-1">Velocidad de extrusión (g/hora)</h3>
+                    <p className="text-xs text-muted-foreground mb-4">Gramos de filamento extruidos por hora según calidad de impresión. Determina el tiempo estimado.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {[
+                        { key: 'draft',    label: 'Borrador (0.3 mm)' },
+                        { key: 'standard', label: 'Estándar (0.2 mm)' },
+                        { key: 'fine',     label: 'Fino (0.1 mm)' },
+                      ].map(q => (
+                        <div key={q.key}>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">{q.label}</label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            value={editExtrusionRates[q.key] ?? ''}
+                            onChange={e => setEditExtrusionRates(r => ({ ...r, [q.key]: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
         </div>
       </div>
     </div>
