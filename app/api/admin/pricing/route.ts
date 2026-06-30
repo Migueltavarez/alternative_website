@@ -23,6 +23,8 @@ export async function GET() {
         materialDensity: JSON.stringify(d.materialDensity),
         materialPricePerGram: JSON.stringify(d.materialPricePerGram),
         materialMarginPercent: JSON.stringify(d.materialMarginPercent),
+        materialRollCost: JSON.stringify(d.materialRollCost),
+        materialRollWeightG: JSON.stringify(d.materialRollWeightG),
         machineRatePerHour: d.machineRatePerHour,
         platformMargin: d.platformMargin,
         makerSplit: d.makerSplit,
@@ -40,8 +42,9 @@ export async function PUT(req: NextRequest) {
   const body = await req.json();
   const {
     materialDensity,
-    materialPricePerGram,
     materialMarginPercent,
+    materialRollCost,
+    materialRollWeightG,
     machineRatePerHour,
     platformMargin,
     makerSplit,
@@ -49,7 +52,7 @@ export async function PUT(req: NextRequest) {
   } = body;
 
   if (
-    !materialDensity || !materialPricePerGram || !extrusionRateByQuality ||
+    !materialDensity || !materialRollCost || !materialRollWeightG || !extrusionRateByQuality ||
     typeof machineRatePerHour !== 'number' ||
     typeof platformMargin !== 'number' ||
     typeof makerSplit !== 'number'
@@ -61,12 +64,23 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'La suma de margen y split de maker parece incorrecta' }, { status: 400 });
   }
 
+  // Derive materialPricePerGram from roll data
+  const materialPricePerGram: Record<string, number> = Object.fromEntries(
+    Object.keys(materialRollCost).map((mat: string) => {
+      const cost = (materialRollCost as Record<string, number>)[mat] ?? 0;
+      const weight = (materialRollWeightG as Record<string, number>)[mat] ?? 1000;
+      return [mat, weight > 0 ? cost / weight : 0];
+    })
+  );
+
   const updated = await prisma.pricingConfig.upsert({
     where: { id: 1 },
     update: {
       materialDensity: JSON.stringify(materialDensity),
       materialPricePerGram: JSON.stringify(materialPricePerGram),
       materialMarginPercent: JSON.stringify(materialMarginPercent ?? {}),
+      materialRollCost: JSON.stringify(materialRollCost),
+      materialRollWeightG: JSON.stringify(materialRollWeightG),
       machineRatePerHour,
       platformMargin,
       makerSplit,
@@ -77,6 +91,8 @@ export async function PUT(req: NextRequest) {
       materialDensity: JSON.stringify(materialDensity),
       materialPricePerGram: JSON.stringify(materialPricePerGram),
       materialMarginPercent: JSON.stringify(materialMarginPercent ?? {}),
+      materialRollCost: JSON.stringify(materialRollCost),
+      materialRollWeightG: JSON.stringify(materialRollWeightG),
       machineRatePerHour,
       platformMargin,
       makerSplit,

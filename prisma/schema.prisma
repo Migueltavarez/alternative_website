@@ -419,6 +419,10 @@ model PricingConfig {
   materialPricePerGram   String
   // JSON: { PLA: 30, 'PLA+': 30, ... } margin percentage per material (overrides platformMargin)
   materialMarginPercent  String   @default("{}")
+  // JSON: { PLA: 400, ... } RD$ cost per roll
+  materialRollCost       String   @default("{}")
+  // JSON: { PLA: 1000, ... } grams per roll
+  materialRollWeightG    String   @default("{}")
   machineRatePerHour     Float    @default(100)   // RD$/hour
   platformMargin         Float    @default(0.30)  // 30%
   makerSplit             Float    @default(0.70)  // 70% of base cost to maker

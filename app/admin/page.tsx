@@ -58,7 +58,8 @@ export default function AdminPage() {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingError, setPricingError] = useState('');
   const [pricingSuccess, setPricingSuccess] = useState(false);
-  const [editPricePerGram, setEditPricePerGram] = useState<Record<string, string>>({});
+  const [editRollCost, setEditRollCost] = useState<Record<string, string>>({});
+  const [editRollWeightG, setEditRollWeightG] = useState<Record<string, string>>({});
   const [editMarginPercent, setEditMarginPercent] = useState<Record<string, string>>({});
   const [editDensity, setEditDensity] = useState<Record<string, string>>({});
   const [editMachineRate, setEditMachineRate] = useState('');
@@ -152,7 +153,8 @@ export default function AdminPage() {
       })
       .then(data => {
         setPricingConfig(data);
-        setEditPricePerGram(Object.fromEntries(Object.entries(data.materialPricePerGram as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        setEditRollCost(Object.fromEntries(Object.entries((data.materialRollCost ?? {}) as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        setEditRollWeightG(Object.fromEntries(Object.entries((data.materialRollWeightG ?? {}) as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditMarginPercent(Object.fromEntries(Object.entries((data.materialMarginPercent ?? {}) as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditDensity(Object.fromEntries(Object.entries(data.materialDensity as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditMachineRate(String(data.machineRatePerHour));
@@ -170,7 +172,8 @@ export default function AdminPage() {
     setPricingSuccess(false);
     try {
       const payload = {
-        materialPricePerGram: Object.fromEntries(Object.entries(editPricePerGram).map(([k, v]) => [k, parseFloat(v)])),
+        materialRollCost: Object.fromEntries(Object.entries(editRollCost).map(([k, v]) => [k, parseFloat(v)])),
+        materialRollWeightG: Object.fromEntries(Object.entries(editRollWeightG).map(([k, v]) => [k, parseFloat(v)])),
         materialMarginPercent: Object.fromEntries(Object.entries(editMarginPercent).map(([k, v]) => [k, parseFloat(v)])),
         materialDensity: Object.fromEntries(Object.entries(editDensity).map(([k, v]) => [k, parseFloat(v)])),
         machineRatePerHour: parseFloat(editMachineRate),
@@ -2215,29 +2218,46 @@ export default function AdminPage() {
                         <thead>
                           <tr className="border-b border-border">
                             <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Material</th>
-                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Costo / g (RD$)</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Costo rollo (RD$)</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Peso rollo (g)</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Costo / g</th>
                             <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Margen %</th>
-                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Precio / g (RD$)</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Precio / g</th>
                             <th className="text-left py-2 font-medium text-muted-foreground">Densidad (g/cm³)</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40">
-                          {Object.keys(editPricePerGram).map(mat => {
-                            const costo = parseFloat(editPricePerGram[mat] ?? '0') || 0;
+                          {Object.keys(editRollCost).map(mat => {
+                            const rollCosto = parseFloat(editRollCost[mat] ?? '0') || 0;
+                            const rollPeso = parseFloat(editRollWeightG[mat] ?? '1000') || 1000;
+                            const costoG = rollPeso > 0 ? rollCosto / rollPeso : 0;
                             const margen = parseFloat(editMarginPercent[mat] ?? editPlatformMargin) || 0;
-                            const precio = (costo * (1 + margen / 100)).toFixed(2);
+                            const precioG = (costoG * (1 + margen / 100)).toFixed(2);
                             return (
                               <tr key={mat}>
-                                <td className="py-2.5 pr-4 font-medium">{mat}</td>
+                                <td className="py-2.5 pr-4 font-medium whitespace-nowrap">{mat}</td>
                                 <td className="py-2.5 pr-4">
                                   <input
                                     type="number"
-                                    step="0.01"
+                                    step="1"
                                     min="0"
-                                    value={editPricePerGram[mat] ?? ''}
-                                    onChange={e => setEditPricePerGram(p => ({ ...p, [mat]: e.target.value }))}
+                                    value={editRollCost[mat] ?? ''}
+                                    onChange={e => setEditRollCost(p => ({ ...p, [mat]: e.target.value }))}
                                     className="w-24 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
                                   />
+                                </td>
+                                <td className="py-2.5 pr-4">
+                                  <input
+                                    type="number"
+                                    step="1"
+                                    min="1"
+                                    value={editRollWeightG[mat] ?? ''}
+                                    onChange={e => setEditRollWeightG(p => ({ ...p, [mat]: e.target.value }))}
+                                    className="w-20 px-2 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                  />
+                                </td>
+                                <td className="py-2.5 pr-4">
+                                  <span className="text-sm text-muted-foreground">{costoG.toFixed(3)}</span>
                                 </td>
                                 <td className="py-2.5 pr-4">
                                   <input
@@ -2251,7 +2271,7 @@ export default function AdminPage() {
                                   />
                                 </td>
                                 <td className="py-2.5 pr-4">
-                                  <span className="text-sm font-semibold text-primary">{precio}</span>
+                                  <span className="text-sm font-semibold text-primary">{precioG}</span>
                                 </td>
                                 <td className="py-2.5">
                                   <input
