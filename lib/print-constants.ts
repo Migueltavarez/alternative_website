@@ -102,16 +102,16 @@ export const FILAMENT_TYPES = [
 ] as const;
 
 export const FILAMENT_INFO: Record<string, string> = {
-  'PLA':            'Ideal para figuras decorativas, modelos y prototipos. Facil de imprimir, no apto para calor o exteriores.',
-  'PLA+':           'Mas resistente y menos fragil que el PLA estandar. Bueno para piezas funcionales de uso general.',
-  'SILK PLA':       'Acabado brillante y metalico. Perfecto para figurines, trofeos y piezas de exhibicion.',
-  'ABS':            'Resistente al calor y a impactos. Apto para carcasas, piezas mecanicas y herramientas de uso rudo.',
-  'PETG':           'Combina resistencia y flexibilidad. Excelente para contenedores, piezas funcionales y partes expuestas a humedad.',
-  'TPU (Flexible)': 'Material elastico y flexible. Ideal para protectores, fundas, suelas, juntas y piezas que absorben golpes.',
-  'ASA':            'Resistente a rayos UV e intemperie. Perfecto para piezas de exterior, autopartes y senalizacion.',
-  'Nylon':          'Muy resistente y duradero. Ideal para engranajes, piezas de ingenieria y partes con alta tension mecanica.',
-  'Resina (SLA)':   'Maximo nivel de detalle y superficie ultra lisa. Para figuras, joyeria, modelos medicos o piezas miniatura.',
-  'WOOD PLA':       'Apariencia y textura similar a la madera. Ideal para artesania, maquetas arquitectonicas y decoracion.',
+  'PLA':            'Usos: figuras decorativas, prototipos, modelos escolares, souvenirs.',
+  'PLA+':           'Usos: piezas funcionales, soportes, organizadores, accesorios del hogar.',
+  'SILK PLA':       'Usos: figurines, trofeos, piezas de exhibicion, regalos personalizados.',
+  'ABS':            'Usos: carcasas electronicas, piezas mecanicas, herramientas, piezas de alta temperatura.',
+  'PETG':           'Usos: contenedores, piezas en contacto con agua, piezas mecanicas ligeras.',
+  'TPU (Flexible)': 'Usos: fundas de telefono, protectores, juntas, piezas que necesitan flexibilidad.',
+  'ASA':            'Usos: piezas de exterior, autopartes, senaletica, todo lo expuesto al sol o lluvia.',
+  'Nylon':          'Usos: engranajes, bisagras, piezas de ingenieria, mecanismos con alta carga.',
+  'Resina (SLA)':   'Usos: figuras con alto detalle, joyeria, modelos miniatura, piezas dentales.',
+  'WOOD PLA':       'Usos: maquetas arquitectonicas, decoracion rustica, artesania, accesorios de madera.',
 };
 
 export const NOZZLE_SIZES = [
