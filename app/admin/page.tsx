@@ -8,7 +8,8 @@ import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
   CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
-  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool, Sliders, UserCircle2,
+  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool, Sliders, UserCircle2, Eye, X as XIcon,
+  MapPin, Phone, CreditCard as IdCard, GraduationCap, Mail, Calendar, Clock,
 } from 'lucide-react';
 import { PRICE_STATUS_LABELS, SERVICE_MACHINE_TYPES, MACHINE_TYPES } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,9 @@ export default function AdminPage() {
   const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const [sellerPayingId, setSellerPayingId] = useState<string | null>(null);
   const [pendingWorkers, setPendingWorkers] = useState<any[]>([]);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState<any | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [earningsInputs, setEarningsInputs] = useState<Record<string, string>>({});
   const [jobsTab, setJobsTab] = useState<'cotizacion' | 'asignar' | 'proceso' | 'realizado'>('cotizacion');
   const [pricingConfig, setPricingConfig] = useState<any | null>(null);
@@ -217,6 +221,17 @@ export default function AdminPage() {
     } finally {
       setPricingSaving(false);
     }
+  };
+
+  const openProfile = async (userId: string) => {
+    setProfileUserId(userId);
+    setProfileData(null);
+    setProfileLoading(true);
+    try {
+      const res = await fetch(`/api/users/${userId}`);
+      if (res.ok) setProfileData(await res.json());
+    } catch {}
+    setProfileLoading(false);
   };
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -1250,6 +1265,7 @@ export default function AdminPage() {
                             <option value="USER">USER</option>
                             <option value="WORKER">WORKER (Printeo/Láser)</option>
                             <option value="DESIGNER">DESIGNER</option>
+                            <option value="SELLER">SELLER (Vendedor)</option>
                             <option value="ADMIN">ADMIN</option>
                           </select>
                         </td>
@@ -1277,6 +1293,14 @@ export default function AdminPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openProfile(user.id)}
+                              className="text-primary hover:bg-primary/10"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
                             {user.subscription && (
                               <>
                                 {user.subscription.status === 'active' && (
@@ -2562,6 +2586,226 @@ export default function AdminPage() {
 
         </div>
       </div>
+
+    {/* ── Panel de perfil de usuario ── */}
+    {profileUserId && (
+      <>
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+          onClick={() => { setProfileUserId(null); setProfileData(null); }}
+        />
+        {/* Slide-over */}
+        <div className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-background border-l border-border shadow-2xl overflow-y-auto">
+          <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-background z-10">
+            <h2 className="text-lg font-bold">Perfil del usuario</h2>
+            <button
+              onClick={() => { setProfileUserId(null); setProfileData(null); }}
+              className="p-2 rounded-lg hover:bg-accent transition-colors"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
+
+          {profileLoading && (
+            <div className="flex items-center justify-center h-64">
+              <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          )}
+
+          {!profileLoading && profileData && (() => {
+            const d = profileData;
+            const totalJobs = d._count?.printJobs ?? 0;
+            const roleColors: Record<string, string> = {
+              ADMIN: 'bg-red-500/10 text-red-400',
+              WORKER: 'bg-blue-500/10 text-blue-400',
+              DESIGNER: 'bg-purple-500/10 text-purple-400',
+              SELLER: 'bg-amber-500/10 text-amber-400',
+              USER: 'bg-muted text-muted-foreground',
+            };
+            return (
+              <div className="p-5 space-y-6">
+                {/* Avatar + nombre */}
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary shrink-0">
+                    {d.name ? d.name.charAt(0).toUpperCase() : d.email.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-lg leading-tight">{d.name || 'Sin nombre'}</p>
+                    <p className="text-sm text-muted-foreground">{d.email}</p>
+                    <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-medium ${roleColors[d.role] ?? 'bg-muted text-muted-foreground'}`}>
+                      {d.role}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Info de contacto */}
+                <div className="glass rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Contacto</p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{d.email}</span>
+                    {d.emailVerified && <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />}
+                  </div>
+                  {d.phone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span>{d.phone}</span>
+                    </div>
+                  )}
+                  {d.cedula && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <IdCard className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span>Cédula: {d.cedula}</span>
+                    </div>
+                  )}
+                  {d.birthDate && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span>Nacimiento: {new Date(d.birthDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                    </div>
+                  )}
+                  {d.isStudent && (
+                    <div className="flex items-center gap-2 text-sm text-blue-400">
+                      <GraduationCap className="w-4 h-4 shrink-0" />
+                      <span>Estudiante</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Estadísticas */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="glass rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold">{totalJobs}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pedidos</p>
+                  </div>
+                  <div className="glass rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-green-500">{formatCurrency(d.totalSpent ?? 0)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Gastado</p>
+                  </div>
+                  <div className="glass rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold">{d.credits ?? 0}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Créditos</p>
+                  </div>
+                </div>
+
+                {/* Pedidos por estado */}
+                {Object.keys(d.jobsByStatus ?? {}).length > 0 && (
+                  <div className="glass rounded-xl p-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Pedidos por estado</p>
+                    <div className="space-y-1">
+                      {Object.entries(d.jobsByStatus as Record<string, number>).map(([status, count]) => (
+                        <div key={status} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground capitalize">{status}</span>
+                          <span className="font-medium">{count as number}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suscripción */}
+                <div className="glass rounded-xl p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Suscripción</p>
+                  {d.subscription ? (
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Plan</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${getPlanBadgeColor(d.subscription.plan)}`}>{d.subscription.plan}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Estado</span>
+                        <span className={getStatusColor(d.subscription.status)}>{d.subscription.status}</span>
+                      </div>
+                      {d.subscription.currentPeriodEnd && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Vence</span>
+                          <span>{formatDate(d.subscription.currentPeriodEnd)}</span>
+                        </div>
+                      )}
+                      {d.subscription.paymentMethod && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Método</span>
+                          <span className="capitalize">{d.subscription.paymentMethod}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Sin plan activo</p>
+                  )}
+                </div>
+
+                {/* Balance descuento */}
+                {Number(d.discountBalance) > 0 && (
+                  <div className="glass rounded-xl p-4 flex justify-between items-center">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Balance descuento</p>
+                    <span className="text-green-500 font-semibold">{formatCurrency(d.discountBalance)}</span>
+                  </div>
+                )}
+
+                {/* Referidos */}
+                <div className="glass rounded-xl p-4 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Referidos</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Código</span>
+                    <span className="font-mono">{d.referralCode}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Referidos generados</span>
+                    <span>{d._count?.referralsGiven ?? 0}</span>
+                  </div>
+                  {d.referredBy && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Referido por</span>
+                      <span className="font-mono text-xs">{d.referredBy}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Direcciones */}
+                {d.addresses?.length > 0 && (
+                  <div className="glass rounded-xl p-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Direcciones ({d.addresses.length})</p>
+                    <div className="space-y-3">
+                      {d.addresses.map((addr: any) => (
+                        <div key={addr.id} className="border border-border/50 rounded-lg p-3 text-sm space-y-1">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span className="font-medium">{addr.label}</span>
+                            {addr.isDefault && <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded">Principal</span>}
+                          </div>
+                          <p className="text-muted-foreground">{addr.recipientName} · {addr.phone}</p>
+                          <p className="text-muted-foreground">{addr.street}, {addr.sector}, {addr.city}, {addr.province}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Timestamps */}
+                <div className="glass rounded-xl p-4 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Actividad</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Registro</span>
+                    <span>{formatDate(d.createdAt)}</span>
+                  </div>
+                  {d.lastSeenAt && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Última conexión</span>
+                      <span>{new Date(d.lastSeenAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1"><MessageSquare className="w-3.5 h-3.5" /> Mensajes de chat</span>
+                    <span>{d._count?.chatMessages ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </>
+    )}
     </div>
   );
 }

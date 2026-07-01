@@ -158,11 +158,8 @@ export async function updateUserRole(userId: string, role: 'USER' | 'WORKER' | '
       where: { id: userId },
       data: { role },
     }),
-    ...(role === 'USER'
-      ? [prisma.workerProfile.updateMany({
-          where: { userId },
-          data: { isActive: false },
-        })]
+    ...(role === 'USER' || role === 'SELLER'
+      ? [prisma.workerProfile.deleteMany({ where: { userId } })]
       : []),
   ]);
 
