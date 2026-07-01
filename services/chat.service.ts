@@ -34,18 +34,25 @@ export async function markReadByAdmin(userId: string) {
   });
 }
 
+export async function updateLastSeen(userId: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { lastSeenAt: new Date() },
+  });
+}
+
 export async function getConversationsForAdmin() {
   const existingUserIds = await prisma.user.findMany({ select: { id: true } }).then((u) => u.map((x) => x.id));
 
   const messages = await prisma.chatMessage.findMany({
     where: { userId: { in: existingUserIds } },
     orderBy: { createdAt: 'desc' },
-    include: { user: { select: { id: true, name: true, email: true } } },
+    include: { user: { select: { id: true, name: true, email: true, lastSeenAt: true } } },
   });
 
   const byUser = new Map<
     string,
-    { userId: string; name: string | null; email: string; lastMessage: typeof messages[number]; unreadCount: number }
+    { userId: string; name: string | null; email: string; lastSeenAt: Date | null; lastMessage: typeof messages[number]; unreadCount: number }
   >();
 
   for (const m of messages) {
@@ -54,6 +61,7 @@ export async function getConversationsForAdmin() {
         userId: m.userId,
         name: m.user.name,
         email: m.user.email,
+        lastSeenAt: m.user.lastSeenAt,
         lastMessage: m,
         unreadCount: 0,
       });

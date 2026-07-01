@@ -37,6 +37,8 @@ model User {
   referredBySellerId String?
   referredBySeller   User?           @relation("SellerClients", fields: [referredBySellerId], references: [id])
 
+  lastSeenAt        DateTime?
+
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

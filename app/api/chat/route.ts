@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getMessagesForUser, sendMessage, markReadByUser } from '@/services/chat.service';
+import { getMessagesForUser, sendMessage, markReadByUser, updateLastSeen } from '@/services/chat.service';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,18 @@ export async function GET() {
     }
 
     const userId = (session.user as any).id;
-    const messages = await getMessagesForUser(userId);
-    await markReadByUser(userId);
 
-    return NextResponse.json(messages);
+    const [messages, admin] = await Promise.all([
+      getMessagesForUser(userId),
+      prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { lastSeenAt: true } }),
+      markReadByUser(userId),
+      updateLastSeen(userId),
+    ]);
+
+    return NextResponse.json({
+      messages,
+      otherLastSeen: admin?.lastSeenAt ?? null,
+    });
   } catch (error: any) {
     console.error('Get chat messages error:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });

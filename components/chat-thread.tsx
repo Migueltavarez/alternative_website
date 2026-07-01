@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Send, Loader2, MessageSquare, Paperclip, X, ImageIcon } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Paperclip, X } from 'lucide-react';
 
 export interface ChatMessageData {
   id: string;
   sender: 'USER' | 'ADMIN';
   content: string;
   imageUrl?: string | null;
+  readByUser: boolean;
+  readByAdmin: boolean;
   createdAt: string;
 }
 
@@ -20,6 +22,29 @@ interface ChatThreadProps {
   placeholder?: string;
 }
 
+function formatLastSeen(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  if (diffMs < 2 * 60 * 1000) return 'En línea';
+  const today = now.toDateString() === date.toDateString();
+  if (today) {
+    return `visto a las ${date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  return `visto el ${date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}`;
+}
+
+function ReadReceipt({ message, mySender }: { message: ChatMessageData; mySender: 'USER' | 'ADMIN' }) {
+  if (message.sender !== mySender) return null;
+  const isRead = mySender === 'USER' ? message.readByAdmin : message.readByUser;
+  return (
+    <span className={`text-[10px] ml-0.5 ${isRead ? 'text-blue-300' : 'text-primary-foreground/50'}`}>
+      {isRead ? '✓✓' : '✓'}
+    </span>
+  );
+}
+
 export function ChatThread({
   fetchUrl,
   postUrl,
@@ -29,6 +54,7 @@ export function ChatThread({
   placeholder = 'Escribe un mensaje...',
 }: ChatThreadProps) {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
+  const [otherLastSeen, setOtherLastSeen] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
@@ -54,7 +80,12 @@ export function ChatThread({
       const res = await fetch(fetchUrl);
       if (res.ok) {
         const data = await res.json();
-        setMessages(Array.isArray(data) ? data : []);
+        if (Array.isArray(data)) {
+          setMessages(data);
+        } else if (data.messages) {
+          setMessages(data.messages);
+          setOtherLastSeen(data.otherLastSeen ?? null);
+        }
       }
     } catch (error) {
       console.error('Error fetching chat messages:', error);
@@ -70,7 +101,6 @@ export function ChatThread({
     const previewUrl = URL.createObjectURL(file);
     setPendingImage({ file, previewUrl });
 
-    // Upload immediately
     setUploading(true);
     try {
       const formData = new FormData();
@@ -126,10 +156,18 @@ export function ChatThread({
   };
 
   const canSend = (content.trim() || pendingImage?.uploadedUrl) && !sending && !uploading;
+  const lastSeenLabel = formatLastSeen(otherLastSeen);
 
   return (
     <>
       <div className="flex flex-col h-[60vh]">
+        {/* Last seen header */}
+        {lastSeenLabel && (
+          <div className="text-center text-[11px] text-muted-foreground pb-2 border-b border-border/40 mb-1">
+            {lastSeenLabel}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-1 py-2 space-y-3">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -167,9 +205,12 @@ export function ChatThread({
                     {m.content && (
                       <p className="whitespace-pre-wrap break-words">{m.content}</p>
                     )}
-                    <p className={`text-[10px] mt-1 ${isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                      {new Date(m.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    <div className={`flex items-center gap-0.5 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      <p className={`text-[10px] ${isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                        {new Date(m.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      {isMine && <ReadReceipt message={m} mySender={mySender} />}
+                    </div>
                   </div>
                 </div>
               );

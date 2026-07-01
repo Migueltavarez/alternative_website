@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getMessagesForUser, sendMessage, markReadByAdmin } from '@/services/chat.service';
+import { getMessagesForUser, sendMessage, markReadByAdmin, updateLastSeen } from '@/services/chat.service';
 import { createNotification } from '@/lib/notifications';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,20 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const messages = await getMessagesForUser(params.userId);
-    await markReadByAdmin(params.userId);
+    const adminId = (session.user as any).id;
 
-    return NextResponse.json(messages);
+    const [messages, targetUser] = await Promise.all([
+      getMessagesForUser(params.userId),
+      prisma.user.findUnique({ where: { id: params.userId }, select: { name: true, email: true, lastSeenAt: true } }),
+      markReadByAdmin(params.userId),
+      updateLastSeen(adminId),
+    ]);
+
+    return NextResponse.json({
+      messages,
+      otherLastSeen: targetUser?.lastSeenAt ?? null,
+      otherName: targetUser?.name ?? targetUser?.email ?? null,
+    });
   } catch (error: any) {
     console.error('Get admin chat thread error:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
