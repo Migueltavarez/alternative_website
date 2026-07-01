@@ -50,6 +50,8 @@ export default function AdminPage() {
   const [contentActionLoading, setContentActionLoading] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedConvUserId, setSelectedConvUserId] = useState<string | null>(null);
+  const [showNewConvPicker, setShowNewConvPicker] = useState(false);
+  const [newConvSearch, setNewConvSearch] = useState('');
   const [pendingWorkers, setPendingWorkers] = useState<any[]>([]);
   const [earningsInputs, setEarningsInputs] = useState<Record<string, string>>({});
   const [jobsTab, setJobsTab] = useState<'cotizacion' | 'asignar' | 'proceso' | 'realizado'>('cotizacion');
@@ -1795,37 +1797,80 @@ export default function AdminPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
               <h2 className="text-2xl font-bold mb-6">Mensajes de Soporte</h2>
               <div className="glass rounded-2xl overflow-hidden grid md:grid-cols-3">
-                <div className="border-r border-border max-h-[70vh] overflow-y-auto">
-                  {conversations.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground text-sm">
-                      No hay conversaciones aún
-                    </div>
-                  ) : (
-                    conversations
-                      .slice()
-                      .sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime())
-                      .map((c) => (
-                        <button
-                          key={c.userId}
-                          onClick={() => setSelectedConvUserId(c.userId)}
-                          className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors ${
-                            selectedConvUserId === c.userId ? 'bg-accent' : ''
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-medium text-sm truncate">{c.name || c.email}</p>
-                            {c.unreadCount > 0 && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
-                                {c.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {c.lastMessage.sender === 'ADMIN' ? 'Tú: ' : ''}{c.lastMessage.content}
-                          </p>
-                        </button>
-                      ))
-                  )}
+                <div className="border-r border-border flex flex-col max-h-[70vh]">
+                  <div className="px-3 py-2 border-b border-border/50 shrink-0">
+                    <button
+                      onClick={() => { setShowNewConvPicker(p => !p); setNewConvSearch(''); }}
+                      className="w-full text-xs font-medium py-1.5 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                    >
+                      + Nueva conversación
+                    </button>
+                    {showNewConvPicker && (
+                      <div className="mt-2 space-y-1">
+                        <input
+                          autoFocus
+                          value={newConvSearch}
+                          onChange={e => setNewConvSearch(e.target.value)}
+                          placeholder="Buscar usuario..."
+                          className="w-full text-xs px-2 py-1.5 rounded-lg bg-background border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-background">
+                          {users
+                            .filter(u => u.role !== 'ADMIN' && (
+                              !newConvSearch ||
+                              (u.name ?? '').toLowerCase().includes(newConvSearch.toLowerCase()) ||
+                              (u.email ?? '').toLowerCase().includes(newConvSearch.toLowerCase())
+                            ))
+                            .map(u => (
+                              <button
+                                key={u.id}
+                                onClick={() => {
+                                  setSelectedConvUserId(u.id);
+                                  setShowNewConvPicker(false);
+                                  setNewConvSearch('');
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-accent/50 transition-colors border-b border-border/30 last:border-0"
+                              >
+                                <p className="font-medium truncate">{u.name || u.email}</p>
+                                {u.name && <p className="text-muted-foreground truncate">{u.email}</p>}
+                              </button>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="overflow-y-auto flex-1">
+                    {conversations.length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground text-sm">
+                        No hay conversaciones aún
+                      </div>
+                    ) : (
+                      conversations
+                        .slice()
+                        .sort((a, b) => new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime())
+                        .map((c) => (
+                          <button
+                            key={c.userId}
+                            onClick={() => { setSelectedConvUserId(c.userId); setShowNewConvPicker(false); }}
+                            className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors ${
+                              selectedConvUserId === c.userId ? 'bg-accent' : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-medium text-sm truncate">{c.name || c.email}</p>
+                              {c.unreadCount > 0 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground font-semibold shrink-0">
+                                  {c.unreadCount}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {c.lastMessage.sender === 'ADMIN' ? 'Tú: ' : ''}{c.lastMessage.content}
+                            </p>
+                          </button>
+                        ))
+                    )}
+                  </div>
                 </div>
                 <div className="md:col-span-2 p-4">
                   {selectedConvUserId ? (
