@@ -7,12 +7,13 @@ export async function getMessagesForUser(userId: string) {
   });
 }
 
-export async function sendMessage(userId: string, sender: 'USER' | 'ADMIN', content: string) {
+export async function sendMessage(userId: string, sender: 'USER' | 'ADMIN', content: string, imageUrl?: string) {
   return prisma.chatMessage.create({
     data: {
       userId,
       sender,
       content,
+      imageUrl: imageUrl ?? null,
       readByUser: sender === 'USER',
       readByAdmin: sender === 'ADMIN',
     },

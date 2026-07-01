@@ -30,18 +30,19 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { content } = await request.json();
-    if (!content || String(content).trim() === '') {
+    const { content, imageUrl } = await request.json();
+    const trimmedContent = String(content ?? '').trim();
+    if (!trimmedContent && !imageUrl) {
       return NextResponse.json({ error: 'El mensaje no puede estar vacío' }, { status: 400 });
     }
 
-    const message = await sendMessage(params.userId, 'ADMIN', String(content).trim());
+    const message = await sendMessage(params.userId, 'ADMIN', trimmedContent, imageUrl ?? undefined);
 
     createNotification({
       userId: params.userId,
       type: 'message',
       title: 'Nuevo mensaje de soporte',
-      body: String(content).trim().slice(0, 100),
+      body: trimmedContent || 'Te enviaron una imagen',
       link: '/dashboard?tab=soporte',
     }).catch(() => {});
 

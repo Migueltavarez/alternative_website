@@ -30,12 +30,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { content } = await request.json();
-    if (!content || String(content).trim() === '') {
+    const { content, imageUrl } = await request.json();
+    const trimmedContent = String(content ?? '').trim();
+    if (!trimmedContent && !imageUrl) {
       return NextResponse.json({ error: 'El mensaje no puede estar vacío' }, { status: 400 });
     }
 
-    const message = await sendMessage((session.user as any).id, 'USER', String(content).trim());
+    const message = await sendMessage((session.user as any).id, 'USER', trimmedContent, imageUrl ?? undefined);
     return NextResponse.json(message);
   } catch (error: any) {
     console.error('Send chat message error:', error);

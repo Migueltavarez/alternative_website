@@ -81,6 +81,7 @@ model ChatMessage {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   sender      String   // 'USER' | 'ADMIN'
   content     String
+  imageUrl    String?
   readByUser  Boolean  @default(false)
   readByAdmin Boolean  @default(false)
 
