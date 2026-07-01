@@ -43,6 +43,7 @@ export function Navbar() {
   const user = session?.user as any;
   const isAdmin = user?.role === 'ADMIN';
   const isDesigner = user?.role === 'DESIGNER';
+  const isSeller = user?.role === 'SELLER';
   const isWorker = user?.role === 'WORKER' || user?.role === 'ADMIN' || isDesigner;
   const workerPanelLabel = isDesigner ? 'Panel de Diseño' : 'Panel Maker';
 
@@ -117,6 +118,16 @@ export function Navbar() {
               <Moon className="absolute top-2 left-2 w-5 h-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </button>
 
+            {isSeller && (
+              <a
+                href="/seller"
+                className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-gradient-to-r from-[#2D6CB0] to-[#CC2631] text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <UserCircle className="w-4 h-4" />
+                Panel Vendedor
+              </a>
+            )}
+
             {isWorker && (
               <a
                 href="/worker"
@@ -171,6 +182,16 @@ export function Navbar() {
                         >
                           <MessageSquare className="w-4 h-4" />
                           Soporte
+                        </Link>
+                      )}
+                      {isSeller && (
+                        <Link
+                          href="/seller"
+                          className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent transition-colors"
+                          onClick={() => setDropdownOpen(false)}
+                        >
+                          <UserCircle className="w-4 h-4" />
+                          Panel Vendedor
                         </Link>
                       )}
                       {isWorker && (

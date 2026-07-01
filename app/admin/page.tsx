@@ -8,7 +8,7 @@ import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
   CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
-  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool, Sliders,
+  DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool, Sliders, UserCircle2,
 } from 'lucide-react';
 import { PRICE_STATUS_LABELS, SERVICE_MACHINE_TYPES, MACHINE_TYPES } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones' | 'eventos' | 'cursos' | 'precios'>('trabajos');
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones' | 'eventos' | 'cursos' | 'precios' | 'vendedores'>('trabajos');
   const [adminEvents, setAdminEvents] = useState<any[]>([]);
   const [adminCourses, setAdminCourses] = useState<any[]>([]);
   const [eventForm, setEventForm] = useState({ title: '', description: '', date: '', time: '', location: '', type: 'Taller', imageUrl: '' });
@@ -52,6 +52,9 @@ export default function AdminPage() {
   const [selectedConvUserId, setSelectedConvUserId] = useState<string | null>(null);
   const [showNewConvPicker, setShowNewConvPicker] = useState(false);
   const [newConvSearch, setNewConvSearch] = useState('');
+  const [sellers, setSellers] = useState<any[]>([]);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+  const [sellerPayingId, setSellerPayingId] = useState<string | null>(null);
   const [pendingWorkers, setPendingWorkers] = useState<any[]>([]);
   const [earningsInputs, setEarningsInputs] = useState<Record<string, string>>({});
   const [jobsTab, setJobsTab] = useState<'cotizacion' | 'asignar' | 'proceso' | 'realizado'>('cotizacion');
@@ -137,11 +140,27 @@ export default function AdminPage() {
     }
   };
 
+  const fetchSellers = async () => {
+    try {
+      const res = await fetch('/api/admin/sellers');
+      if (res.ok) {
+        const data = await res.json();
+        setSellers(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Error fetching sellers:', error);
+    }
+  };
+
   useEffect(() => {
     if (activeTab !== 'mensajes') return;
     fetchConversations();
     const interval = setInterval(fetchConversations, 7000);
     return () => clearInterval(interval);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'vendedores') fetchSellers();
   }, [activeTab]);
 
   useEffect(() => {
@@ -1073,6 +1092,7 @@ export default function AdminPage() {
             {([
               { key: 'trabajos', label: 'Trabajos', icon: ListChecks },
               { key: 'aprobaciones', label: 'Aprobaciones', icon: UserCheck },
+              { key: 'vendedores', label: 'Vendedores', icon: UserCircle2 },
               { key: 'usuarios', label: 'Usuarios', icon: Users },
               { key: 'suscripciones', label: 'Suscripciones', icon: CreditCard },
               { key: 'mensajes', label: 'Mensajes', icon: MessageSquare },
@@ -2239,6 +2259,117 @@ export default function AdminPage() {
               </div>
             </motion.div>
           )}
+          {/* ── TAB: VENDEDORES ── */}
+          {activeTab === 'vendedores' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <div className="flex items-center gap-3 mb-6">
+                <UserCircle2 className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold">Vendedores</h2>
+                <button onClick={fetchSellers} className="ml-auto p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+
+              {sellers.length === 0 ? (
+                <div className="glass rounded-2xl p-10 text-center">
+                  <UserCircle2 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground text-sm">No hay vendedores aún. Asigna el rol de Vendedor a un usuario desde la pestaña Usuarios.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {sellers.map((s: any) => (
+                    <div key={s.id} className="glass rounded-2xl overflow-hidden">
+                      <button
+                        onClick={() => setSelectedSellerId(selectedSellerId === s.id ? null : s.id)}
+                        className="w-full flex items-center justify-between gap-4 p-5 text-left"
+                      >
+                        <div>
+                          <p className="font-semibold">{s.name ?? s.email}</p>
+                          {s.name && <p className="text-xs text-muted-foreground">{s.email}</p>}
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Código: <span className="font-mono text-foreground">{s.referralCode}</span> · {s.clientsCount} clientes
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-muted-foreground">Pendiente</p>
+                          <p className="font-bold text-amber-400">RD${(s.totalPending ?? 0).toLocaleString('es-DO', { minimumFractionDigits: 2 })}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Pagado</p>
+                          <p className="text-sm font-semibold text-emerald-400">RD${(s.totalPaid ?? 0).toLocaleString('es-DO', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                      </button>
+
+                      {selectedSellerId === s.id && (
+                        <div className="border-t border-border p-5 space-y-4">
+                          {s.totalPending > 0 && (
+                            <button
+                              disabled={sellerPayingId === s.id}
+                              onClick={async () => {
+                                setSellerPayingId(s.id);
+                                await fetch('/api/admin/sellers/commissions', {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ sellerId: s.id }),
+                                });
+                                await fetchSellers();
+                                setSellerPayingId(null);
+                              }}
+                              className="text-sm px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                            >
+                              {sellerPayingId === s.id ? 'Procesando...' : `Marcar todo como pagado (RD$${(s.totalPending ?? 0).toLocaleString('es-DO', { minimumFractionDigits: 2 })})`}
+                            </button>
+                          )}
+
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">COMISIONES</p>
+                            {s.commissions.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">Sin comisiones aún.</p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                                {s.commissions.map((c: any) => (
+                                  <div key={c.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-accent/30 text-xs">
+                                    <div>
+                                      <p className="font-medium">
+                                        {c.type === 'first_service' ? 'Primer servicio (10%)' : c.type === 'recurring' ? 'Recurrente (3%)' : 'Bono 5 clientes'}
+                                      </p>
+                                      <p className="text-muted-foreground">{new Date(c.createdAt).toLocaleDateString('es-DO')}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-bold text-primary">RD${c.amount.toLocaleString('es-DO', { minimumFractionDigits: 2 })}</p>
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${c.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                        {c.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">CLIENTES REFERIDOS ({s.clients.length})</p>
+                            {s.clients.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">Sin clientes aún.</p>
+                            ) : (
+                              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                {s.clients.map((c: any) => (
+                                  <div key={c.id} className="p-2 rounded-lg bg-accent/20 text-xs">
+                                    <p className="font-medium">{c.name ?? c.email}</p>
+                                    {c.name && <p className="text-muted-foreground">{c.email}</p>}
+                                    <p className="text-muted-foreground">{new Date(c.createdAt).toLocaleDateString('es-DO')}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* ── TAB: PRECIOS ── */}
           {activeTab === 'precios' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

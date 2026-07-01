@@ -25,14 +25,18 @@ export async function registerUser(input: RegisterUserInput) {
   }
 
   let validReferralCode = referralCode?.toUpperCase();
-  
+  let referredBySellerId: string | undefined;
+
   if (referralCode) {
     const referrer = await prisma.user.findFirst({
       where: { referralCode: validReferralCode },
+      select: { id: true, role: true },
     });
-    
+
     if (!referrer) {
       validReferralCode = undefined;
+    } else if (referrer.role === 'SELLER') {
+      referredBySellerId = referrer.id;
     }
   }
 
@@ -44,7 +48,7 @@ export async function registerUser(input: RegisterUserInput) {
     const existing = await prisma.user.findUnique({
       where: { referralCode: newReferralCode },
     });
-    
+
     if (!existing) break;
     newReferralCode = generateReferralCode();
     attempts++;
@@ -63,6 +67,7 @@ export async function registerUser(input: RegisterUserInput) {
       name,
       referralCode: newReferralCode.toUpperCase(),
       referredBy: validReferralCode?.toUpperCase(),
+      referredBySellerId,
       isStudent,
       verificationToken,
       verificationTokenExpiry,
@@ -147,7 +152,7 @@ export async function getAllUsers() {
   });
 }
 
-export async function updateUserRole(userId: string, role: 'USER' | 'WORKER' | 'DESIGNER' | 'ADMIN') {
+export async function updateUserRole(userId: string, role: 'USER' | 'WORKER' | 'DESIGNER' | 'SELLER' | 'ADMIN') {
   const [user] = await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },

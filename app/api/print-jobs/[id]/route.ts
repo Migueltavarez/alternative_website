@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { sendJobAssignedToWorkerEmail } from '@/lib/email';
 import { createNotification } from '@/lib/notifications';
+import { processSellerCommission } from '@/lib/seller-commissions';
 
 export async function PATCH(
   request: NextRequest,
@@ -161,6 +162,7 @@ export async function PATCH(
     // Notify client when payment confirmed
     if (confirmPayment) {
       createNotification({ userId: printJob.userId, type: 'job_update', title: 'Pago confirmado', body: `El pago de "${printJob.fileName}" fue confirmado. Tu trabajo será procesado.`, link: '/dashboard?tab=servicios' }).catch(() => {});
+      processSellerCommission(id).catch(() => {});
     }
 
     return NextResponse.json(updated);

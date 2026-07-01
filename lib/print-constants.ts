@@ -59,6 +59,7 @@ export const ROLE_LABELS: Record<string, string> = {
   USER: 'Usuario',
   WORKER: 'Printeo / Corte Láser',
   DESIGNER: 'Diseñador',
+  SELLER: 'Vendedor',
   ADMIN: 'Administrador',
 };
 

@@ -33,6 +33,10 @@ model User {
   cedula            String?
   birthDate         DateTime?
 
+  // Seller referral: populated when this user was referred by a SELLER
+  referredBySellerId String?
+  referredBySeller   User?           @relation("SellerClients", fields: [referredBySellerId], references: [id])
+
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -49,6 +53,8 @@ model User {
   addresses         UserAddress[]
   chatMessages      ChatMessage[]
   notifications     Notification[]
+  sellerClients     User[]          @relation("SellerClients")
+  sellerCommissions SellerCommission[]
 }
 
 model UserAddress {
@@ -441,4 +447,19 @@ model Notification {
   link      String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model SellerCommission {
+  id          String    @id @default(cuid())
+  sellerId    String
+  seller      User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  clientId    String?   // the referred user who paid (null for bonus)
+  printJobId  String?   // the job that triggered the commission (null for bonus)
+  type        String    // 'first_service' | 'recurring' | 'bonus'
+  rate        Float     @default(0)   // 0.10, 0.03, or 0 for bonus
+  jobPrice    Float     @default(0)   // job price at calculation time (0 for bonus)
+  amount      Float                   // RD$ commission amount
+  status      String    @default("pending") // 'pending' | 'paid'
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
 }
