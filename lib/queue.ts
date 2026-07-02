@@ -177,18 +177,19 @@ export async function reassignStaleJobs(): Promise<number> {
 }
 
 export async function processQueue(): Promise<number> {
-  await reassignStaleJobs();
-
-  const pending = await prisma.printJob.findMany({
-    where: { status: 'pending', assignedWorkerId: null },
-    orderBy: { createdAt: 'asc' },
+  // Auto-assignment is disabled. Stale "assigned" jobs are reset back
+  // to pending_assignment so the admin can manually reassign them.
+  const cutoff = new Date(Date.now() - ASSIGNMENT_TIMEOUT_MS);
+  const stale = await prisma.printJob.findMany({
+    where: { status: 'in_progress', assignedAt: { lt: cutoff }, acceptedAt: null },
   });
 
-  let assigned = 0;
-  for (const job of pending) {
-    const workerId = await assignJobToWorker(job.id);
-    if (workerId) assigned++;
+  for (const job of stale) {
+    await prisma.printJob.update({
+      where: { id: job.id },
+      data: { status: 'pending_assignment', assignedWorkerId: null, assignedMachineId: null, assignedAt: null },
+    });
   }
 
-  return assigned;
+  return stale.length;
 }

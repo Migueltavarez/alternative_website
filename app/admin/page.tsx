@@ -62,6 +62,7 @@ export default function AdminPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [earningsInputs, setEarningsInputs] = useState<Record<string, string>>({});
   const [jobsTab, setJobsTab] = useState<'cotizacion' | 'asignar' | 'proceso' | 'realizado'>('cotizacion');
+  const [jobsView, setJobsView] = useState<'table' | 'cards'>('table');
   const [pricingConfig, setPricingConfig] = useState<any | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingSaving, setPricingSaving] = useState(false);
@@ -1012,6 +1013,212 @@ export default function AdminPage() {
     </tr>
   );
 
+  const renderJobCard = (job: any) => {
+    const ps = job.priceStatus ?? 'unpaid';
+    const priceInfo = PRICE_STATUS_LABELS[ps];
+    const formattedPrice = job.price != null
+      ? new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', minimumFractionDigits: 2 }).format(job.price)
+      : null;
+    const currentValue = job.assignedWorkerId
+      ? (job.assignedMachineId ? `${job.assignedWorkerId}:${job.assignedMachineId}` : job.assignedWorkerId)
+      : '';
+    const requiredTypes = SERVICE_MACHINE_TYPES[job.serviceType ?? 'print_3d'];
+    const isDesign = job.serviceType === 'design';
+    const isDone = job.status === 'completed' || job.status === 'cancelled';
+
+    const statusColors: Record<string, string> = {
+      pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      pending_assignment: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      in_progress: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      completed: 'bg-green-500/20 text-green-400 border-green-500/30',
+      cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
+    };
+    const statusLabels: Record<string, string> = {
+      pending: 'Cotización',
+      pending_assignment: 'Pte. Asignar',
+      in_progress: 'En Proceso',
+      completed: 'Completado',
+      cancelled: 'Cancelado',
+    };
+
+    return (
+      <div key={job.id} className="glass rounded-xl p-4 flex flex-col gap-3">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{job.user?.name || 'Usuario'}</p>
+            <p className="text-xs text-muted-foreground truncate">{job.user?.email}</p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusColors[job.status] ?? 'bg-accent text-foreground border-border'}`}>
+              {statusLabels[job.status] ?? job.status}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{formatDate(job.createdAt)}</span>
+          </div>
+        </div>
+
+        {/* File */}
+        <div className="flex items-center gap-2 border-t border-border/50 pt-3">
+          <span className="text-sm font-medium truncate flex-1 min-w-0">{job.fileName}</span>
+          <button onClick={() => handleOpenInBambuStudio(job.fileUrl, job.fileName)}
+            className="p-1 rounded hover:bg-accent text-green-400 transition-colors shrink-0">
+            <Box className="w-3.5 h-3.5" />
+          </button>
+          <a href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'} download={job.fileName}
+            className="p-1 rounded hover:bg-accent text-blue-400 transition-colors shrink-0">
+            <Download className="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        {/* Specs */}
+        <div className="flex flex-wrap gap-1">
+          {job.color && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">Color: {job.color}</span>}
+          {job.filamentType && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">{job.filamentType}</span>}
+          {job.designMaterial && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">{job.designMaterial}</span>}
+          {job.notes && <span className="text-[10px] text-muted-foreground truncate max-w-full">{job.notes}</span>}
+        </div>
+
+        {/* Worker assignment */}
+        {!isDone && (
+          <div className="border-t border-border/50 pt-3 flex flex-col gap-1.5">
+            <p className="text-[10px] text-muted-foreground uppercase font-medium">Asignar a</p>
+            <select
+              value={assignSelections[job.id] ?? currentValue}
+              onChange={(e) => setAssignSelections((prev) => ({ ...prev, [job.id]: e.target.value }))}
+              disabled={actionLoading === job.id}
+              className="bg-transparent border border-input rounded px-2 py-1 text-xs w-full"
+            >
+              <option value="">Sin asignar</option>
+              {isDesign
+                ? workers.filter((w: any) => w.isActive && w.user?.role === 'DESIGNER').map((w: any) => (
+                    <option key={w.userId} value={w.userId}>{w.user?.name || w.user?.email}</option>
+                  ))
+                : workers.filter((w: any) => w.isActive).map((w: any) =>
+                    w.machines?.filter((m: any) => m.isActive && (!requiredTypes || requiredTypes.includes(m.machineType ?? 'printer_3d')))
+                      .map((m: any) => (
+                        <option key={`${w.userId}:${m.id}`} value={`${w.userId}:${m.id}`}>
+                          {w.user?.name || w.user?.email} — {m.name}
+                        </option>
+                      ))
+                  )}
+            </select>
+            <Button size="sm" onClick={() => handleAssignWorker(job.id)}
+              disabled={actionLoading === job.id || assignSelections[job.id] === undefined || assignSelections[job.id] === currentValue}
+              className="h-7 text-xs w-full gap-1">
+              <UserCheck className="w-3 h-3" />Asignar
+            </Button>
+          </div>
+        )}
+        {isDone && job.assignedWorker && (
+          <div className="border-t border-border/50 pt-3 text-xs">
+            <span className="text-muted-foreground">Worker: </span>
+            <span className="font-medium">{job.assignedWorker.name || job.assignedWorker.email}</span>
+          </div>
+        )}
+
+        {/* Price */}
+        <div className="border-t border-border/50 pt-3">
+          {ps === 'unpaid' && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">DOP</span>
+              <input type="number" min="0" step="0.01" placeholder="0.00"
+                value={priceInputs[job.id] ?? ''}
+                onChange={(e) => setPriceInputs((prev) => ({ ...prev, [job.id]: e.target.value }))}
+                className="flex-1 px-2 py-1 rounded bg-card border border-border text-xs"
+                disabled={actionLoading === job.id}
+              />
+              <Button size="sm" onClick={() => handleSetPrice(job.id)}
+                disabled={actionLoading === job.id || !priceInputs[job.id]} className="h-7 text-xs px-2 shrink-0">
+                <DollarSign className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+          {ps === 'quoted' && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">{formattedPrice}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Esperando cliente</span>
+            </div>
+          )}
+          {ps === 'accepted' && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">{formattedPrice}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Aceptado</span>
+              </div>
+              <Button size="sm" onClick={() => handleValidatePrice(job.id)} disabled={actionLoading === job.id} className="h-7 text-xs w-full">
+                <CheckCircle2 className="w-3 h-3 mr-1" />Validar
+              </Button>
+            </div>
+          )}
+          {ps === 'appealed' && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">{formattedPrice}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Apelado</span>
+              </div>
+              {job.appealNote && <p className="text-xs text-muted-foreground italic truncate">{job.appealNote}</p>}
+              <div className="flex items-center gap-1.5">
+                <input type="number" min="0" step="0.01" placeholder={String(job.price ?? '')}
+                  value={priceInputs[job.id] ?? ''}
+                  onChange={(e) => setPriceInputs((prev) => ({ ...prev, [job.id]: e.target.value }))}
+                  className="flex-1 px-2 py-1 rounded bg-card border border-border text-xs"
+                  disabled={actionLoading === job.id}
+                />
+                <Button size="sm" onClick={() => handleValidatePrice(job.id)} disabled={actionLoading === job.id} className="h-7 text-xs px-2 shrink-0">
+                  <CheckCircle2 className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+          {ps === 'payment_uploaded' && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">{formattedPrice}</span>
+                {job.paymentProofUrl && (
+                  <a href={job.paymentProofUrl?.replace('/uploads/', '/api/download/uploads/')} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-400 hover:underline flex items-center gap-0.5">
+                    <ExternalLink className="w-3 h-3" />Comprobante
+                  </a>
+                )}
+              </div>
+              <Button size="sm" onClick={() => handleConfirmPayment(job.id)} disabled={actionLoading === job.id}
+                className="h-7 text-xs w-full bg-green-600 hover:bg-green-700">
+                <CheckCircle2 className="w-3 h-3 mr-1" />Confirmar pago
+              </Button>
+            </div>
+          )}
+          {ps === 'confirmed' && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-green-400">{formattedPrice}</span>
+              <span className="text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Pagado</span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="border-t border-border/50 pt-3 flex items-center justify-between">
+          <select
+            value={job.status}
+            onChange={(e) => handleUpdateStatus(job.id, e.target.value)}
+            disabled={actionLoading === job.id}
+            className="bg-transparent border border-input rounded px-2 py-1 text-xs"
+          >
+            <option value="pending">En Cola</option>
+            <option value="pending_assignment">Pte. Asignar</option>
+            <option value="in_progress">En Proceso</option>
+            <option value="completed">Completado</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+          <Button variant="ghost" size="sm" onClick={() => handleDeletePrintJob(job.id)}
+            disabled={actionLoading === job.id}
+            className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-7 px-2">
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -1768,11 +1975,9 @@ export default function AdminPage() {
                   ['unpaid','quoted','appealed','validated','payment_uploaded'].includes(j.priceStatus ?? 'unpaid') &&
                   !['delivered','cancelled'].includes(j.status)
                 ),
-                asignar: printJobs.filter((j: any) => j.priceStatus === 'confirmed' && j.status === 'pending'),
-                proceso: printJobs.filter((j: any) =>
-                  ['assigned','accepted','printing','needs_revision','correction_requested','completed','ready_to_ship','shipped'].includes(j.status)
-                ),
-                realizado: printJobs.filter((j: any) => ['delivered','cancelled'].includes(j.status)),
+                asignar: printJobs.filter((j: any) => j.status === 'pending_assignment'),
+                proceso: printJobs.filter((j: any) => j.status === 'in_progress'),
+                realizado: printJobs.filter((j: any) => ['completed','cancelled'].includes(j.status)),
               };
               const tabs: { key: keyof typeof jobSections; label: string }[] = [
                 { key: 'cotizacion', label: 'Pendiente de cotización' },
@@ -1783,51 +1988,75 @@ export default function AdminPage() {
               const activeJobs = jobSections[jobsTab] ?? [];
               return (
                 <>
-                  <div className="flex gap-2 mb-6 flex-wrap">
-                    {tabs.map((tab) => (
-                      <button
-                        key={tab.key}
-                        onClick={() => setJobsTab(tab.key)}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          jobsTab === tab.key
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        }`}
-                      >
-                        {tab.label}
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${jobsTab === tab.key ? 'bg-white/20' : 'bg-accent'}`}>
-                          {jobSections[tab.key].length}
-                        </span>
+                  <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                    <div className="flex gap-2 flex-wrap">
+                      {tabs.map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => setJobsTab(tab.key)}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            jobsTab === tab.key
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                          }`}
+                        >
+                          {tab.label}
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${jobsTab === tab.key ? 'bg-white/20' : 'bg-accent'}`}>
+                            {jobSections[tab.key].length}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-1 border border-border rounded-lg p-0.5">
+                      <button onClick={() => setJobsView('table')} className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${jobsView === 'table' ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                        Tabla
                       </button>
-                    ))}
-                  </div>
-
-                  <div className="glass rounded-2xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-accent/50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Cliente</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Archivo / Specs</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Worker</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Créditos</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Precio / Pago</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/50">
-                          {activeJobs.map(renderJobRow)}
-                        </tbody>
-                      </table>
-                      {activeJobs.length === 0 && (
-                        <div className="p-8 text-center text-muted-foreground">
-                          No hay trabajos en esta categoría
-                        </div>
-                      )}
+                      <button onClick={() => setJobsView('cards')} className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${jobsView === 'cards' ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                        Tarjetas
+                      </button>
                     </div>
                   </div>
+
+                  {jobsView === 'table' && (
+                    <div className="glass rounded-2xl overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-accent/50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Cliente</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Archivo / Specs</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Worker</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Créditos</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Precio / Pago</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Estado</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {activeJobs.map(renderJobRow)}
+                          </tbody>
+                        </table>
+                        {activeJobs.length === 0 && (
+                          <div className="p-8 text-center text-muted-foreground">
+                            No hay trabajos en esta categoría
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {jobsView === 'cards' && (
+                    activeJobs.length === 0 ? (
+                      <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
+                        No hay trabajos en esta categoría
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {activeJobs.map(renderJobCard)}
+                      </div>
+                    )
+                  )}
                 </>
               );
             })()}
@@ -1841,7 +2070,8 @@ export default function AdminPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
               <h2 className="text-2xl font-bold mb-6">Mensajes de Soporte</h2>
               <div className="glass rounded-2xl overflow-hidden grid md:grid-cols-3">
-                <div className="border-r border-border flex flex-col max-h-[70vh]">
+                {/* Conversation list — hidden on mobile when a conv is open */}
+                <div className={`border-r border-border flex flex-col max-h-[70vh] ${selectedConvUserId ? 'hidden md:flex' : 'flex'}`}>
                   <div className="px-3 py-2 border-b border-border/50 shrink-0">
                     <button
                       onClick={() => { setShowNewConvPicker(p => !p); setNewConvSearch(''); }}
@@ -1916,15 +2146,24 @@ export default function AdminPage() {
                     )}
                   </div>
                 </div>
-                <div className="md:col-span-2 p-4">
+                <div className={`md:col-span-2 p-4 flex flex-col ${selectedConvUserId ? 'flex' : 'hidden md:flex'}`}>
                   {selectedConvUserId ? (
-                    <ChatThread
-                      key={selectedConvUserId}
-                      fetchUrl={`/api/admin/chat/${selectedConvUserId}`}
-                      postUrl={`/api/admin/chat/${selectedConvUserId}`}
-                      mySender="ADMIN"
-                      emptyLabel="Aún no hay mensajes en esta conversación."
-                    />
+                    <>
+                      {/* Back button — only visible on mobile */}
+                      <button
+                        onClick={() => setSelectedConvUserId(null)}
+                        className="md:hidden flex items-center gap-1.5 text-sm text-primary hover:underline mb-3 self-start"
+                      >
+                        ← Volver a conversaciones
+                      </button>
+                      <ChatThread
+                        key={selectedConvUserId}
+                        fetchUrl={`/api/admin/chat/${selectedConvUserId}`}
+                        postUrl={`/api/admin/chat/${selectedConvUserId}`}
+                        mySender="ADMIN"
+                        emptyLabel="Aún no hay mensajes en esta conversación."
+                      />
+                    </>
                   ) : (
                     <div className="flex items-center justify-center h-[50vh] text-muted-foreground text-sm">
                       Selecciona una conversación

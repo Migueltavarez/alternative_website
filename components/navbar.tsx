@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -13,6 +13,70 @@ import {
 import { cn } from '@/lib/utils';
 import { useCart } from './store/cart-context';
 import { NotificationBell } from './notification-bell';
+
+function ChatBell({ isAdmin }: { isAdmin: boolean }) {
+  const { data: session } = useSession();
+  const [unread, setUnread] = useState(0);
+  const prevUnread = useRef(0);
+
+  const fetchUnread = async () => {
+    if (!session?.user) return;
+    try {
+      if (isAdmin) {
+        const res = await fetch('/api/admin/chat');
+        if (res.ok) {
+          const data = await res.json();
+          const total = Array.isArray(data)
+            ? data.reduce((sum: number, c: any) => sum + (c.unreadCount ?? 0), 0)
+            : 0;
+          if (total > prevUnread.current && prevUnread.current >= 0) {
+            try {
+              const ctx = new AudioContext();
+              const o = ctx.createOscillator();
+              const g = ctx.createGain();
+              o.connect(g); g.connect(ctx.destination);
+              o.frequency.value = 660;
+              g.gain.setValueAtTime(0.3, ctx.currentTime);
+              g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+              o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.4);
+            } catch {}
+          }
+          prevUnread.current = total;
+          setUnread(total);
+        }
+      } else {
+        const res = await fetch('/api/chat');
+        if (res.ok) {
+          const data = await res.json();
+          const msgs = Array.isArray(data) ? data : (data.messages ?? []);
+          const count = msgs.filter((m: any) => m.sender === 'ADMIN' && !m.readByUser).length;
+          setUnread(count);
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchUnread();
+    const iv = setInterval(fetchUnread, 10_000);
+    return () => clearInterval(iv);
+  }, [session, isAdmin]);
+
+  if (!session?.user) return null;
+
+  const href = isAdmin ? '/admin?tab=mensajes' : '/dashboard?tab=soporte';
+
+  return (
+    <Link href={href} className="relative p-2 rounded-lg hover:bg-accent transition-colors" aria-label="Mensajes">
+      <MessageSquare className="w-5 h-5" />
+      {unread > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[10px] font-bold bg-green-500 text-white rounded-full">
+          {unread > 9 ? '9+' : unread}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 const navigation = [
   { name: 'Inicio', href: '/' },
@@ -29,6 +93,7 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
@@ -38,6 +103,16 @@ export function Navbar() {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const user = session?.user as any;
@@ -95,6 +170,7 @@ export function Navbar() {
 
           <div className="flex items-center gap-2">
             <NotificationBell />
+            <ChatBell isAdmin={isAdmin} />
             {/* Cart button */}
             <button
               onClick={() => setCartOpen(true)}
@@ -139,7 +215,7 @@ export function Navbar() {
             )}
 
             {session ? (
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors"

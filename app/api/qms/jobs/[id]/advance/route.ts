@@ -44,22 +44,24 @@ function isChecklistComplete(stage: string, inspection: any): { ok: boolean; rea
   return { ok: true };
 }
 
-// POST — advance to next QMS stage
+// POST — advance to next QMS stage (admin or the assigned maker)
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as any).role !== 'ADMIN') {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
+  if (!session?.user) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  const { comment, forceRedo } = await request.json().catch(() => ({}));
+  const role = (session.user as any).role;
   const userId = (session.user as any).id;
-  const userName = (session.user as any).name || session.user.email || 'Admin';
+  const userName = (session.user as any).name || session.user.email || 'Usuario';
+  const { comment, forceRedo } = await request.json().catch(() => ({}));
 
   const job = await prisma.printJob.findUnique({
     where: { id: params.id },
     include: { qualityInspection: true, user: { select: { email: true, name: true } } },
   });
   if (!job) return NextResponse.json({ error: 'Trabajo no encontrado' }, { status: 404 });
+  if (role !== 'ADMIN' && job.assignedWorkerId !== userId) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  }
   if (!job.qmsStage) return NextResponse.json({ error: 'QMS no iniciado' }, { status: 400 });
 
   const fromStage = job.qmsStage;
@@ -81,7 +83,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const nextStage = toStage!;
 
   const extraData: any = {};
-  if (nextStage === 'delivered') extraData.deliveredAt = new Date();
+  if (nextStage === 'delivered') {
+    extraData.deliveredAt = new Date();
+    extraData.status = 'completed';
+  }
+  if (nextStage === 'ready') {
+    extraData.status = 'completed';
+  }
 
   const [updated] = await prisma.$transaction([
     prisma.printJob.update({

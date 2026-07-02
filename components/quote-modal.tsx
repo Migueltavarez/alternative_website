@@ -53,6 +53,7 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [error, setError] = useState('');
   const [color, setColor] = useState('Blanco');
+  const [scale, setScale] = useState(1.0);
   const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
   const [confirmNotes, setConfirmNotes] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -101,6 +102,7 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
       fd.append('material', material);
       fd.append('infill', String(infill));
       fd.append('quality', quality);
+      fd.append('scale', String(scale));
       const res = await fetch('/api/quote', { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error ?? 'Error al calcular');
@@ -303,6 +305,32 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
                   </div>
                 </div>
 
+                {/* Scale */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    Escala <span className="text-muted-foreground font-normal">(multiplicador del tamaño original)</span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="0.01"
+                      max="10"
+                      step="0.05"
+                      value={scale}
+                      onChange={e => setScale(Math.max(0.01, Math.min(10, parseFloat(e.target.value) || 1)))}
+                      className="w-24 px-3 py-2 rounded-lg bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                    <span className="text-sm text-muted-foreground">×</span>
+                    {scale !== 1 && (
+                      <span className="text-xs text-muted-foreground">
+                        = {(scale * 100).toFixed(0)}% del tamaño
+                        {scale < 1 ? ' (reducido)' : ' (ampliado)'}
+                      </span>
+                    )}
+                    {scale === 1 && <span className="text-xs text-muted-foreground">Tamaño original</span>}
+                  </div>
+                </div>
+
                 <div className="flex gap-3 pt-1">
                   <button
                     onClick={() => setStep('upload')}
@@ -337,6 +365,7 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
                   <span><strong className="text-foreground">{material}</strong></span>
                   <span>Infill {infill}%</span>
                   <span>{QUALITY_OPTIONS.find(q => q.value === quality)?.label}</span>
+                  {scale !== 1 && <span>Escala ×{scale}</span>}
                 </div>
 
                 {/* Stats row */}

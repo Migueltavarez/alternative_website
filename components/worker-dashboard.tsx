@@ -13,6 +13,7 @@ import {
   JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES,
   MODEL_ISSUES, SERVICE_TYPES, RESIN_USES, MACHINE_TYPES, LASER_TYPES,
 } from '@/lib/print-constants';
+import { QMS_STAGES, QMS_STAGE_LABELS, STAGE_FLOW } from '@/lib/qms-constants';
 
 type MachineTypeValue = (typeof MACHINE_TYPES)[number]['value'];
 
@@ -81,6 +82,8 @@ interface WorkerJob {
   deliveryAddress?: string | null;
   trackingUrl?: string | null;
   priceStatus?: string;
+  // QMS
+  qmsStage?: string | null;
 }
 
 interface WorkerProfile {
@@ -503,6 +506,25 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
     }
   };
 
+  const handleQmsAdvance = async (jobId: string) => {
+    setActionLoading(`${jobId}-qms`);
+    try {
+      const res = await fetch(`/api/qms/jobs/${jobId}/advance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al avanzar etapa');
+      showNotification('success', `Etapa avanzada: ${QMS_STAGE_LABELS[data.qmsStage]?.label ?? data.qmsStage}`);
+      await fetchData();
+    } catch (err: any) {
+      showNotification('error', err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleCompletionPhotoUpload = async (file: File) => {
     setCompletionModal(prev => prev ? { ...prev, uploading: true } : null);
     try {
@@ -651,7 +673,7 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
   const getDeliveryLabel = (value?: string) =>
     DELIVERY_TIMES.find((d) => d.value === value)?.label ?? value ?? 'Estándar';
 
-  const activeJobs = jobs.filter((j) => ['assigned', 'accepted', 'printing', 'needs_revision', 'correction_requested'].includes(j.status));
+  const activeJobs = jobs.filter((j) => ['in_progress', 'assigned', 'accepted', 'printing', 'needs_revision', 'correction_requested'].includes(j.status));
   const completedJobs = jobs.filter((j) => j.status === 'completed');
 
   if (loading) {
@@ -1434,6 +1456,57 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                         </a>
                       )}
                     </div>
+
+                    {/* QMS section for in_progress jobs */}
+                    {job.status === 'in_progress' && (
+                      <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Control de Calidad</p>
+                        {/* Stage progress */}
+                        <div className="flex gap-1 flex-wrap">
+                          {QMS_STAGES.filter(s => s.step > 0).map((s) => {
+                            const currentStep = QMS_STAGES.find(x => x.key === (job.qmsStage ?? 'file_validation'))?.step ?? 1;
+                            const done = s.step < currentStep;
+                            const active = s.key === (job.qmsStage ?? 'file_validation');
+                            return (
+                              <div key={s.key} className={`flex-1 min-w-0 h-1.5 rounded-full transition-colors ${done ? 'bg-primary' : active ? 'bg-primary/60' : 'bg-border'}`} />
+                            );
+                          })}
+                        </div>
+                        {/* Current stage */}
+                        {(() => {
+                          const stageKey = job.qmsStage ?? 'file_validation';
+                          const stageInfo = QMS_STAGE_LABELS[stageKey];
+                          const nextStage = STAGE_FLOW[stageKey];
+                          const nextInfo = nextStage ? QMS_STAGE_LABELS[nextStage] : null;
+                          return (
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Etapa actual</p>
+                                <span className={`text-xs px-2 py-0.5 rounded border font-medium ${stageInfo?.color ?? 'bg-accent border-border text-foreground'}`}>
+                                  {stageInfo?.label ?? stageKey}
+                                </span>
+                              </div>
+                              {stageKey !== 'delivered' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleQmsAdvance(job.id)}
+                                  disabled={actionLoading === `${job.id}-qms`}
+                                  isLoading={actionLoading === `${job.id}-qms`}
+                                  className="h-8 text-xs shrink-0"
+                                >
+                                  Avanzar{nextInfo ? ` → ${nextInfo.label}` : ''}
+                                </Button>
+                              )}
+                              {stageKey === 'delivered' && (
+                                <span className="text-xs text-green-400 flex items-center gap-1">
+                                  <CheckCircle className="w-3.5 h-3.5" />Completado
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
 
                     <AnimatePresence>
                       {feedbackJobId === job.id && (

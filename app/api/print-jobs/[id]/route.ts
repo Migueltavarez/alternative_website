@@ -40,13 +40,13 @@ export async function PATCH(
     // Manual worker assignment by admin
     if (assignWorker !== undefined) {
       if (assignWorker === null) {
-        // Unassign
+        // Unassign — return to pending_assignment if payment was confirmed
         updateData.assignedWorkerId = null;
         updateData.assignedMachineId = null;
         updateData.assignedAt = null;
         updateData.acceptedAt = null;
         updateData.startedAt = null;
-        updateData.status = 'pending';
+        updateData.status = printJob.priceStatus === 'confirmed' ? 'pending_assignment' : 'pending';
       } else {
         const { workerId, machineId } = assignWorker;
 
@@ -59,7 +59,6 @@ export async function PATCH(
             return NextResponse.json({ error: 'Máquina o worker inválido' }, { status: 400 });
           }
         } else {
-          // Machine-less assignment (e.g. design jobs assigned to a Designer)
           const workerProfile = await prisma.workerProfile.findUnique({ where: { userId: workerId } });
           if (!workerProfile) {
             return NextResponse.json({ error: 'Worker inválido' }, { status: 400 });
@@ -71,7 +70,11 @@ export async function PATCH(
         updateData.assignedAt = new Date();
         updateData.acceptedAt = null;
         updateData.startedAt = null;
-        updateData.status = 'assigned';
+        updateData.status = 'in_progress';
+        // Initialize QMS if not started yet
+        if (!printJob.qmsStage) {
+          updateData.qmsStage = 'file_validation';
+        }
       }
     }
 
@@ -89,10 +92,11 @@ export async function PATCH(
       }
     }
 
-    // Admin: confirm payment
+    // Admin: confirm payment → move to pending_assignment
     if (confirmPayment) {
       updateData.priceStatus = 'confirmed';
       updateData.paidAt = new Date();
+      updateData.status = 'pending_assignment';
       if (paymentNotes) updateData.paymentNotes = paymentNotes;
     }
 
@@ -138,6 +142,15 @@ export async function PATCH(
         },
       },
     });
+
+    // Auto-create QualityInspection when assigning for the first time
+    if (assignWorker && assignWorker !== null && !printJob.qmsStage) {
+      await prisma.qualityInspection.upsert({
+        where: { printJobId: id },
+        create: { printJobId: id, initiatedBy: (session.user as any).id },
+        update: {},
+      });
+    }
 
     // Email + notification to worker on manual assignment
     if (assignWorker && assignWorker !== null) {

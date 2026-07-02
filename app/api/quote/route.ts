@@ -26,14 +26,27 @@ export async function POST(req: NextRequest) {
 
     const infill = Math.min(100, Math.max(10, parseInt(infillRaw ?? '20', 10)));
     const qualityLevel = (['draft', 'standard', 'fine'].includes(quality ?? '') ? quality : 'standard') as 'draft' | 'standard' | 'fine';
+    const scaleRaw = formData.get('scale') as string | null;
+    const scaleFactor = Math.min(10, Math.max(0.01, parseFloat(scaleRaw ?? '1') || 1));
 
     // Parse STL
     const buffer = await file.arrayBuffer();
-    const stl = parseSTL(buffer);
+    const rawStl = parseSTL(buffer);
 
-    if (stl.volumeCm3 <= 0 || stl.triangleCount === 0) {
+    if (rawStl.volumeCm3 <= 0 || rawStl.triangleCount === 0) {
       return NextResponse.json({ error: 'El archivo STL no tiene geometría válida' }, { status: 422 });
     }
+
+    // Apply scale (volume scales with cube of linear scale, bbox dimensions scale linearly)
+    const stl = scaleFactor === 1 ? rawStl : {
+      volumeCm3: rawStl.volumeCm3 * Math.pow(scaleFactor, 3),
+      bbox: {
+        x: rawStl.bbox.x * scaleFactor,
+        y: rawStl.bbox.y * scaleFactor,
+        z: rawStl.bbox.z * scaleFactor,
+      },
+      triangleCount: rawStl.triangleCount,
+    };
 
     // Load pricing config (falls back to defaults if no DB record yet)
     let config = DEFAULT_PRICING_CONFIG;
@@ -57,7 +70,7 @@ export async function POST(req: NextRequest) {
         triangleCount: stl.triangleCount,
       },
       quote,
-      inputs: { material, infill, quality: qualityLevel },
+      inputs: { material, infill, quality: qualityLevel, scale: scaleFactor },
     });
   } catch (err) {
     console.error('Quote error:', err);
