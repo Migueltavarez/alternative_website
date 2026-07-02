@@ -68,7 +68,7 @@ export async function PATCH(
         updateData.assignedWorkerId = workerId;
         updateData.assignedMachineId = machineId || null;
         updateData.assignedAt = new Date();
-        updateData.acceptedAt = null;
+        updateData.acceptedAt = new Date(); // admin assignment skips maker acceptance step
         updateData.startedAt = null;
         updateData.status = 'in_progress';
         // Initialize QMS if not started yet
