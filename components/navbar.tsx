@@ -80,13 +80,9 @@ function ChatBell({ isAdmin }: { isAdmin: boolean }) {
 
 const navigation = [
   { name: 'Inicio', href: '/' },
-  { name: 'Precios', href: '/#pricing' },
-  { name: 'Servicios', href: '/#services' },
   { name: 'Makers', href: '/#makers' },
   { name: 'Tienda', href: '/store' },
   { name: 'Cursos', href: '/cursos' },
-  { name: 'Eventos', href: '/eventos' },
-  { name: 'Contacto', href: '/#contact' },
 ];
 
 export function Navbar() {
