@@ -147,29 +147,22 @@ export async function reassignStaleJobs(): Promise<number> {
 
   const stale = await prisma.printJob.findMany({
     where: {
-      status: 'assigned',
+      status: { in: ['assigned', 'in_progress'] },
       assignedAt: { lt: cutoff },
       acceptedAt: null,
     },
   });
 
   for (const job of stale) {
-    const previousMachineId = job.assignedMachineId;
-    const previousWorkerId = job.assignedWorkerId;
-
     await prisma.printJob.update({
       where: { id: job.id },
       data: {
-        status: 'pending',
+        status: 'pending_assignment',
         assignedWorkerId: null,
         assignedMachineId: null,
         assignedAt: null,
+        qmsStage: null,
       },
-    });
-
-    await assignJobToWorker(job.id, {
-      machineId: previousMachineId ?? undefined,
-      workerId: previousWorkerId ?? undefined,
     });
   }
 

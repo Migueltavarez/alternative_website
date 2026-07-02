@@ -163,10 +163,9 @@ export async function updateUserRole(userId: string, role: 'USER' | 'WORKER' | '
       : []),
   ]);
 
-  // Designers have no equipment to register themselves, so provision an
-  // empty WorkerProfile right away so they show up for admins and can
-  // access their panel immediately.
-  if (role === 'DESIGNER') {
+  // Provision a WorkerProfile immediately for WORKER and DESIGNER so the
+  // user can access their panel without needing to self-register.
+  if (role === 'WORKER' || role === 'DESIGNER') {
     await prisma.workerProfile.upsert({
       where: { userId },
       update: { isActive: true },

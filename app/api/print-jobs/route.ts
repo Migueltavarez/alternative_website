@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { assignJobToWorker } from '@/lib/queue';
 
 export async function GET(request: NextRequest) {
   try {
@@ -122,14 +121,6 @@ export async function POST(request: NextRequest) {
         designVehicleYear: designVehicleYear || null,
       },
     });
-
-    // Trigger automatic queue assignment
-    try {
-      await assignJobToWorker(printJob.id);
-    } catch (queueError) {
-      // Non-fatal: job stays pending and will be picked up later
-      console.error('Queue assignment error:', queueError);
-    }
 
     return NextResponse.json(printJob, { status: 201 });
   } catch (error) {

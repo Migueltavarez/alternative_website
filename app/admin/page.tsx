@@ -244,13 +244,25 @@ export default function AdminPage() {
         body: JSON.stringify({ userId, role: newRole }),
       });
 
-      if (res.ok) {
-        setUsers(users.map(u => 
-          u.id === userId ? { ...u, role: newRole } : u
-        ));
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Error al actualizar el rol');
+        return;
+      }
+
+      // Re-fetch users from DB to confirm the change persisted
+      const refreshRes = await fetch('/api/users');
+      if (refreshRes.ok) {
+        const refreshed = await refreshRes.json();
+        setUsers(Array.isArray(refreshed) ? refreshed : users);
+      } else {
+        // Fallback: update local state optimistically
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
       }
     } catch (error) {
       console.error('Error updating role:', error);
+      alert('Error de red al actualizar el rol');
     } finally {
       setActionLoading(null);
     }
@@ -1972,7 +1984,7 @@ export default function AdminPage() {
             {(() => {
               const jobSections = {
                 cotizacion: printJobs.filter((j: any) =>
-                  ['unpaid','quoted','appealed','validated','payment_uploaded'].includes(j.priceStatus ?? 'unpaid') &&
+                  ['unpaid','quoted','appealed','accepted','validated','payment_uploaded'].includes(j.priceStatus ?? 'unpaid') &&
                   !['delivered','cancelled'].includes(j.status)
                 ),
                 asignar: printJobs.filter((j: any) => j.status === 'pending_assignment'),

@@ -38,7 +38,8 @@ export async function POST(
 
     const updateData: any = {};
     if (action === 'accept') {
-      updateData.priceStatus = 'accepted';
+      // Skip directly to validated so client sees payment info immediately
+      updateData.priceStatus = 'validated';
     } else {
       if (!appealNote?.trim()) {
         return NextResponse.json({ error: 'Debes indicar el motivo de la apelación' }, { status: 400 });
