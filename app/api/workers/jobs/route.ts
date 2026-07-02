@@ -28,6 +28,15 @@ export async function GET() {
       include: {
         user: { select: { id: true, name: true, email: true } },
         assignedMachine: { select: { id: true, name: true, octoprintUrl: true } },
+        qualityInspection: {
+          select: {
+            fileValidation: true,
+            printSetup: true,
+            productionData: true,
+            postProcessing: true,
+            qualityScore: true,
+          },
+        },
       },
       orderBy: { assignedAt: 'desc' },
     });

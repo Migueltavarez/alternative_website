@@ -6,15 +6,21 @@ import prisma from '@/lib/prisma';
 // POST — save checklist data for the current stage
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as any).role !== 'ADMIN') {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  }
+  if (!session?.user) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  const role = (session.user as any).role;
+  const userId = (session.user as any).id;
 
   const job = await prisma.printJob.findUnique({
     where: { id: params.id },
     include: { qualityInspection: true },
   });
   if (!job) return NextResponse.json({ error: 'Trabajo no encontrado' }, { status: 404 });
+
+  if (role !== 'ADMIN' && job.assignedWorkerId !== userId) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  }
+
   if (!job.qmsStage) return NextResponse.json({ error: 'QMS no iniciado' }, { status: 400 });
   if (!job.qualityInspection) return NextResponse.json({ error: 'Inspección no encontrada' }, { status: 404 });
 
@@ -23,8 +29,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: 'El stage enviado no coincide con el actual' }, { status: 400 });
   }
 
-  const userId = (session.user as any).id;
-  const userName = (session.user as any).name || session.user.email || 'Admin';
+  const userName = (session.user as any).name || session.user.email || 'Maker';
   const dataStr = JSON.stringify(data);
 
   const fieldMap: Record<string, string> = {

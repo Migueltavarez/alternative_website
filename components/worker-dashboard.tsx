@@ -13,7 +13,11 @@ import {
   JOB_STATUS_LABELS, DELIVERY_TIMES, FILAMENT_COLORS, FILAMENT_TYPES, NOZZLE_SIZES,
   MODEL_ISSUES, SERVICE_TYPES, RESIN_USES, MACHINE_TYPES, LASER_TYPES,
 } from '@/lib/print-constants';
-import { QMS_STAGES, QMS_STAGE_LABELS, STAGE_FLOW } from '@/lib/qms-constants';
+import {
+  QMS_STAGES, QMS_STAGE_LABELS, STAGE_FLOW,
+  FILE_VALIDATION_CHECKS, PRINT_SETUP_CHECKS, POST_PROCESSING_CHECKS, DEFECT_TYPES,
+  getQcClassification,
+} from '@/lib/qms-constants';
 
 type MachineTypeValue = (typeof MACHINE_TYPES)[number]['value'];
 
@@ -84,6 +88,13 @@ interface WorkerJob {
   priceStatus?: string;
   // QMS
   qmsStage?: string | null;
+  qualityInspection?: {
+    fileValidation?: string | null;
+    printSetup?: string | null;
+    productionData?: string | null;
+    postProcessing?: string | null;
+    qualityScore?: string | null;
+  } | null;
 }
 
 interface WorkerProfile {
@@ -399,6 +410,9 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
   const [feedbackSuggestion, setFeedbackSuggestion] = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
 
+  // QMS checklist form state per job
+  const [qmsForm, setQmsForm] = useState<Record<string, any>>({});
+
   // Camera modal state
   const [cameraModal, setCameraModal] = useState<{ jobId: string; cameraUrl: string } | null>(null);
 
@@ -459,7 +473,26 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
 
       const responses = await Promise.all(fetches);
       const [jobsData, profileData] = await Promise.all([responses[0].json(), responses[1].json()]);
-      setJobs(Array.isArray(jobsData) ? jobsData : []);
+      const jobList: WorkerJob[] = Array.isArray(jobsData) ? jobsData : [];
+      setJobs(jobList);
+      // Pre-populate QMS form from existing inspection data (only if not already editing)
+      setQmsForm(prev => {
+        const next = { ...prev };
+        for (const job of jobList) {
+          if (next[job.id] !== undefined) continue;
+          const insp = job.qualityInspection;
+          if (!insp) continue;
+          try {
+            const stage = job.qmsStage;
+            if (stage === 'file_validation' && insp.fileValidation) next[job.id] = JSON.parse(insp.fileValidation);
+            else if (stage === 'print_setup' && insp.printSetup) next[job.id] = JSON.parse(insp.printSetup);
+            else if (stage === 'in_production' && insp.productionData) next[job.id] = JSON.parse(insp.productionData);
+            else if (stage === 'post_processing' && insp.postProcessing) next[job.id] = JSON.parse(insp.postProcessing);
+            else if (stage === 'quality_check' && insp.qualityScore) next[job.id] = JSON.parse(insp.qualityScore);
+          } catch {}
+        }
+        return next;
+      });
       setProfile(profileData.profile ?? null);
       if ((role === 'DESIGNER' || role === 'WORKER') && responses[2]) {
         const earningsData = await responses[2].json();
@@ -518,6 +551,45 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
       if (!res.ok) throw new Error(data.error || 'Error al avanzar etapa');
       showNotification('success', `Etapa avanzada: ${QMS_STAGE_LABELS[data.qmsStage]?.label ?? data.qmsStage}`);
       await fetchData();
+    } catch (err: any) {
+      showNotification('error', err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const setQmsField = (jobId: string, key: string, value: any) => {
+    setQmsForm(prev => ({ ...prev, [jobId]: { ...(prev[jobId] ?? {}), [key]: value } }));
+  };
+
+  const setQmsCheck = (jobId: string, checkKey: string, value: boolean) => {
+    setQmsForm(prev => ({
+      ...prev,
+      [jobId]: {
+        ...(prev[jobId] ?? {}),
+        checks: { ...((prev[jobId]?.checks) ?? {}), [checkKey]: value },
+      },
+    }));
+  };
+
+  const handleQmsChecklistSave = async (jobId: string, stage: string) => {
+    setActionLoading(`${jobId}-checklist`);
+    try {
+      let data = qmsForm[jobId] ?? {};
+      if (stage === 'quality_check') {
+        const s = data.scores ?? {};
+        const total = (s.dimensions ?? 0) + (s.finish ?? 0) + (s.color ?? 0) + (s.resistance ?? 0) + (s.packaging ?? 0);
+        const { label: classification } = getQcClassification(total);
+        data = { ...data, total, classification };
+      }
+      const res = await fetch(`/api/qms/jobs/${jobId}/checklist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage, data }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Error al guardar');
+      showNotification('success', 'Checklist guardado');
     } catch (err: any) {
       showNotification('error', err.message);
     } finally {
@@ -1461,47 +1533,214 @@ export function WorkerDashboard({ role = 'WORKER' }: { role?: 'WORKER' | 'DESIGN
                     {job.status === 'in_progress' && (
                       <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Control de Calidad</p>
-                        {/* Stage progress */}
+                        {/* Stage progress bar */}
                         <div className="flex gap-1 flex-wrap">
                           {QMS_STAGES.filter(s => s.step > 0).map((s) => {
                             const currentStep = QMS_STAGES.find(x => x.key === (job.qmsStage ?? 'file_validation'))?.step ?? 1;
                             const done = s.step < currentStep;
                             const active = s.key === (job.qmsStage ?? 'file_validation');
                             return (
-                              <div key={s.key} className={`flex-1 min-w-0 h-1.5 rounded-full transition-colors ${done ? 'bg-primary' : active ? 'bg-primary/60' : 'bg-border'}`} />
+                              <div key={s.key} title={s.label} className={`flex-1 min-w-0 h-1.5 rounded-full transition-colors ${done ? 'bg-primary' : active ? 'bg-primary/60' : 'bg-border'}`} />
                             );
                           })}
                         </div>
-                        {/* Current stage */}
                         {(() => {
                           const stageKey = job.qmsStage ?? 'file_validation';
                           const stageInfo = QMS_STAGE_LABELS[stageKey];
                           const nextStage = STAGE_FLOW[stageKey];
                           const nextInfo = nextStage ? QMS_STAGE_LABELS[nextStage] : null;
+                          const form = qmsForm[job.id] ?? {};
+                          const checks = form.checks ?? {};
+                          const checklistDone = actionLoading === `${job.id}-checklist`;
+
                           return (
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-3">
+                              {/* Stage label */}
                               <div>
                                 <p className="text-xs text-muted-foreground">Etapa actual</p>
                                 <span className={`text-xs px-2 py-0.5 rounded border font-medium ${stageInfo?.color ?? 'bg-accent border-border text-foreground'}`}>
                                   {stageInfo?.label ?? stageKey}
                                 </span>
                               </div>
-                              {stageKey !== 'delivered' && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleQmsAdvance(job.id)}
-                                  disabled={actionLoading === `${job.id}-qms`}
-                                  isLoading={actionLoading === `${job.id}-qms`}
-                                  className="h-8 text-xs shrink-0"
-                                >
-                                  Avanzar{nextInfo ? ` → ${nextInfo.label}` : ''}
-                                </Button>
+
+                              {/* file_validation checklist */}
+                              {stageKey === 'file_validation' && (
+                                <div className="bg-accent/30 rounded-lg p-3 space-y-2">
+                                  <p className="text-xs font-medium">Checklist de validación de archivo</p>
+                                  {FILE_VALIDATION_CHECKS.map(item => (
+                                    <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" checked={!!checks[item.key]} onChange={e => setQmsCheck(job.id, item.key, e.target.checked)} className="rounded" />
+                                      <span className="text-xs">{item.label}</span>
+                                    </label>
+                                  ))}
+                                  <div className="pt-1">
+                                    <label className="text-xs text-muted-foreground">Estado del archivo</label>
+                                    <select
+                                      value={form.status ?? ''}
+                                      onChange={e => setQmsField(job.id, 'status', e.target.value)}
+                                      className="w-full mt-1 bg-background border border-border rounded px-2 py-1.5 text-xs"
+                                    >
+                                      <option value="">-- Selecciona --</option>
+                                      <option value="approved">Aprobado</option>
+                                      <option value="needs_correction">Requiere corrección</option>
+                                      <option value="rejected">Rechazado</option>
+                                    </select>
+                                  </div>
+                                  <textarea
+                                    placeholder="Notas (opcional)"
+                                    value={form.notes ?? ''}
+                                    onChange={e => setQmsField(job.id, 'notes', e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs resize-none"
+                                  />
+                                  <Button size="sm" variant="outline" onClick={() => handleQmsChecklistSave(job.id, stageKey)} disabled={checklistDone} isLoading={checklistDone} className="h-7 text-xs w-full">
+                                    Guardar checklist
+                                  </Button>
+                                </div>
                               )}
-                              {stageKey === 'delivered' && (
-                                <span className="text-xs text-green-400 flex items-center gap-1">
-                                  <CheckCircle className="w-3.5 h-3.5" />Completado
-                                </span>
+
+                              {/* print_setup checklist */}
+                              {stageKey === 'print_setup' && (
+                                <div className="bg-accent/30 rounded-lg p-3 space-y-2">
+                                  <p className="text-xs font-medium">Checklist de preparación de impresión</p>
+                                  {PRINT_SETUP_CHECKS.map(item => (
+                                    <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" checked={!!checks[item.key]} onChange={e => setQmsCheck(job.id, item.key, e.target.checked)} className="rounded" />
+                                      <span className="text-xs">{item.label}</span>
+                                    </label>
+                                  ))}
+                                  <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <div>
+                                      <label className="text-xs text-muted-foreground">Impresora</label>
+                                      <input type="text" value={form.printer ?? ''} onChange={e => setQmsField(job.id, 'printer', e.target.value)} placeholder="Nombre impresora" className="w-full mt-1 bg-background border border-border rounded px-2 py-1.5 text-xs" />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-muted-foreground">Operador</label>
+                                      <input type="text" value={form.operator ?? ''} onChange={e => setQmsField(job.id, 'operator', e.target.value)} placeholder="Tu nombre" className="w-full mt-1 bg-background border border-border rounded px-2 py-1.5 text-xs" />
+                                    </div>
+                                  </div>
+                                  <Button size="sm" variant="outline" onClick={() => handleQmsChecklistSave(job.id, stageKey)} disabled={checklistDone} isLoading={checklistDone} className="h-7 text-xs w-full">
+                                    Guardar checklist
+                                  </Button>
+                                </div>
                               )}
+
+                              {/* in_production checklist */}
+                              {stageKey === 'in_production' && (
+                                <div className="bg-accent/30 rounded-lg p-3 space-y-2">
+                                  <p className="text-xs font-medium">Inspección de primera capa</p>
+                                  {([{ v: 'excellent', l: 'Excelente' }, { v: 'acceptable', l: 'Aceptable' }, { v: 'restart', l: 'Reiniciar' }] as const).map(({ v, l }) => (
+                                    <label key={v} className="flex items-center gap-2 cursor-pointer">
+                                      <input type="radio" name={`layer-${job.id}`} value={v} checked={form.firstLayerCheck === v} onChange={() => setQmsField(job.id, 'firstLayerCheck', v)} />
+                                      <span className="text-xs">{l}</span>
+                                    </label>
+                                  ))}
+                                  <textarea
+                                    placeholder="Notas de producción (opcional)"
+                                    value={form.notes ?? ''}
+                                    onChange={e => setQmsField(job.id, 'notes', e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs resize-none"
+                                  />
+                                  <Button size="sm" variant="outline" onClick={() => handleQmsChecklistSave(job.id, stageKey)} disabled={checklistDone} isLoading={checklistDone} className="h-7 text-xs w-full">
+                                    Guardar
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* post_processing checklist */}
+                              {stageKey === 'post_processing' && (
+                                <div className="bg-accent/30 rounded-lg p-3 space-y-2">
+                                  <p className="text-xs font-medium">Post-procesado</p>
+                                  {POST_PROCESSING_CHECKS.map(item => (
+                                    <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" checked={!!checks[item.key]} onChange={e => setQmsCheck(job.id, item.key, e.target.checked)} className="rounded" />
+                                      <span className="text-xs">{item.label}</span>
+                                    </label>
+                                  ))}
+                                  <textarea
+                                    placeholder="Notas (opcional)"
+                                    value={form.notes ?? ''}
+                                    onChange={e => setQmsField(job.id, 'notes', e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs resize-none"
+                                  />
+                                  <Button size="sm" variant="outline" onClick={() => handleQmsChecklistSave(job.id, stageKey)} disabled={checklistDone} isLoading={checklistDone} className="h-7 text-xs w-full">
+                                    Guardar checklist
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* quality_check scoring */}
+                              {stageKey === 'quality_check' && (
+                                <div className="bg-accent/30 rounded-lg p-3 space-y-2">
+                                  <p className="text-xs font-medium">Puntuación de calidad (0–20 c/u, total 100)</p>
+                                  {([
+                                    { k: 'dimensions', l: 'Dimensiones' },
+                                    { k: 'finish', l: 'Acabado' },
+                                    { k: 'color', l: 'Color' },
+                                    { k: 'resistance', l: 'Resistencia' },
+                                    { k: 'packaging', l: 'Empaque' },
+                                  ] as const).map(({ k, l }) => (
+                                    <div key={k} className="flex items-center gap-2">
+                                      <span className="text-xs w-24 shrink-0">{l}</span>
+                                      <input
+                                        type="number" min={0} max={20}
+                                        value={form.scores?.[k] ?? 0}
+                                        onChange={e => setQmsForm(prev => ({
+                                          ...prev,
+                                          [job.id]: {
+                                            ...(prev[job.id] ?? {}),
+                                            scores: { ...((prev[job.id]?.scores) ?? {}), [k]: Math.max(0, Math.min(20, parseInt(e.target.value) || 0)) },
+                                          },
+                                        }))}
+                                        className="w-16 bg-background border border-border rounded px-2 py-1 text-xs"
+                                      />
+                                    </div>
+                                  ))}
+                                  {(() => {
+                                    const s = form.scores ?? {};
+                                    const total = (s.dimensions ?? 0) + (s.finish ?? 0) + (s.color ?? 0) + (s.resistance ?? 0) + (s.packaging ?? 0);
+                                    const { label: cls } = getQcClassification(total);
+                                    return (
+                                      <p className="text-xs font-medium pt-1">
+                                        Total: <span className={total >= 85 ? 'text-green-400' : 'text-red-400'}>{total}/100 — {cls}</span>
+                                        {total < 85 && <span className="text-muted-foreground"> (mínimo 85)</span>}
+                                      </p>
+                                    );
+                                  })()}
+                                  <textarea
+                                    placeholder="Notas (opcional)"
+                                    value={form.notes ?? ''}
+                                    onChange={e => setQmsField(job.id, 'notes', e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-background border border-border rounded px-2 py-1.5 text-xs resize-none"
+                                  />
+                                  <Button size="sm" variant="outline" onClick={() => handleQmsChecklistSave(job.id, stageKey)} disabled={checklistDone} isLoading={checklistDone} className="h-7 text-xs w-full">
+                                    Guardar puntuación
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Advance button */}
+                              <div className="flex justify-end">
+                                {stageKey !== 'delivered' && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleQmsAdvance(job.id)}
+                                    disabled={actionLoading === `${job.id}-qms`}
+                                    isLoading={actionLoading === `${job.id}-qms`}
+                                    className="h-8 text-xs"
+                                  >
+                                    Avanzar{nextInfo ? ` → ${nextInfo.label}` : ''}
+                                  </Button>
+                                )}
+                                {stageKey === 'delivered' && (
+                                  <span className="text-xs text-green-400 flex items-center gap-1">
+                                    <CheckCircle className="w-3.5 h-3.5" />Completado
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         })()}
