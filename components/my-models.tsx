@@ -244,6 +244,10 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   // Laser
   const [laserCutColor, setLaserCutColor]         = useState('');
   const [laserEngravColor, setLaserEngravColor]   = useState('');
+  // Plans
+  const [blueprintSheetSize, setBlueprintSheetSize] = useState('');
+  const [blueprintColorMode, setBlueprintColorMode] = useState('');
+  const [planSheetPrices, setPlanSheetPrices] = useState<Record<string, number>>({});
   // Resin
   const [resinColor, setResinColor]       = useState('');
   const [resinUse, setResinUse]           = useState('');
@@ -280,6 +284,14 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
   const [creditPayError, setCreditPayError]     = useState('');
 
   useEffect(() => {
+    if (serviceType !== 'plans' || Object.keys(planSheetPrices).length > 0) return;
+    fetch('/api/pricing/plans')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.planSheetPrices) setPlanSheetPrices(data.planSheetPrices); })
+      .catch(() => {});
+  }, [serviceType]);
+
+  useEffect(() => {
     if (deliveryType === 'delivery' && userAddresses.length === 0) {
       fetch('/api/user/addresses')
         .then((r) => r.ok ? r.json() : [])
@@ -307,6 +319,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
     setColor(''); setFilamentType(''); setScale(''); setCustomScale(''); setRealSize('');
     setLaserCutColor(''); setLaserEngravColor('');
     setResinColor(''); setResinUse('');
+    setBlueprintSheetSize(''); setBlueprintColorMode('');
     setDesignDescription(''); setDesignMeasures(''); setDesignReferenceUrls('');
     setDesignMaterial(''); setDesignUse(''); setDesignIsVehicle(false);
     setDesignVehicleMake(''); setDesignVehicleModel(''); setDesignVehicleYear('');
@@ -420,6 +433,10 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
       if (!resinColor) return 'Selecciona el color de la resina';
       if (!resinUse)   return 'Indica el uso del modelo';
     }
+    if (serviceType === 'plans') {
+      if (!blueprintSheetSize) return 'Selecciona el formato de hoja';
+      if (!blueprintColorMode) return 'Selecciona si es a color o blanco y negro';
+    }
     if (serviceType === 'design') {
       if (!designDescription.trim()) return 'Describe qué quieres diseñar';
       if (!designMaterial)           return 'Selecciona el material a usar';
@@ -463,6 +480,8 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
       laserEngravColor: serviceType === 'laser' && laserEngravColor.trim() ? laserEngravColor.trim() : undefined,
       resinColor: serviceType === 'resin' ? resinColor : undefined,
       resinUse: serviceType === 'resin' ? resinUse : undefined,
+      blueprintSheetSize: serviceType === 'plans' ? blueprintSheetSize : undefined,
+      blueprintColorMode: serviceType === 'plans' ? blueprintColorMode : undefined,
       designDescription: serviceType === 'design' ? designDescription.trim() : undefined,
       designMeasures: serviceType === 'design' && designMeasures.trim() ? designMeasures.trim() : undefined,
       designReferenceUrls: serviceType === 'design' && designReferenceUrls.trim() ? designReferenceUrls.trim() : undefined,
@@ -986,11 +1005,76 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
 
                       {/* ── Plans ── */}
                       {serviceType === 'plans' && (
-                        <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
-                          <p className="text-xs text-blue-400 font-medium mb-1">Impresión de planos</p>
-                          <p className="text-xs text-muted-foreground">
-                            Sube tu archivo PDF. Si necesitas un tamaño de papel específico (A0, A1, A2...) o alguna indicación especial, indícalo en las notas.
-                          </p>
+                        <div className="space-y-4">
+                          {/* Sheet size */}
+                          <div>
+                            <p className="text-sm font-medium mb-2">Formato de hoja <span className="text-red-400">*</span></p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { value: '24x36', label: '24×36"' },
+                                { value: '24x18', label: '24×18"' },
+                                { value: '11x17', label: '11×17"' },
+                                { value: '8.5x11', label: '8.5×11"' },
+                              ].map(opt => {
+                                const price = planSheetPrices[opt.value];
+                                return (
+                                  <label
+                                    key={opt.value}
+                                    className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                      blueprintSheetSize === opt.value
+                                        ? 'border-primary bg-primary/10'
+                                        : 'border-border hover:border-primary/50'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="radio"
+                                        name="blueprintSheetSize"
+                                        value={opt.value}
+                                        checked={blueprintSheetSize === opt.value}
+                                        onChange={() => setBlueprintSheetSize(opt.value)}
+                                        className="accent-primary"
+                                      />
+                                      <span className="text-sm font-medium">{opt.label}</span>
+                                    </div>
+                                    {price != null && price > 0 && (
+                                      <span className="text-xs font-semibold text-primary">RD$ {price}</span>
+                                    )}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Color mode */}
+                          <div>
+                            <p className="text-sm font-medium mb-2">Modalidad <span className="text-red-400">*</span></p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { value: 'bw', label: 'Blanco y negro' },
+                                { value: 'color', label: 'A color' },
+                              ].map(opt => (
+                                <label
+                                  key={opt.value}
+                                  className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                    blueprintColorMode === opt.value
+                                      ? 'border-primary bg-primary/10'
+                                      : 'border-border hover:border-primary/50'
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="blueprintColorMode"
+                                    value={opt.value}
+                                    checked={blueprintColorMode === opt.value}
+                                    onChange={() => setBlueprintColorMode(opt.value)}
+                                    className="accent-primary"
+                                  />
+                                  <span className="text-sm font-medium">{opt.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       )}
 

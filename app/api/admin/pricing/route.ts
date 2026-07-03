@@ -29,6 +29,7 @@ export async function GET() {
         platformMargin: d.platformMargin,
         makerSplit: d.makerSplit,
         extrusionRateByQuality: JSON.stringify(d.extrusionRateByQuality),
+        planSheetPrices: JSON.stringify(d.planSheetPrices),
       },
     });
   }
@@ -49,6 +50,7 @@ export async function PUT(req: NextRequest) {
     platformMargin,
     makerSplit,
     extrusionRateByQuality,
+    planSheetPrices,
   } = body;
 
   if (
@@ -85,6 +87,7 @@ export async function PUT(req: NextRequest) {
       platformMargin,
       makerSplit,
       extrusionRateByQuality: JSON.stringify(extrusionRateByQuality),
+      planSheetPrices: JSON.stringify(planSheetPrices ?? {}),
     },
     create: {
       id: 1,
@@ -97,6 +100,7 @@ export async function PUT(req: NextRequest) {
       platformMargin,
       makerSplit,
       extrusionRateByQuality: JSON.stringify(extrusionRateByQuality),
+      planSheetPrices: JSON.stringify(planSheetPrices ?? {}),
     },
   });
 

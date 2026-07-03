@@ -76,6 +76,7 @@ export default function AdminPage() {
   const [editPlatformMargin, setEditPlatformMargin] = useState('');
   const [editMakerSplit, setEditMakerSplit] = useState('');
   const [editExtrusionRates, setEditExtrusionRates] = useState<Record<string, string>>({});
+  const [editPlanSheetPrices, setEditPlanSheetPrices] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -187,6 +188,8 @@ export default function AdminPage() {
         setEditPlatformMargin(String(Math.round(data.platformMargin * 100)));
         setEditMakerSplit(String(Math.round(data.makerSplit * 100)));
         setEditExtrusionRates(Object.fromEntries(Object.entries(data.extrusionRateByQuality as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        const defaultSheetPrices = { '24x36': 0, '24x18': 0, '11x17': 0, '8.5x11': 0 };
+        setEditPlanSheetPrices(Object.fromEntries(Object.entries({ ...defaultSheetPrices, ...(data.planSheetPrices ?? {}) } as Record<string, number>).map(([k, v]) => [k, String(v)])));
       })
       .catch((err: any) => setPricingError(err.message ?? 'Error al cargar la configuración'))
       .finally(() => setPricingLoading(false));
@@ -206,6 +209,7 @@ export default function AdminPage() {
         platformMargin: parseFloat(editPlatformMargin) / 100,
         makerSplit: parseFloat(editMakerSplit) / 100,
         extrusionRateByQuality: Object.fromEntries(Object.entries(editExtrusionRates).map(([k, v]) => [k, parseFloat(v)])),
+        planSheetPrices: Object.fromEntries(Object.entries(editPlanSheetPrices).map(([k, v]) => [k, parseFloat(v) || 0])),
       };
       const res = await fetch('/api/admin/pricing', {
         method: 'PUT',
@@ -2824,6 +2828,32 @@ export default function AdminPage() {
                             min="1"
                             value={editExtrusionRates[q.key] ?? ''}
                             onChange={e => setEditExtrusionRates(r => ({ ...r, [q.key]: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Plan sheet prices */}
+                  <div className="glass rounded-2xl p-6">
+                    <h3 className="font-semibold mb-1">Precios de impresión de planos (RD$)</h3>
+                    <p className="text-xs text-muted-foreground mb-4">Precio por hoja según el formato seleccionado por el cliente al solicitar el servicio de planos.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {[
+                        { key: '24x36', label: '24×36"' },
+                        { key: '24x18', label: '24×18"' },
+                        { key: '11x17', label: '11×17"' },
+                        { key: '8.5x11', label: '8.5×11"' },
+                      ].map(s => (
+                        <div key={s.key}>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1">{s.label} (RD$)</label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            value={editPlanSheetPrices[s.key] ?? ''}
+                            onChange={e => setEditPlanSheetPrices(p => ({ ...p, [s.key]: e.target.value }))}
                             className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
                           />
                         </div>

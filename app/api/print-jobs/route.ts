@@ -48,6 +48,8 @@ export async function POST(request: NextRequest) {
       laserCutColor, laserEngravColor,
       // Resin
       resinColor, resinUse,
+      // Plans
+      blueprintSheetSize, blueprintColorMode,
       // Design
       designDescription, designMeasures, designReferenceUrls,
       referenceImageUrls,
@@ -108,6 +110,9 @@ export async function POST(request: NextRequest) {
         // Resin
         resinColor: resinColor || null,
         resinUse: resinUse || null,
+        // Plans
+        blueprintSheetSize: blueprintSheetSize || null,
+        blueprintColorMode: blueprintColorMode || null,
         // Design
         designDescription: designDescription || null,
         designMeasures: designMeasures || null,

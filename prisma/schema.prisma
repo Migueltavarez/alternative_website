@@ -259,6 +259,10 @@ model PrintJob {
   resinColor      String?
   resinUse        String?
 
+  // Plans (blueprint printing)
+  blueprintSheetSize  String?   // '24x36' | '24x18' | '11x17' | '8.5x11'
+  blueprintColorMode  String?   // 'color' | 'bw'
+
   // Design service
   designDescription   String?
   designMeasures      String?
@@ -437,6 +441,8 @@ model PricingConfig {
   makerSplit             Float    @default(0.70)  // 70% of base cost to maker
   // JSON: { draft: 25, standard: 15, fine: 8 } grams/hour extrusion rate
   extrusionRateByQuality String
+  // JSON: { '24x36': 0, '24x18': 0, '11x17': 0, '8.5x11': 0 } RD$ per sheet
+  planSheetPrices        String   @default("{}")
   updatedAt              DateTime @updatedAt
 }
 
