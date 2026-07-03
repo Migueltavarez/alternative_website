@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     data: { verificationToken, verificationTokenExpiry },
   });
 
-  const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${verificationToken}`;
+  const verifyUrl = `${APP_URL}/verify-email?token=${verificationToken}`;
   sendVerificationEmail(user.email, verifyUrl, user.name).catch((err) =>
     console.error('Resend verification error:', err)
   );

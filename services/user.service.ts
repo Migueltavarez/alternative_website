@@ -75,7 +75,7 @@ export async function registerUser(input: RegisterUserInput) {
   });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';
-  const verifyUrl = `${appUrl}/api/auth/verify-email?token=${verificationToken}`;
+  const verifyUrl = `${appUrl}/verify-email?token=${verificationToken}`;
 
   sendVerificationEmail(user.email, verifyUrl, user.name).catch(err =>
     console.error('Verification email error:', err)
