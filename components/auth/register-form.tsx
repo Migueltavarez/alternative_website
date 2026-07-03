@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +16,8 @@ export function RegisterForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [globalError, setGlobalError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const refCode = searchParams.get('ref') ?? '';
 
   const {
     register,
@@ -23,6 +25,7 @@ export function RegisterForm() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
+    defaultValues: { referralCode: refCode },
   });
 
   const onSubmit = async (data: RegisterInput) => {
