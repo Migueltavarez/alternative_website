@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { resetToken: token },
+      select: { id: true, resetTokenExpiry: true, emailVerified: true },
     });
 
     if (!user || !user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
@@ -30,6 +31,8 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         resetToken: null,
         resetTokenExpiry: null,
+        // Receiving the reset link proves email ownership — mark as verified
+        ...(!user.emailVerified ? { emailVerified: true, verificationToken: null, verificationTokenExpiry: null } : {}),
       },
     });
 

@@ -53,7 +53,7 @@ export async function middleware(req: NextRequest) {
 
   const t = token as any;
 
-  if (t.emailVerified === false) {
+  if (!t.emailVerified) {
     return NextResponse.redirect(new URL('/verify-email', req.url));
   }
 
