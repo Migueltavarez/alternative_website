@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import {
   Users, CreditCard, TrendingUp, Gift, MessageSquare,
   Shield, RefreshCw, XCircle, ChevronUp, ChevronDown,
-  CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck,
+  CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck, FileText,
   DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool, Sliders, UserCircle2, Eye, X as XIcon,
   MapPin, Phone, CreditCard as IdCard, GraduationCap, Mail, Calendar, Clock,
 } from 'lucide-react';
@@ -641,23 +641,47 @@ export default function AdminPage() {
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
           <span className="text-sm">{job.fileName}</span>
-          <button
-            onClick={() => handleOpenInBambuStudio(job.fileUrl, job.fileName)}
-            className="p-1.5 rounded-lg hover:bg-accent text-green-400 hover:text-green-300 transition-colors"
-            title="Abrir en Bambu Studio"
-          >
-            <Box className="w-4 h-4" />
-          </button>
-          <a
-            href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'}
-            download={job.fileName}
-            className="p-1.5 rounded-lg hover:bg-accent text-blue-400 hover:text-blue-300 transition-colors"
-            title="Descargar archivo"
-          >
-            <Download className="w-4 h-4" />
-          </a>
+          {job.serviceType !== 'plans' && (
+            <button
+              onClick={() => handleOpenInBambuStudio(job.fileUrl, job.fileName)}
+              className="p-1.5 rounded-lg hover:bg-accent text-green-400 hover:text-green-300 transition-colors"
+              title="Abrir en Bambu Studio"
+            >
+              <Box className="w-4 h-4" />
+            </button>
+          )}
+          {job.serviceType === 'plans' ? (
+            <a
+              href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-lg hover:bg-accent text-purple-400 hover:text-purple-300 transition-colors"
+              title="Ver PDF"
+            >
+              <FileText className="w-4 h-4" />
+            </a>
+          ) : (
+            <a
+              href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'}
+              download={job.fileName}
+              className="p-1.5 rounded-lg hover:bg-accent text-blue-400 hover:text-blue-300 transition-colors"
+              title="Descargar archivo"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+          )}
         </div>
         <div className="flex flex-wrap gap-1 mt-1">
+          {job.blueprintSheetSize && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
+              Hoja: {job.blueprintSheetSize}
+            </span>
+          )}
+          {job.blueprintColorMode && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
+              {job.blueprintColorMode === 'color' ? 'Color' : 'B/N'}
+            </span>
+          )}
           {job.color && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-card border border-border">
               Color: {job.color}
@@ -1076,18 +1100,31 @@ export default function AdminPage() {
         {/* File */}
         <div className="flex items-center gap-2 border-t border-border/50 pt-3">
           <span className="text-sm font-medium truncate flex-1 min-w-0">{job.fileName}</span>
-          <button onClick={() => handleOpenInBambuStudio(job.fileUrl, job.fileName)}
-            className="p-1 rounded hover:bg-accent text-green-400 transition-colors shrink-0">
-            <Box className="w-3.5 h-3.5" />
-          </button>
-          <a href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'} download={job.fileName}
-            className="p-1 rounded hover:bg-accent text-blue-400 transition-colors shrink-0">
-            <Download className="w-3.5 h-3.5" />
-          </a>
+          {job.serviceType !== 'plans' && (
+            <button onClick={() => handleOpenInBambuStudio(job.fileUrl, job.fileName)}
+              className="p-1 rounded hover:bg-accent text-green-400 transition-colors shrink-0">
+              <Box className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {job.serviceType === 'plans' ? (
+            <a href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'}
+              target="_blank" rel="noopener noreferrer"
+              className="p-1 rounded hover:bg-accent text-purple-400 transition-colors shrink-0"
+              title="Ver PDF">
+              <FileText className="w-3.5 h-3.5" />
+            </a>
+          ) : (
+            <a href={job.fileUrl ? `/api/download${job.fileUrl}` : '#'} download={job.fileName}
+              className="p-1 rounded hover:bg-accent text-blue-400 transition-colors shrink-0">
+              <Download className="w-3.5 h-3.5" />
+            </a>
+          )}
         </div>
 
         {/* Specs */}
         <div className="flex flex-wrap gap-1">
+          {job.blueprintSheetSize && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">Hoja: {job.blueprintSheetSize}</span>}
+          {job.blueprintColorMode && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">{job.blueprintColorMode === 'color' ? 'Color' : 'B/N'}</span>}
           {job.color && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">Color: {job.color}</span>}
           {job.filamentType && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">{job.filamentType}</span>}
           {job.designMaterial && <span className="text-[10px] px-1.5 py-0.5 rounded bg-card border border-border">{job.designMaterial}</span>}
