@@ -383,19 +383,9 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
                   ))}
                 </div>
 
-                {/* Price */}
-                <div className="rounded-xl bg-gradient-to-br from-blue-600/15 to-red-600/10 border border-blue-500/20 p-5 text-center">
-                  <p className="text-sm text-muted-foreground mb-1">Precio estimado</p>
-                  <p className="text-4xl font-bold gradient-text">RD${quote.priceClient.toLocaleString()}</p>
-                  <div className="flex justify-center gap-4 mt-3 text-xs text-muted-foreground">
-                    <span>Material: RD${quote.costMaterial.toLocaleString()}</span>
-                    <span>Máquina: RD${quote.costMachine.toLocaleString()}</span>
-                  </div>
+                <div className="rounded-xl bg-card border border-border p-4 text-center text-sm text-muted-foreground">
+                  El equipo de Alternative 3D Studio revisará tu modelo y te enviará una cotización.
                 </div>
-
-                <p className="text-xs text-muted-foreground text-center">
-                  Precio estimado. Puede variar según la impresora asignada.
-                </p>
 
                 {/* CTAs */}
                 <div className="flex gap-3">
@@ -471,13 +461,13 @@ export function QuoteModal({ isOpen, onClose, isLoggedIn, initialFile, onOrderAs
                 </div>
 
                 {/* Quote summary */}
-                <div className="rounded-xl bg-card border border-border p-3 flex items-center justify-between">
+                <div className="rounded-xl bg-card border border-border p-3">
                   <p className="text-xs text-muted-foreground">
                     <span className="text-foreground font-medium">{material}</span>
                     {' · '}Infill {infill}%
                     {' · '}{QUALITY_OPTIONS.find(q => q.value === quality)?.label}
                   </p>
-                  <p className="text-sm font-bold gradient-text">RD${quote?.priceClient.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Precio pendiente de cotización por el equipo</p>
                 </div>
 
                 {submitError && (
