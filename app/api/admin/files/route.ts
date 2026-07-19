@@ -79,7 +79,7 @@ export async function GET() {
       if (cp.paymentProofUrl) {
         refMap.set(path.basename(cp.paymentProofUrl), {
           type: 'comprobante_credito', id: cp.id,
-          clientName: cp.user?.name ?? '', clientEmail: cp.user?.email ?? '',
+          clientName: '', clientEmail: '',
         });
       }
     }
@@ -88,7 +88,7 @@ export async function GET() {
       if (sub.paymentProofUrl) {
         refMap.set(path.basename(sub.paymentProofUrl), {
           type: 'comprobante_suscripcion', id: sub.id,
-          clientName: sub.user?.name ?? '', clientEmail: sub.user?.email ?? '',
+          clientName: '', clientEmail: '',
         });
       }
     }
