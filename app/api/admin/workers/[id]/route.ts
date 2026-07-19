@@ -60,20 +60,30 @@ export async function DELETE(
 
   const userId = params.id;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
+  const workerProfile = await prisma.workerProfile.findUnique({
+    where: { userId },
+    include: { machines: { select: { id: true } } },
   });
 
-  if (!user || !['WORKER', 'DESIGNER'].includes(user.role)) {
-    return NextResponse.json({ error: 'Usuario no encontrado o no es worker/designer' }, { status: 404 });
+  if (!workerProfile) {
+    return NextResponse.json({ error: 'Perfil de maker no encontrado' }, { status: 404 });
+  }
+
+  const machineIds = workerProfile.machines.map((m) => m.id);
+
+  // Nullify machine references on print jobs to avoid FK constraint errors
+  if (machineIds.length > 0) {
+    await prisma.printJob.updateMany({
+      where: { assignedMachineId: { in: machineIds } },
+      data: { assignedMachineId: null },
+    });
   }
 
   await prisma.$transaction([
-    prisma.workerProfile.deleteMany({ where: { userId } }),
+    prisma.workerProfile.delete({ where: { userId } }),
     prisma.user.update({
       where: { id: userId },
-      data: { role: 'USER', workerApproved: false },
+      data: { workerApproved: false },
     }),
   ]);
 

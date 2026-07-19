@@ -1943,16 +1943,23 @@ export default function AdminPage() {
                               if (!confirm(`¿Eliminar a ${w.user?.name ?? w.user?.email} como maker? Se reseteará su rol a usuario normal.`)) return;
                               setActionLoading(`del-${w.id}`);
                               try {
-                                await fetch(`/api/admin/workers/${w.userId}`, { method: 'DELETE' });
+                                const res = await fetch(`/api/admin/workers/${w.userId}`, { method: 'DELETE' });
+                                if (!res.ok) {
+                                  const data = await res.json().catch(() => ({}));
+                                  alert(data.error ?? 'Error al eliminar maker');
+                                  return;
+                                }
                                 fetchData();
+                              } catch {
+                                alert('Error de red al eliminar maker');
                               } finally {
                                 setActionLoading(null);
                               }
                             }}
-                            disabled={!!actionLoading}
+                            disabled={actionLoading === `del-${w.id}`}
                             className="text-xs px-2 py-1 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
                           >
-                            Eliminar
+                            {actionLoading === `del-${w.id}` ? '...' : 'Eliminar'}
                           </button>
                         </div>
                       </div>
