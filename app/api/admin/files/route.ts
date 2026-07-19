@@ -15,13 +15,16 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    if (!existsSync(UPLOADS_DIR)) {
-      return NextResponse.json({ files: [], totalSize: 0, orphanCount: 0, orphanSize: 0 });
+    const dirExists = existsSync(UPLOADS_DIR);
+    console.log('[admin/files] cwd:', process.cwd(), '| uploadsDir:', UPLOADS_DIR, '| exists:', dirExists);
+
+    if (!dirExists) {
+      return NextResponse.json({ files: [], totalSize: 0, orphanCount: 0, orphanSize: 0, _debug: { cwd: process.cwd(), uploadsDir: UPLOADS_DIR, dirExists: false } });
     }
 
     const entries = await readdir(UPLOADS_DIR, { withFileTypes: true });
-    // Only regular files, skip subdirectories
     const fileEntries = entries.filter((e) => e.isFile());
+    console.log('[admin/files] total entries:', entries.length, '| files:', fileEntries.length);
 
     // Gather all file URLs referenced in the DB
     const [printJobs, creditPurchases, subscriptions, qualityPhotos] = await Promise.all([
@@ -129,7 +132,7 @@ export async function GET() {
     const orphanCount = files.filter((f) => !f.referenced).length;
     const orphanSize = files.filter((f) => !f.referenced).reduce((s, f) => s + f.size, 0);
 
-    return NextResponse.json({ files, totalSize, orphanCount, orphanSize });
+    return NextResponse.json({ files, totalSize, orphanCount, orphanSize, _debug: { cwd: process.cwd(), uploadsDir: UPLOADS_DIR, totalEntries: entries.length, fileEntries: fileEntries.length } });
   } catch (error) {
     console.error('[admin/files] GET error:', error);
     return NextResponse.json({ error: 'Error al leer archivos', files: [], totalSize: 0, orphanCount: 0, orphanSize: 0 }, { status: 500 });
