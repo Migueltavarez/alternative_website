@@ -14,7 +14,7 @@ export async function GET() {
     const workers = await prisma.workerProfile.findMany({
       where: { userId: { in: existingUserIds } },
       include: {
-        user: { select: { id: true, name: true, email: true, role: true, createdAt: true } },
+        user: { select: { id: true, name: true, email: true, role: true, workerApproved: true, createdAt: true } },
         machines: { orderBy: { createdAt: 'asc' } },
         _count: { select: { machines: true } },
       },

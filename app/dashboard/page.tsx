@@ -8,7 +8,7 @@ import {
   Coins, CreditCard, TrendingUp, Gift,
   Loader2, CheckCircle, XCircle, AlertCircle, X, Copy, Check,
   Printer, ChevronRight, Activity, History, DollarSign,
-  LayoutDashboard, Wrench, Clock, Users, MessageSquare,
+  LayoutDashboard, Wrench, Users, MessageSquare,
 } from 'lucide-react';
 import { Navbar } from '@/components/navbar';
 import { WhatsAppButton } from '@/components/whatsapp-button';
@@ -172,16 +172,6 @@ const SERVICE_LABELS: Record<string, string> = {
   asesoria:       'Asesorías',
 };
 
-const ACTIVE_STATUSES = ['pending', 'assigned', 'accepted', 'printing', 'needs_revision', 'proof_uploaded'];
-
-const PROGRESS_STEPS = ['Solicitado', 'Asignado', 'En producción', 'Completado'];
-const PROGRESS_STEP_MAP: Record<string, number> = {
-  pending: 0, assigned: 1, accepted: 1, printing: 2,
-  needs_revision: 2, correction_requested: 1, proof_uploaded: 2, completed: 3,
-};
-function getProgressStep(status: string) {
-  return PROGRESS_STEP_MAP[status] ?? 0;
-}
 
 const STATUS_LABELS: Record<string, string> = {
   pending:        'Pendiente',
@@ -438,7 +428,6 @@ function DashboardContent() {
 
   const currentCredits   = userData?.credits || 0;
   const discountBalance  = userData?.discountBalance || 0;
-  const activeJobs       = printJobs.filter((j) => ACTIVE_STATUSES.includes(j.status));
   const currentPlan      = userData?.subscription?.plan ?? null;
   const subStatus        = userData?.subscription?.status ?? null;
   const isActiveSub      = subStatus === 'active';
@@ -695,76 +684,14 @@ function DashboardContent() {
                 </div>
               </div>
 
-              {/* Active jobs */}
-              <div className="glass rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <Clock className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Trabajos en proceso</h2>
-                  {activeJobs.length > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
-                      {activeJobs.length}
-                    </span>
-                  )}
-                </div>
-
-                {activeJobs.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Printer className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground text-sm">No tienes trabajos en proceso</p>
-                    <button
-                      onClick={() => setActiveTab('servicios')}
-                      className="mt-3 text-sm text-primary hover:underline"
-                    >
-                      Solicitar un servicio
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {activeJobs.map((job) => {
-                      const step = getProgressStep(job.status);
-                      return (
-                        <div key={job.id} className="p-3 rounded-xl bg-card border border-border">
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                <Printer className="w-4 h-4 text-primary" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-sm truncate">{job.fileName}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {SERVICE_LABELS[job.serviceType ?? ''] ?? 'Impresión 3D'}
-                                  {' · '}{new Date(job.createdAt).toLocaleDateString('es-ES')}
-                                </p>
-                              </div>
-                            </div>
-                            <span className={`text-xs px-2 py-1 rounded-full border shrink-0 ${STATUS_COLORS[job.status] ?? ''}`}>
-                              {STATUS_LABELS[job.status] ?? job.status}
-                            </span>
-                          </div>
-                          {/* Status progress timeline */}
-                          <div className="mt-2.5 flex items-center">
-                            {PROGRESS_STEPS.map((label, idx) => (
-                              <div key={label} className="flex items-center flex-1 last:flex-none">
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <div className={`w-2 h-2 rounded-full transition-colors ${
-                                    idx < step ? 'bg-green-400' : idx === step ? 'bg-primary' : 'bg-border'
-                                  }`} />
-                                  <span className={`text-[9px] leading-tight whitespace-nowrap ${
-                                    idx === step ? 'text-primary font-medium' : idx < step ? 'text-green-400' : 'text-muted-foreground'
-                                  }`}>{label}</span>
-                                </div>
-                                {idx < PROGRESS_STEPS.length - 1 && (
-                                  <div className={`flex-1 h-px mx-1 mb-3 ${idx < step ? 'bg-green-400/60' : 'bg-border'}`} />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              {/* Active jobs with full interactivity */}
+              <MyModels
+                printJobs={printJobs.filter(j => !['completed', 'cancelled', 'delivered'].includes(j.status))}
+                onRefresh={fetchPrintJobs}
+                isStudent={(session?.user as any)?.isStudent === true}
+                userCredits={currentCredits}
+                onCreditsUsed={() => { fetchUserData(); fetchPrintJobs(); }}
+              />
             </motion.div>
           )}
 
@@ -805,9 +732,9 @@ function DashboardContent() {
           {activeTab === 'historial' && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} key="historial">
 
-              {/* All jobs with full interactivity */}
+              {/* Completed / cancelled jobs only */}
               <MyModels
-                printJobs={printJobs}
+                printJobs={printJobs.filter(j => ['completed', 'cancelled', 'delivered'].includes(j.status))}
                 onRefresh={fetchPrintJobs}
                 isStudent={(session?.user as any)?.isStudent === true}
                 userCredits={currentCredits}

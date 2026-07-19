@@ -10,6 +10,7 @@ import {
   CalendarClock, AlertCircle, Pause, Play, FileEdit, Printer, Trash2, Download, Box, UserCheck, FileText,
   DollarSign, ExternalLink, CheckCircle2, Coins, ListChecks, PenTool, Sliders, UserCircle2, Eye, X as XIcon,
   MapPin, Phone, CreditCard as IdCard, GraduationCap, Mail, Calendar, Clock,
+  HardDrive, FolderOpen, AlertTriangle,
 } from 'lucide-react';
 import { PRICE_STATUS_LABELS, SERVICE_MACHINE_TYPES, MACHINE_TYPES } from '@/lib/print-constants';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,7 @@ export default function AdminPage() {
   const [assignSelections, setAssignSelections] = useState<Record<string, string>>({});
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [creditPurchases, setCreditPurchases] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones' | 'eventos' | 'cursos' | 'precios' | 'vendedores'>('trabajos');
+  const [activeTab, setActiveTab] = useState<'trabajos' | 'usuarios' | 'suscripciones' | 'mensajes' | 'metricas' | 'qms' | 'aprobaciones' | 'eventos' | 'cursos' | 'precios' | 'vendedores' | 'archivos'>('trabajos');
   const [adminEvents, setAdminEvents] = useState<any[]>([]);
   const [adminCourses, setAdminCourses] = useState<any[]>([]);
   const [eventForm, setEventForm] = useState({ title: '', description: '', date: '', time: '', location: '', type: 'Taller', imageUrl: '' });
@@ -77,6 +78,13 @@ export default function AdminPage() {
   const [editMakerSplit, setEditMakerSplit] = useState('');
   const [editExtrusionRates, setEditExtrusionRates] = useState<Record<string, string>>({});
   const [editPlanSheetPrices, setEditPlanSheetPrices] = useState<Record<string, string>>({});
+
+  // Archivos
+  const [adminFiles, setAdminFiles] = useState<any[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesStats, setFilesStats] = useState<{ totalSize: number; orphanCount: number; orphanSize: number } | null>(null);
+  const [filesFilter, setFilesFilter] = useState<'all' | 'orphan' | 'modelo' | 'comprobante' | 'foto_qc'>('all');
+  const [filesDeletingSet, setFilesDeletingSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -167,6 +175,36 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (activeTab === 'vendedores') fetchSellers();
+  }, [activeTab]);
+
+  const fetchAdminFiles = async () => {
+    setFilesLoading(true);
+    try {
+      const res = await fetch('/api/admin/files');
+      const data = await res.json();
+      setAdminFiles(data.files ?? []);
+      setFilesStats({ totalSize: data.totalSize, orphanCount: data.orphanCount, orphanSize: data.orphanSize });
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+  const deleteFiles = async (fileNames: string[]) => {
+    setFilesDeletingSet(new Set(fileNames));
+    try {
+      await fetch('/api/admin/files', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileNames }),
+      });
+      await fetchAdminFiles();
+    } finally {
+      setFilesDeletingSet(new Set());
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'archivos') fetchAdminFiles();
   }, [activeTab]);
 
   useEffect(() => {
@@ -1376,6 +1414,7 @@ export default function AdminPage() {
               { key: 'metricas', label: 'Métricas', icon: TrendingUp },
               { key: 'qms', label: 'Control QC', icon: Shield },
               { key: 'precios', label: 'Precios', icon: Sliders },
+              { key: 'archivos', label: 'Archivos', icon: HardDrive },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -1842,16 +1881,16 @@ export default function AdminPage() {
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <Printer className="w-6 h-6 text-primary" />
                 Makers Registrados
-                <span className="text-base font-normal text-muted-foreground">({workers.filter((w: any) => w.user?.role !== 'DESIGNER').length})</span>
+                <span className="text-base font-normal text-muted-foreground">({workers.filter((w: any) => w.user?.role !== 'DESIGNER' && w.user?.workerApproved).length})</span>
               </h2>
             </div>
-            {workers.filter((w: any) => w.user?.role !== 'DESIGNER').length === 0 ? (
+            {workers.filter((w: any) => w.user?.role !== 'DESIGNER' && w.user?.workerApproved).length === 0 ? (
               <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
-                No hay makers registrados aún
+                No hay makers aprobados aún
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {workers.filter((w: any) => w.user?.role !== 'DESIGNER').map((w: any) => {
+                {workers.filter((w: any) => w.user?.role !== 'DESIGNER' && w.user?.workerApproved).map((w: any) => {
                   const activeWorkerJobs = printJobs.filter(
                     (j) => j.assignedWorkerId === w.userId &&
                       ['assigned', 'accepted', 'printing'].includes(j.status)
@@ -1890,6 +1929,22 @@ export default function AdminPage() {
                             className="text-xs px-2 py-1 rounded border border-border hover:bg-accent transition-colors"
                           >
                             {w.isActive ? 'Pausar' : 'Activar'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`¿Eliminar a ${w.user?.name ?? w.user?.email} como maker? Se reseteará su rol a usuario normal.`)) return;
+                              setActionLoading(`del-${w.id}`);
+                              try {
+                                await fetch(`/api/admin/workers/${w.userId}`, { method: 'DELETE' });
+                                fetchData();
+                              } finally {
+                                setActionLoading(null);
+                              }
+                            }}
+                            disabled={!!actionLoading}
+                            className="text-xs px-2 py-1 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                          >
+                            Eliminar
                           </button>
                         </div>
                       </div>
@@ -3124,6 +3179,203 @@ export default function AdminPage() {
         </div>
       </>
     )}
+          {/* ── ARCHIVOS ──────────────────────────────────────────────────── */}
+          {activeTab === 'archivos' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">Gestión de Archivos</h2>
+                <button
+                  onClick={fetchAdminFiles}
+                  disabled={filesLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-sm hover:bg-accent/80 transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${filesLoading ? 'animate-spin' : ''}`} />
+                  Actualizar
+                </button>
+              </div>
+
+              {/* Stats */}
+              {filesStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="glass rounded-xl p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Total archivos</p>
+                    <p className="text-2xl font-bold">{adminFiles.length}</p>
+                  </div>
+                  <div className="glass rounded-xl p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Espacio usado</p>
+                    <p className="text-2xl font-bold">{(filesStats.totalSize / (1024 * 1024)).toFixed(1)} MB</p>
+                  </div>
+                  <div className="glass rounded-xl p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Archivos huérfanos</p>
+                    <p className="text-2xl font-bold text-amber-400">{filesStats.orphanCount}</p>
+                  </div>
+                  <div className="glass rounded-xl p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Espacio huérfanos</p>
+                    <p className="text-2xl font-bold text-amber-400">{(filesStats.orphanSize / (1024 * 1024)).toFixed(1)} MB</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Filters + batch delete */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                {(['all', 'orphan', 'modelo', 'comprobante', 'foto_qc'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilesFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      filesFilter === f ? 'bg-primary text-white' : 'bg-accent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {{ all: 'Todos', orphan: 'Huérfanos', modelo: 'Modelos 3D', comprobante: 'Comprobantes', foto_qc: 'Fotos QC' }[f]}
+                  </button>
+                ))}
+
+                {filesStats && filesStats.orphanCount > 0 && (
+                  <button
+                    onClick={() => {
+                      const orphans = adminFiles.filter((f) => !f.referenced).map((f) => f.name);
+                      if (window.confirm(`¿Eliminar ${orphans.length} archivos huérfanos (${(filesStats.orphanSize / (1024 * 1024)).toFixed(1)} MB)?`)) {
+                        deleteFiles(orphans);
+                      }
+                    }}
+                    disabled={filesDeletingSet.size > 0}
+                    className="ml-auto flex items-center gap-2 px-4 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Limpiar huérfanos ({filesStats.orphanCount})
+                  </button>
+                )}
+              </div>
+
+              {/* File table */}
+              {filesLoading ? (
+                <div className="flex items-center gap-2 py-12 justify-center text-muted-foreground text-sm">
+                  <RefreshCw className="w-4 h-4 animate-spin" /> Escaneando archivos...
+                </div>
+              ) : (() => {
+                const filtered = adminFiles.filter((f) => {
+                  if (filesFilter === 'orphan') return !f.referenced;
+                  if (filesFilter === 'modelo') return f.refType === 'modelo';
+                  if (filesFilter === 'comprobante') return f.refType?.startsWith('comprobante');
+                  if (filesFilter === 'foto_qc') return f.refType === 'foto_qc';
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                      <FolderOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                      No hay archivos en esta categoría
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="glass rounded-xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left px-4 py-3 text-muted-foreground font-medium">Archivo</th>
+                            <th className="text-left px-4 py-3 text-muted-foreground font-medium">Tipo</th>
+                            <th className="text-left px-4 py-3 text-muted-foreground font-medium">Cliente</th>
+                            <th className="text-left px-4 py-3 text-muted-foreground font-medium">Estado</th>
+                            <th className="text-right px-4 py-3 text-muted-foreground font-medium">Tamaño</th>
+                            <th className="text-right px-4 py-3 text-muted-foreground font-medium"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((f) => (
+                            <tr key={f.name} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  {!f.referenced && <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" title="Huérfano" />}
+                                  <div>
+                                    <p className="font-medium truncate max-w-[200px]" title={f.originalName ?? f.name}>
+                                      {f.originalName ?? f.name}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">{f.name}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                                  f.refType === 'modelo' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                                  f.refType?.startsWith('comprobante') ? 'bg-green-500/10 border-green-500/20 text-green-400' :
+                                  f.refType === 'foto_qc' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
+                                  'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                }`}>
+                                  {f.refType === 'modelo' ? `Modelo (${f.serviceType ?? '3D'})` :
+                                   f.refType === 'comprobante_trabajo' ? 'Pago trabajo' :
+                                   f.refType === 'comprobante_credito' ? 'Pago créditos' :
+                                   f.refType === 'comprobante_suscripcion' ? 'Pago suscripción' :
+                                   f.refType === 'foto_qc' ? 'Foto QC' :
+                                   'Huérfano'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                {f.clientName ? (
+                                  <div>
+                                    <p className="font-medium">{f.clientName}</p>
+                                    <p className="text-[11px] text-muted-foreground">{f.clientEmail}</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {f.jobStatus ? (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusColor(f.jobStatus)}`}>
+                                    {f.jobStatus}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap">
+                                {f.size >= 1024 * 1024
+                                  ? `${(f.size / (1024 * 1024)).toFixed(1)} MB`
+                                  : `${(f.size / 1024).toFixed(0)} KB`}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <a
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                                    title="Ver archivo"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </a>
+                                  <button
+                                    onClick={() => {
+                                      const msg = f.referenced
+                                        ? `Este archivo está en uso (trabajo ${f.refId?.slice(-6)}). ¿Eliminarlo de todas formas?`
+                                        : `¿Eliminar ${f.originalName ?? f.name}?`;
+                                      if (window.confirm(msg)) deleteFiles([f.name]);
+                                    }}
+                                    disabled={filesDeletingSet.has(f.name)}
+                                    className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-400"
+                                    title="Eliminar archivo"
+                                  >
+                                    {filesDeletingSet.has(f.name)
+                                      ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                      : <Trash2 className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
+          )}
+
     </div>
   );
 }

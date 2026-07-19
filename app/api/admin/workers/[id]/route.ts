@@ -47,3 +47,35 @@ export async function POST(
 
   return NextResponse.json({ error: 'Acción inválida' }, { status: 400 });
 }
+
+// DELETE /api/admin/workers/[id] — eliminar maker permanentemente
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if ((session?.user as any)?.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+
+  const userId = params.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!user || !['WORKER', 'DESIGNER'].includes(user.role)) {
+    return NextResponse.json({ error: 'Usuario no encontrado o no es worker/designer' }, { status: 404 });
+  }
+
+  await prisma.$transaction([
+    prisma.workerProfile.deleteMany({ where: { userId } }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { role: 'USER', workerApproved: false },
+    }),
+  ]);
+
+  return NextResponse.json({ success: true });
+}
