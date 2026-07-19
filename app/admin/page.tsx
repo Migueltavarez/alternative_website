@@ -82,6 +82,7 @@ export default function AdminPage() {
   // Archivos
   const [adminFiles, setAdminFiles] = useState<any[]>([]);
   const [filesLoading, setFilesLoading] = useState(false);
+  const [filesError, setFilesError] = useState<string | null>(null);
   const [filesStats, setFilesStats] = useState<{ totalSize: number; orphanCount: number; orphanSize: number } | null>(null);
   const [filesFilter, setFilesFilter] = useState<'all' | 'orphan' | 'modelo' | 'comprobante' | 'foto_qc'>('all');
   const [filesDeletingSet, setFilesDeletingSet] = useState<Set<string>>(new Set());
@@ -179,11 +180,18 @@ export default function AdminPage() {
 
   const fetchAdminFiles = async () => {
     setFilesLoading(true);
+    setFilesError(null);
     try {
       const res = await fetch('/api/admin/files');
       const data = await res.json();
+      if (!res.ok || data.error) {
+        setFilesError(data.error ?? `Error HTTP ${res.status}`);
+        return;
+      }
       setAdminFiles(data.files ?? []);
-      setFilesStats({ totalSize: data.totalSize, orphanCount: data.orphanCount, orphanSize: data.orphanSize });
+      setFilesStats({ totalSize: data.totalSize ?? 0, orphanCount: data.orphanCount ?? 0, orphanSize: data.orphanSize ?? 0 });
+    } catch (e: any) {
+      setFilesError(e.message ?? 'Error desconocido');
     } finally {
       setFilesLoading(false);
     }
@@ -3193,6 +3201,14 @@ export default function AdminPage() {
                   Actualizar
                 </button>
               </div>
+
+              {/* Error */}
+              {filesError && (
+                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {filesError}
+                </div>
+              )}
 
               {/* Stats */}
               {filesStats && (
