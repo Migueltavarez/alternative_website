@@ -27,6 +27,7 @@ export async function GET() {
     console.log('[admin/files] total entries:', entries.length, '| files:', fileEntries.length);
 
     // Gather all file URLs referenced in the DB
+    // Note: user join is omitted for subscriptions/credits to avoid broken FK issues on SQLite
     const [printJobs, creditPurchases, subscriptions, qualityPhotos] = await Promise.all([
       prisma.printJob.findMany({
         select: {
@@ -34,12 +35,12 @@ export async function GET() {
           fileName: true, status: true, serviceType: true,
           user: { select: { name: true, email: true } },
         },
-      }),
+      }).then(jobs => jobs.filter(j => j.user !== null)),
       prisma.creditPurchase.findMany({
-        select: { id: true, paymentProofUrl: true, user: { select: { name: true, email: true } } },
+        select: { id: true, paymentProofUrl: true },
       }),
       prisma.subscription.findMany({
-        select: { id: true, paymentProofUrl: true, user: { select: { name: true, email: true } } },
+        select: { id: true, paymentProofUrl: true },
       }),
       prisma.qualityPhoto.findMany({
         select: { id: true, fileUrl: true, printJobId: true },
