@@ -3289,7 +3289,7 @@ export default function AdminPage() {
                             <tr key={f.name} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
-                                  {!f.referenced && <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" title="Huérfano" />}
+                                  {!f.referenced && <span title="Huérfano"><AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" /></span>}
                                   <div>
                                     <p className="font-medium truncate max-w-[200px]" title={f.originalName ?? f.name}>
                                       {f.originalName ?? f.name}
