@@ -133,9 +133,10 @@ export async function GET() {
     const orphanSize = files.filter((f) => !f.referenced).reduce((s, f) => s + f.size, 0);
 
     return NextResponse.json({ files, totalSize, orphanCount, orphanSize, _debug: { cwd: process.cwd(), uploadsDir: UPLOADS_DIR, totalEntries: entries.length, fileEntries: fileEntries.length } });
-  } catch (error) {
-    console.error('[admin/files] GET error:', error);
-    return NextResponse.json({ error: 'Error al leer archivos', files: [], totalSize: 0, orphanCount: 0, orphanSize: 0 }, { status: 500 });
+  } catch (error: any) {
+    const msg = error?.message ?? String(error);
+    console.error('[admin/files] GET error:', msg);
+    return NextResponse.json({ error: `Error: ${msg}`, files: [], totalSize: 0, orphanCount: 0, orphanSize: 0 }, { status: 500 });
   }
 }
 
