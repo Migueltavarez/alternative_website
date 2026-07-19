@@ -235,6 +235,7 @@ export default function ProfilePage() {
         <BankTransferModal
           open={!!transferModal}
           onClose={() => { setTransferModal(null); fetchData(); }}
+          onSuccess={() => { setTransferModal(null); fetchData(); }}
           type={transferModal.type as any}
           purchaseId={transferModal.purchaseId}
           itemName={transferModal.itemName}
