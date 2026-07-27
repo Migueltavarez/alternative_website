@@ -102,32 +102,29 @@ export default function AdminPage() {
   }, [status, session, router]);
 
   const fetchData = async () => {
+    const safeGet = async (url: string) => {
+      try {
+        const res = await fetch(url);
+        return await res.json();
+      } catch {
+        return null;
+      }
+    };
+
     try {
-      const [statsRes, usersRes, subsRes, printJobsRes, workersRes, creditPurchasesRes, pendingWorkersRes, eventsRes, coursesRes] = await Promise.all([
-        fetch('/api/stats'),
-        fetch('/api/users'),
-        fetch('/api/subscriptions'),
-        fetch('/api/print-jobs/all'),
-        fetch('/api/workers/all'),
-        fetch('/api/credits/purchases'),
-        fetch('/api/admin/workers/pending'),
-        fetch('/api/events'),
-        fetch('/api/courses'),
-      ]);
-
       const [statsData, usersData, subsData, printJobsData, workersData, creditPurchasesData, pendingWorkersData, eventsData, coursesData] = await Promise.all([
-        statsRes.json(),
-        usersRes.json(),
-        subsRes.json(),
-        printJobsRes.json(),
-        workersRes.json(),
-        creditPurchasesRes.json(),
-        pendingWorkersRes.json(),
-        eventsRes.json(),
-        coursesRes.json(),
+        safeGet('/api/stats'),
+        safeGet('/api/users'),
+        safeGet('/api/subscriptions'),
+        safeGet('/api/print-jobs/all'),
+        safeGet('/api/workers/all'),
+        safeGet('/api/credits/purchases'),
+        safeGet('/api/admin/workers/pending'),
+        safeGet('/api/events'),
+        safeGet('/api/courses'),
       ]);
 
-      setStats(statsData);
+      if (statsData) setStats(statsData);
       setUsers(Array.isArray(usersData) ? usersData : []);
       setSubscriptions(Array.isArray(subsData) ? subsData : []);
       setPrintJobs(Array.isArray(printJobsData) ? printJobsData : []);
@@ -2099,8 +2096,8 @@ export default function AdminPage() {
                   !['delivered','cancelled'].includes(j.status)
                 ),
                 asignar: printJobs.filter((j: any) => j.status === 'pending_assignment'),
-                proceso: printJobs.filter((j: any) => j.status === 'in_progress'),
-                realizado: printJobs.filter((j: any) => ['completed','cancelled'].includes(j.status)),
+                proceso: printJobs.filter((j: any) => ['assigned','accepted','printing'].includes(j.status)),
+                realizado: printJobs.filter((j: any) => ['completed','cancelled','ready_to_ship','delivered'].includes(j.status)),
               };
               const tabs: { key: keyof typeof jobSections; label: string }[] = [
                 { key: 'cotizacion', label: 'Pendiente de cotización' },
