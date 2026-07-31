@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { DEFAULT_CREDIT_PACKAGES } from '@/lib/pricing';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const config = await prisma.pricingConfig.findUnique({ where: { id: 1 } });
