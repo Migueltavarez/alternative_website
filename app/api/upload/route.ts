@@ -10,6 +10,7 @@ const ALLOWED_EXTENSIONS = new Set([
   '.stl', '.obj', '.3mf', '.gcode', '.step', '.stp',
   '.fbx', '.dae', '.blend', '.max', '.3ds',
   '.pdf', '.dwg', '.dxf',
+  '.skp', '.rvt',
   '.jpg', '.jpeg', '.png', '.webp',
 ]);
 

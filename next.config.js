@@ -30,6 +30,7 @@ const securityHeaders = [
       "font-src 'self' data: https://chat.alt3dstudio.com",
       "connect-src 'self' https://cdn.shopify.com https://chat.alt3dstudio.com wss://chat.alt3dstudio.com",
       "frame-src https://chat.alt3dstudio.com",
+      "worker-src 'self' blob: https://chat.alt3dstudio.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

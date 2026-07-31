@@ -20,8 +20,10 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
-        <Chatwoot />
+        <Providers>
+          {children}
+          <Chatwoot />
+        </Providers>
       </body>
     </html>
   );

@@ -199,8 +199,8 @@ export const SERVICE_TYPES = [
     id: 'asesoria',
     label: 'Asesorías',
     description: 'Consultoría técnica especializada en fabricación digital',
-    acceptedExtensions: ['.jpg', '.jpeg', '.png', '.pdf', '.webp'],
-    acceptStr: '.jpg,.jpeg,.png,.pdf,.webp',
+    acceptedExtensions: ['.jpg', '.jpeg', '.png', '.pdf', '.webp', '.skp', '.rvt', '.blend'],
+    acceptStr: '.jpg,.jpeg,.png,.pdf,.webp,.skp,.rvt,.blend',
   },
 ] as const;
 

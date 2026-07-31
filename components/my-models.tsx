@@ -750,8 +750,8 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                           <span className="text-muted-foreground font-normal">
                             ({selectedService?.acceptedExtensions.join(', ')})
                           </span>{' '}
-                          {serviceType !== 'design' && <span className="text-red-400">*</span>}
-                          {serviceType === 'design' && <span className="text-muted-foreground font-normal">(opcional)</span>}
+                          {serviceType !== 'design' && serviceType !== 'asesoria' && <span className="text-red-400">*</span>}
+                          {(serviceType === 'design' || serviceType === 'asesoria') && <span className="text-muted-foreground font-normal">(opcional)</span>}
                         </label>
                         {!uploadedFile ? (
                           <FileUpload
