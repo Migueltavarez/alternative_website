@@ -78,6 +78,7 @@ export default function AdminPage() {
   const [editMakerSplit, setEditMakerSplit] = useState('');
   const [editExtrusionRates, setEditExtrusionRates] = useState<Record<string, string>>({});
   const [editPlanSheetPrices, setEditPlanSheetPrices] = useState<Record<string, string>>({});
+  const [editCreditPackages, setEditCreditPackages] = useState<Array<{ id: string; name: string; credits: string; priceDOP: string; highlighted: boolean }>>([]);
 
   // Archivos
   const [adminFiles, setAdminFiles] = useState<any[]>([]);
@@ -233,6 +234,7 @@ export default function AdminPage() {
         setEditExtrusionRates(Object.fromEntries(Object.entries(data.extrusionRateByQuality as Record<string, number>).map(([k, v]) => [k, String(v)])));
         const defaultSheetPrices = { '24x36': 0, '24x18': 0, '11x17': 0, '8.5x11': 0 };
         setEditPlanSheetPrices(Object.fromEntries(Object.entries({ ...defaultSheetPrices, ...(data.planSheetPrices ?? {}) } as Record<string, number>).map(([k, v]) => [k, String(v)])));
+        setEditCreditPackages((data.creditPackages ?? []).map((p: any) => ({ ...p, credits: String(p.credits), priceDOP: String(p.priceDOP) })));
       })
       .catch((err: any) => setPricingError(err.message ?? 'Error al cargar la configuración'))
       .finally(() => setPricingLoading(false));
@@ -253,6 +255,7 @@ export default function AdminPage() {
         makerSplit: parseFloat(editMakerSplit) / 100,
         extrusionRateByQuality: Object.fromEntries(Object.entries(editExtrusionRates).map(([k, v]) => [k, parseFloat(v)])),
         planSheetPrices: Object.fromEntries(Object.entries(editPlanSheetPrices).map(([k, v]) => [k, parseFloat(v) || 0])),
+        creditPackages: editCreditPackages.map(p => ({ ...p, credits: parseInt(p.credits) || 0, priceDOP: parseInt(p.priceDOP) || 0 })),
       };
       const res = await fetch('/api/admin/pricing', {
         method: 'PUT',
@@ -2962,6 +2965,75 @@ export default function AdminPage() {
                           />
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Credit packages */}
+                  <div className="glass rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="font-semibold">Paquetes de créditos</h3>
+                      <button
+                        type="button"
+                        onClick={() => setEditCreditPackages(prev => [...prev, { id: `credits_new_${Date.now()}`, name: '', credits: '0', priceDOP: '0', highlighted: false }])}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                      >
+                        + Añadir paquete
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-4">Precios en pesos dominicanos (RD$) que los clientes pagan al comprar créditos.</p>
+                    <div className="space-y-3">
+                      {editCreditPackages.map((pkg, i) => (
+                        <div key={pkg.id} className="grid grid-cols-[1fr_120px_120px_auto_auto] gap-3 items-center">
+                          <input
+                            type="text"
+                            placeholder="Nombre del paquete"
+                            value={pkg.name}
+                            onChange={e => setEditCreditPackages(prev => prev.map((p, idx) => idx === i ? { ...p, name: e.target.value } : p))}
+                            className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                          />
+                          <div>
+                            <label className="block text-xs text-muted-foreground mb-1">Créditos</label>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={pkg.credits}
+                              onChange={e => setEditCreditPackages(prev => prev.map((p, idx) => idx === i ? { ...p, credits: e.target.value } : p))}
+                              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-muted-foreground mb-1">Precio (RD$)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={pkg.priceDOP}
+                              onChange={e => setEditCreditPackages(prev => prev.map((p, idx) => idx === i ? { ...p, priceDOP: e.target.value } : p))}
+                              className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={pkg.highlighted}
+                              onChange={e => setEditCreditPackages(prev => prev.map((p, idx) => idx === i ? { ...p, highlighted: e.target.checked } : p))}
+                              className="rounded"
+                            />
+                            <span className="text-xs text-muted-foreground">Destacado</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setEditCreditPackages(prev => prev.filter((_, idx) => idx !== i))}
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-colors"
+                          >
+                            <XIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {editCreditPackages.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No hay paquetes configurados.</p>
+                      )}
                     </div>
                   </div>
                 </div>

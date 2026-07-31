@@ -443,6 +443,8 @@ model PricingConfig {
   extrusionRateByQuality String
   // JSON: { '24x36': 0, '24x18': 0, '11x17': 0, '8.5x11': 0 } RD$ per sheet
   planSheetPrices        String   @default("{}")
+  // JSON: [{id,name,credits,priceDOP,highlighted}]
+  creditPackages         String   @default("[]")
   updatedAt              DateTime @updatedAt
 }
 

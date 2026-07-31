@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { parsePricingConfig, DEFAULT_PRICING_CONFIG } from '@/lib/pricing';
+import { parsePricingConfig, DEFAULT_PRICING_CONFIG, DEFAULT_CREDIT_PACKAGES } from '@/lib/pricing';
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -30,6 +30,7 @@ export async function GET() {
         makerSplit: d.makerSplit,
         extrusionRateByQuality: JSON.stringify(d.extrusionRateByQuality),
         planSheetPrices: JSON.stringify(d.planSheetPrices),
+        creditPackages: JSON.stringify(d.creditPackages),
       },
     });
   }
@@ -51,6 +52,7 @@ export async function PUT(req: NextRequest) {
     makerSplit,
     extrusionRateByQuality,
     planSheetPrices,
+    creditPackages,
   } = body;
 
   if (
@@ -88,6 +90,7 @@ export async function PUT(req: NextRequest) {
       makerSplit,
       extrusionRateByQuality: JSON.stringify(extrusionRateByQuality),
       planSheetPrices: JSON.stringify(planSheetPrices ?? {}),
+      creditPackages: JSON.stringify(Array.isArray(creditPackages) ? creditPackages : DEFAULT_CREDIT_PACKAGES),
     },
     create: {
       id: 1,
@@ -101,6 +104,7 @@ export async function PUT(req: NextRequest) {
       makerSplit,
       extrusionRateByQuality: JSON.stringify(extrusionRateByQuality),
       planSheetPrices: JSON.stringify(planSheetPrices ?? {}),
+      creditPackages: JSON.stringify(Array.isArray(creditPackages) ? creditPackages : DEFAULT_CREDIT_PACKAGES),
     },
   });
 
