@@ -2,31 +2,37 @@
 
 import Script from 'next/script';
 import { useSession } from 'next-auth/react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const CHATWOOT_TOKEN = 'dnP5D6V7mgLSqkftVPMR33tj';
 const CHATWOOT_URL = 'https://chat.alt3dstudio.com';
 
-function forceShowWidget() {
-  const holder = document.getElementById('cw-widget-holder');
-  const iframe = document.getElementById('chatwoot_live_chat_widget') as HTMLIFrameElement | null;
-  if (!holder || !iframe) return;
-  holder.classList.remove('woot--hide');
-  iframe.style.visibility = 'visible';
-}
-
 export function Chatwoot() {
   const { data: session } = useSession();
+  const identifiedUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!session?.user) return;
-    const user = session.user as any;
+    const user = session?.user as any;
+    if (!user?.id) return;
 
-    const identify = () => {
+    // Evitar re-identificar al mismo usuario en cada re-render de session
+    if (identifiedUserId.current === user.id) return;
+
+    const identify = async () => {
+      let identifierHash: string | undefined;
+      try {
+        const res = await fetch('/api/chatwoot/hmac');
+        const data = await res.json();
+        identifierHash = data.hash ?? undefined;
+      } catch {}
+
       (window as any).$chatwoot?.setUser(user.id, {
         name: user.name ?? undefined,
         email: user.email ?? undefined,
+        identifier_hash: identifierHash,
       });
+
+      identifiedUserId.current = user.id;
     };
 
     if ((window as any).$chatwoot) {
@@ -47,15 +53,6 @@ export function Chatwoot() {
           websiteToken: CHATWOOT_TOKEN,
           baseUrl: CHATWOOT_URL,
         });
-
-        // Fallback: si el iframe no envía el postMessage "loaded" en 5s,
-        // forzar la visibilidad directamente.
-        setTimeout(() => {
-          const holder = document.getElementById('cw-widget-holder');
-          if (holder?.classList.contains('woot--hide')) {
-            forceShowWidget();
-          }
-        }, 5000);
       }}
     />
   );
