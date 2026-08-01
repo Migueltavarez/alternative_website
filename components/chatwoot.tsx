@@ -4,7 +4,7 @@ import Script from 'next/script';
 import { useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 
-const CHATWOOT_TOKEN = 'cqpy71Mth5s2wtgUFi6CrqTr';
+const CHATWOOT_TOKEN = 'dnP5D6V7mgLSqkftVPMR33tj';
 const CHATWOOT_URL = 'https://chat.alt3dstudio.com';
 
 function forceShowWidget() {
