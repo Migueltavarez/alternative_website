@@ -979,9 +979,22 @@ export default function AdminPage() {
           }
           if (ps === 'quoted') {
             return (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <p className="text-sm font-semibold">{formattedPrice}</p>
                 <span className={`text-xs px-1.5 py-0.5 rounded border ${priceInfo?.color}`}>Esperando cliente</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">DOP</span>
+                  <input type="number" min="0" step="0.01" placeholder={String(job.price ?? '')}
+                    value={priceInputs[job.id] ?? ''}
+                    onChange={(e) => setPriceInputs((prev) => ({ ...prev, [job.id]: e.target.value }))}
+                    className="w-20 px-2 py-1 rounded bg-card border border-border text-xs"
+                    disabled={actionLoading === job.id}
+                  />
+                </div>
+                <Button size="sm" onClick={() => handleSetPrice(job.id)}
+                  disabled={actionLoading === job.id || !priceInputs[job.id]} className="h-7 text-xs w-full">
+                  <DollarSign className="w-3 h-3 mr-1" />Recotizar
+                </Button>
               </div>
             );
           }
