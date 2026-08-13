@@ -1016,7 +1016,11 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                                 { value: '11x17', label: '11×17"' },
                                 { value: '8.5x11', label: '8.5×11"' },
                               ].map(opt => {
-                                const price = planSheetPrices[opt.value];
+                                const priceColor = planSheetPrices[`${opt.value}_color`];
+                                const priceBw = planSheetPrices[`${opt.value}_bw`];
+                                const activePrice = blueprintColorMode
+                                  ? planSheetPrices[`${opt.value}_${blueprintColorMode}`]
+                                  : null;
                                 return (
                                   <label
                                     key={opt.value}
@@ -1037,9 +1041,20 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                                       />
                                       <span className="text-sm font-medium">{opt.label}</span>
                                     </div>
-                                    {price != null && price > 0 && (
-                                      <span className="text-xs font-semibold text-primary">RD$ {price}</span>
-                                    )}
+                                    <div className="text-right">
+                                      {activePrice != null && activePrice > 0 ? (
+                                        <span className="text-xs font-semibold text-primary">RD$ {activePrice}</span>
+                                      ) : (
+                                        <div className="flex flex-col items-end gap-0.5">
+                                          {priceColor != null && priceColor > 0 && (
+                                            <span className="text-xs text-muted-foreground">Color: RD$ {priceColor}</span>
+                                          )}
+                                          {priceBw != null && priceBw > 0 && (
+                                            <span className="text-xs text-muted-foreground">BN: RD$ {priceBw}</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                   </label>
                                 );
                               })}
@@ -1053,26 +1068,36 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                               {[
                                 { value: 'bw', label: 'Blanco y negro' },
                                 { value: 'color', label: 'A color' },
-                              ].map(opt => (
-                                <label
-                                  key={opt.value}
-                                  className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${
-                                    blueprintColorMode === opt.value
-                                      ? 'border-primary bg-primary/10'
-                                      : 'border-border hover:border-primary/50'
-                                  }`}
-                                >
-                                  <input
-                                    type="radio"
-                                    name="blueprintColorMode"
-                                    value={opt.value}
-                                    checked={blueprintColorMode === opt.value}
-                                    onChange={() => setBlueprintColorMode(opt.value)}
-                                    className="accent-primary"
-                                  />
-                                  <span className="text-sm font-medium">{opt.label}</span>
-                                </label>
-                              ))}
+                              ].map(opt => {
+                                const modePrice = blueprintSheetSize
+                                  ? planSheetPrices[`${blueprintSheetSize}_${opt.value}`]
+                                  : null;
+                                return (
+                                  <label
+                                    key={opt.value}
+                                    className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                      blueprintColorMode === opt.value
+                                        ? 'border-primary bg-primary/10'
+                                        : 'border-border hover:border-primary/50'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="radio"
+                                        name="blueprintColorMode"
+                                        value={opt.value}
+                                        checked={blueprintColorMode === opt.value}
+                                        onChange={() => setBlueprintColorMode(opt.value)}
+                                        className="accent-primary"
+                                      />
+                                      <span className="text-sm font-medium">{opt.label}</span>
+                                    </div>
+                                    {modePrice != null && modePrice > 0 && (
+                                      <span className="text-xs font-semibold text-primary">RD$ {modePrice}</span>
+                                    )}
+                                  </label>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>

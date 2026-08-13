@@ -232,7 +232,12 @@ export default function AdminPage() {
         setEditPlatformMargin(String(Math.round(data.platformMargin * 100)));
         setEditMakerSplit(String(Math.round(data.makerSplit * 100)));
         setEditExtrusionRates(Object.fromEntries(Object.entries(data.extrusionRateByQuality as Record<string, number>).map(([k, v]) => [k, String(v)])));
-        const defaultSheetPrices = { '24x36': 0, '24x18': 0, '11x17': 0, '8.5x11': 0 };
+        const defaultSheetPrices = {
+          '24x36_color': 0, '24x36_bw': 0,
+          '24x18_color': 0, '24x18_bw': 0,
+          '11x17_color': 0, '11x17_bw': 0,
+          '8.5x11_color': 0, '8.5x11_bw': 0,
+        };
         setEditPlanSheetPrices(Object.fromEntries(Object.entries({ ...defaultSheetPrices, ...(data.planSheetPrices ?? {}) } as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditCreditPackages((data.creditPackages ?? []).map((p: any) => ({ ...p, credits: String(p.credits), priceDOP: String(p.priceDOP) })));
       })
@@ -2958,26 +2963,49 @@ export default function AdminPage() {
                   {/* Plan sheet prices */}
                   <div className="glass rounded-2xl p-6">
                     <h3 className="font-semibold mb-1">Precios de impresión de planos (RD$)</h3>
-                    <p className="text-xs text-muted-foreground mb-4">Precio por hoja según el formato seleccionado por el cliente al solicitar el servicio de planos.</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {[
-                        { key: '24x36', label: '24×36"' },
-                        { key: '24x18', label: '24×18"' },
-                        { key: '11x17', label: '11×17"' },
-                        { key: '8.5x11', label: '8.5×11"' },
-                      ].map(s => (
-                        <div key={s.key}>
-                          <label className="block text-xs font-medium text-muted-foreground mb-1">{s.label} (RD$)</label>
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            value={editPlanSheetPrices[s.key] ?? ''}
-                            onChange={e => setEditPlanSheetPrices(p => ({ ...p, [s.key]: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                      ))}
+                    <p className="text-xs text-muted-foreground mb-4">Precio por hoja por formato y modalidad de color.</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Formato</th>
+                            <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">A color (RD$)</th>
+                            <th className="text-left text-xs font-medium text-muted-foreground pb-2">Blanco y negro (RD$)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {[
+                            { size: '24x36', label: '24×36"' },
+                            { size: '24x18', label: '24×18"' },
+                            { size: '11x17', label: '11×17"' },
+                            { size: '8.5x11', label: '8.5×11"' },
+                          ].map(s => (
+                            <tr key={s.size}>
+                              <td className="py-2 pr-4 font-medium text-xs">{s.label}</td>
+                              <td className="py-2 pr-4">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  value={editPlanSheetPrices[`${s.size}_color`] ?? ''}
+                                  onChange={e => setEditPlanSheetPrices(p => ({ ...p, [`${s.size}_color`]: e.target.value }))}
+                                  className="w-28 px-3 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                />
+                              </td>
+                              <td className="py-2">
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="0"
+                                  value={editPlanSheetPrices[`${s.size}_bw`] ?? ''}
+                                  onChange={e => setEditPlanSheetPrices(p => ({ ...p, [`${s.size}_bw`]: e.target.value }))}
+                                  className="w-28 px-3 py-1.5 rounded-lg bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 

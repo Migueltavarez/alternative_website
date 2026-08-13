@@ -16,7 +16,7 @@ export interface PricingConfigData {
   platformMargin: number;                         // fallback margin (0.30 = 30%)
   makerSplit: number;                             // e.g. 0.70
   extrusionRateByQuality: Record<string, number>; // g/hour: { draft, standard, fine }
-  planSheetPrices: Record<string, number>;        // RD$ per sheet by size: { '24x36', '24x18', '11x17', '8.5x11' }
+  planSheetPrices: Record<string, number>;        // RD$ per sheet by size+mode: { '24x36_color', '24x36_bw', ... }
   creditPackages: CreditPackageConfig[];
 }
 
@@ -128,7 +128,12 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
   platformMargin: 0.30,
   makerSplit: 0.70,
   extrusionRateByQuality: { draft: 25, standard: 15, fine: 8 },
-  planSheetPrices: { '24x36': 0, '24x18': 0, '11x17': 0, '8.5x11': 0 },
+  planSheetPrices: {
+    '24x36_color': 0, '24x36_bw': 0,
+    '24x18_color': 0, '24x18_bw': 0,
+    '11x17_color': 0, '11x17_bw': 0,
+    '8.5x11_color': 0, '8.5x11_bw': 0,
+  },
   creditPackages: DEFAULT_CREDIT_PACKAGES,
 };
 
@@ -172,7 +177,7 @@ export function parsePricingConfig(raw: {
     platformMargin: raw.platformMargin,
     makerSplit: raw.makerSplit,
     extrusionRateByQuality: JSON.parse(raw.extrusionRateByQuality),
-    planSheetPrices: raw.planSheetPrices ? JSON.parse(raw.planSheetPrices) : { '24x36': 0, '24x18': 0, '11x17': 0, '8.5x11': 0 },
+    planSheetPrices: raw.planSheetPrices ? JSON.parse(raw.planSheetPrices) : { '24x36_color': 0, '24x36_bw': 0, '24x18_color': 0, '24x18_bw': 0, '11x17_color': 0, '11x17_bw': 0, '8.5x11_color': 0, '8.5x11_bw': 0 },
     creditPackages: raw.creditPackages ? JSON.parse(raw.creditPackages) : DEFAULT_CREDIT_PACKAGES,
   };
 }
