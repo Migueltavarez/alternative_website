@@ -133,6 +133,7 @@ export const DEFAULT_PRICING_CONFIG: PricingConfigData = {
     '24x18_color': 0, '24x18_bw': 0,
     '11x17_color': 0, '11x17_bw': 0,
     '8.5x11_color': 0, '8.5x11_bw': 0,
+    'pancarta_color': 0, 'pancarta_bw': 0,
   },
   creditPackages: DEFAULT_CREDIT_PACKAGES,
 };
@@ -177,7 +178,7 @@ export function parsePricingConfig(raw: {
     platformMargin: raw.platformMargin,
     makerSplit: raw.makerSplit,
     extrusionRateByQuality: JSON.parse(raw.extrusionRateByQuality),
-    planSheetPrices: raw.planSheetPrices ? JSON.parse(raw.planSheetPrices) : { '24x36_color': 0, '24x36_bw': 0, '24x18_color': 0, '24x18_bw': 0, '11x17_color': 0, '11x17_bw': 0, '8.5x11_color': 0, '8.5x11_bw': 0 },
+    planSheetPrices: raw.planSheetPrices ? JSON.parse(raw.planSheetPrices) : { '24x36_color': 0, '24x36_bw': 0, '24x18_color': 0, '24x18_bw': 0, '11x17_color': 0, '11x17_bw': 0, '8.5x11_color': 0, '8.5x11_bw': 0, 'pancarta_color': 0, 'pancarta_bw': 0 },
     creditPackages: raw.creditPackages ? JSON.parse(raw.creditPackages) : DEFAULT_CREDIT_PACKAGES,
   };
 }

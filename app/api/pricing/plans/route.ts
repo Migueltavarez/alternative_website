@@ -8,6 +8,7 @@ const DEFAULT_SHEET_PRICES = {
   '24x18_color': 0, '24x18_bw': 0,
   '11x17_color': 0, '11x17_bw': 0,
   '8.5x11_color': 0, '8.5x11_bw': 0,
+  'pancarta_color': 0, 'pancarta_bw': 0,
 };
 
 export async function GET() {

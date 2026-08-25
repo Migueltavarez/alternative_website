@@ -237,6 +237,7 @@ export default function AdminPage() {
           '24x18_color': 0, '24x18_bw': 0,
           '11x17_color': 0, '11x17_bw': 0,
           '8.5x11_color': 0, '8.5x11_bw': 0,
+          'pancarta_color': 0, 'pancarta_bw': 0,
         };
         setEditPlanSheetPrices(Object.fromEntries(Object.entries({ ...defaultSheetPrices, ...(data.planSheetPrices ?? {}) } as Record<string, number>).map(([k, v]) => [k, String(v)])));
         setEditCreditPackages((data.creditPackages ?? []).map((p: any) => ({ ...p, credits: String(p.credits), priceDOP: String(p.priceDOP) })));
@@ -2979,6 +2980,7 @@ export default function AdminPage() {
                             { size: '24x18', label: '24×18"' },
                             { size: '11x17', label: '11×17"' },
                             { size: '8.5x11', label: '8.5×11"' },
+                            { size: 'pancarta', label: 'Pancarta' },
                           ].map(s => (
                             <tr key={s.size}>
                               <td className="py-2 pr-4 font-medium text-xs">{s.label}</td>
