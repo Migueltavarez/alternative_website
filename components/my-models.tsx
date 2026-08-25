@@ -1015,6 +1015,7 @@ export function MyModels({ printJobs, onRefresh, isStudent = false, formOnly = f
                                 { value: '24x18', label: '24×18"' },
                                 { value: '11x17', label: '11×17"' },
                                 { value: '8.5x11', label: '8.5×11"' },
+                                { value: 'pancarta', label: 'Pancarta' },
                               ].map(opt => {
                                 const priceColor = planSheetPrices[`${opt.value}_color`];
                                 const priceBw = planSheetPrices[`${opt.value}_bw`];
