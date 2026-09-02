@@ -1,10 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getApiSession } from '@/lib/api-auth';
 import prisma from '@/lib/prisma';
 import { sendJobAssignedToWorkerEmail } from '@/lib/email';
 import { createNotification } from '@/lib/notifications';
 import { processSellerCommission } from '@/lib/seller-commissions';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getApiSession(request);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const job = await prisma.printJob.findUnique({ where: { id: params.id } });
+    if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    if (session.role !== 'ADMIN' && job.userId !== session.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    return NextResponse.json(job);
+  } catch (error) {
+    console.error('Get print job error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: NextRequest,

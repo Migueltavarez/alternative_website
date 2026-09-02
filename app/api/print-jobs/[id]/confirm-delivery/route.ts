@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getApiSession } from '@/lib/api-auth';
 import prisma from '@/lib/prisma';
 import { createNotification } from '@/lib/notifications';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getApiSession(request);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const userId = (session.user as any).id;
+    const userId = session.id;
     const { deliveryAddress, deliveryType } = await request.json();
 
     const job = await prisma.printJob.findUnique({ where: { id: params.id } });

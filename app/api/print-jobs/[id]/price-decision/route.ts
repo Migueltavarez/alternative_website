@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getApiSession } from '@/lib/api-auth';
 import prisma from '@/lib/prisma';
 
 export async function POST(
@@ -8,9 +7,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getApiSession(request);
 
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +27,7 @@ export async function POST(
       return NextResponse.json({ error: 'Trabajo no encontrado' }, { status: 404 });
     }
 
-    if (printJob.userId !== (session.user as any).id) {
+    if (printJob.userId !== session.id) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
