@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { approveWorker, rejectWorker } from '@/lib/workers-approval';
 
-// POST /api/admin/workers/[id] — body: { action: 'approve' | 'reject' }
+// POST /api/admin/workers/[id] — body: { action: 'approve' | 'reject', reason?: string }
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -13,39 +14,18 @@ export async function POST(
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 
-  const { action } = await request.json();
+  const { action, reason } = await request.json();
   const userId = params.id;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true, workerApproved: true },
-  });
-
-  if (!user || !['WORKER', 'DESIGNER'].includes(user.role)) {
-    return NextResponse.json({ error: 'Usuario no encontrado o no es worker/designer' }, { status: 404 });
-  }
-
-  if (action === 'approve') {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { workerApproved: true },
-    });
-    return NextResponse.json({ success: true, action: 'approved' });
-  }
-
-  if (action === 'reject') {
-    // Remove worker profile and reset role to USER
-    await prisma.$transaction([
-      prisma.workerProfile.deleteMany({ where: { userId } }),
-      prisma.user.update({
-        where: { id: userId },
-        data: { role: 'USER', workerApproved: false },
-      }),
-    ]);
-    return NextResponse.json({ success: true, action: 'rejected' });
-  }
-
-  return NextResponse.json({ error: 'Acción inválida' }, { status: 400 });
+  const result =
+    action === 'approve'
+      ? await approveWorker(userId)
+      : action === 'reject'
+        ? await rejectWorker(userId, typeof reason === 'string' ? reason : null)
+        : null;
+  if (!result) return NextResponse.json({ error: 'Acción inválida' }, { status: 400 });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  return NextResponse.json({ success: true, action: result.action });
 }
 
 // DELETE /api/admin/workers/[id] — eliminar maker permanentemente

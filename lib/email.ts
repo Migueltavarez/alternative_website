@@ -140,6 +140,66 @@ export async function sendJobAssignedToWorkerEmail(
   });
 }
 
+function workerEmailShell(firstName: string, title: string, body: string, cta?: { href: string; label: string }) {
+  return `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#0f0f1a;color:#e2e8f0;padding:32px;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <h1 style="color:#8b5cf6;font-size:24px;margin:0;">Alternative 3D Studio</h1>
+        </div>
+        <h2 style="font-size:20px;margin:0 0 12px;">¡Hola, ${firstName}!</h2>
+        <p style="color:#94a3b8;line-height:1.6;">${title}</p>
+        ${body}
+        ${cta ? `<div style="text-align:center;margin:28px 0;">
+          <a href="${cta.href}" style="display:inline-block;padding:14px 32px;background:#8b5cf6;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">${cta.label}</a>
+        </div>` : ''}
+        <hr style="border:none;border-top:1px solid #1e293b;margin:24px 0;" />
+        <p style="color:#475569;font-size:12px;text-align:center;margin:0;">Alternative 3D Studio · República Dominicana</p>
+      </div>
+    `;
+}
+
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
+export async function sendWorkerApprovedEmail(email: string, name: string | null | undefined, role: string) {
+  const firstName = name?.split(' ')[0] || 'allí';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';
+  const esDisenador = role === 'DESIGNER';
+  await send({
+    from: FROM,
+    to: email,
+    subject: esDisenador ? 'Tu cuenta de diseñador fue aprobada' : 'Tu cuenta de Maker fue aprobada',
+    html: workerEmailShell(
+      firstName,
+      esDisenador
+        ? 'Revisamos tu solicitud y <strong style="color:#e2e8f0;">ya eres parte de la red de diseñadores</strong> de Alternative 3D Studio.'
+        : 'Revisamos tu solicitud y tu equipo <strong style="color:#e2e8f0;">ya está activo en la red de Makers</strong> de Alternative 3D Studio.',
+      `<p style="color:#94a3b8;line-height:1.6;">Desde ahora te podemos asignar trabajos. Cuando llegue uno, recibirás un correo y tendrás <strong style="color:#8b5cf6;">10 minutos</strong> para aceptarlo desde tu panel.</p>`,
+      { href: `${appUrl}/worker`, label: 'Ir a mi panel de trabajo' },
+    ),
+  });
+}
+
+export async function sendWorkerRejectedEmail(email: string, name: string | null | undefined, reason: string | null) {
+  const firstName = name?.split(' ')[0] || 'allí';
+  const motivo = reason
+    ? `<div style="background:#1e1b4b;border:1px solid #312e81;border-radius:8px;padding:12px 16px;margin:20px 0;">
+          <p style="margin:0;font-size:12px;color:#a5b4fc;">Motivo</p>
+          <p style="margin:4px 0 0;color:#e2e8f0;">${escapeHtml(reason)}</p>
+        </div>`
+    : '';
+  await send({
+    from: FROM,
+    to: email,
+    subject: 'Sobre tu solicitud para ser Maker',
+    html: workerEmailShell(
+      firstName,
+      'Gracias por tu interés en la red de Makers. Por ahora <strong style="color:#e2e8f0;">no pudimos aprobar tu solicitud</strong>.',
+      `${motivo}<p style="color:#94a3b8;line-height:1.6;">Tu cuenta sigue activa como cliente. Si quieres volver a intentarlo o tienes alguna duda, escríbenos por WhatsApp y con gusto te orientamos.</p>`,
+    ),
+  });
+}
+
 export async function sendWelcomeEmail(email: string, name?: string | null) {
   const firstName = name?.split(' ')[0] || 'allí';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://alt3dstudio.com';

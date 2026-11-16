@@ -3,16 +3,17 @@
 set -e
 
 VPS="root@46.224.116.91"
+VPS_PORT="${VPS_PORT:-2222}"
 REMOTE_DIR="/opt/alt3d"
 
 echo "==> Empaquetando proyecto..."
 git archive --format=tar.gz HEAD > /tmp/alt3d.tar.gz
 
 echo "==> Subiendo al VPS..."
-scp /tmp/alt3d.tar.gz $VPS:/opt/
+scp -P "$VPS_PORT" /tmp/alt3d.tar.gz $VPS:/opt/
 
 echo "==> Extrayendo y reconstruyendo..."
-ssh $VPS "
+ssh -p "$VPS_PORT" $VPS "
   rm -rf $REMOTE_DIR
   mkdir -p $REMOTE_DIR
   tar xzf /opt/alt3d.tar.gz -C $REMOTE_DIR

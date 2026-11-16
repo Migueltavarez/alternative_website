@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { notifyIntegration } from '@/lib/integration-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -90,6 +91,28 @@ export async function POST(request: NextRequest) {
         data: { role: 'WORKER', workerApproved: false },
       }),
     ]);
+
+    // Aviso a n8n (la oficina pide la aprobación). Si falla, n8n lo recoge después por la API.
+    const registrado = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+    });
+    if (registrado) {
+      notifyIntegration('worker.registered', {
+        ...registrado,
+        machines: profile.machines.map((m) => ({
+          id: m.id,
+          name: m.name,
+          description: m.description,
+          machineType: m.machineType,
+          supportedFilaments: m.supportedFilaments,
+          supportedColors: m.supportedColors,
+          supportedNozzles: m.supportedNozzles,
+          laserType: m.laserType,
+          dimensions: m.dimensions,
+        })),
+      });
+    }
 
     return NextResponse.json({ success: true, profile }, { status: 201 });
   } catch (error) {
